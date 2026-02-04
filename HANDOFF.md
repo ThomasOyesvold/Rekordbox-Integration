@@ -21,6 +21,7 @@ Completed:
 - Track details panel with source playlist references
 - Quick track table search/filter
 - Sortable track table columns
+- First-run onboarding hints and recent-import load action
 - Unit tests for parser/services/state
 
 Not started yet:
@@ -56,6 +57,11 @@ npm run dev:renderer
 VITE_DEV_SERVER_URL=http://localhost:5173 npm run start:electron
 ```
 
+If WSL/Linux shows GPU init errors:
+```bash
+VITE_DEV_SERVER_URL=http://localhost:5173 npm run start:electron:safe
+```
+
 Build renderer:
 ```bash
 npm run build:renderer
@@ -63,6 +69,7 @@ npm run start:electron
 ```
 
 ## Recent milestones (latest first)
+- `af529f7` feat: add sortable columns to track table
 - `86ac24c` feat: add track table quick search filter
 - `63de59e` feat: add track details panel with playlist source mapping
 - `d81694b` feat: add structured XML validation and UI issue reporting
@@ -75,7 +82,7 @@ npm run start:electron
 1. Improve Rekordbox-specific validation rules and severity classification.
 2. Start Phase 2 analysis cache schema in SQLite (track similarity table + invalidation strategy).
 3. Add real-world XML fixtures from your Rekordbox exports to harden parser edge cases.
-4. Improve first-run UX hints (clear in-app steps when no XML is loaded).
+4. Add keyboard shortcuts and focus states for fast desktop workflows.
 
 ## Notes for future sessions
 - Keep commits small and push after each feature slice.

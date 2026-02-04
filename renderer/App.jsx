@@ -114,6 +114,12 @@ export function App() {
     }
   };
 
+  const applyRecentImport = (row) => {
+    setXmlPath(row.xmlPath || '');
+    setSelectedFolders(Array.isArray(row.selectedFolders) ? row.selectedFolders : []);
+    setError('Loaded import settings from history. Click Parse Library to reload.');
+  };
+
   const parse = async () => {
     if (!xmlPath.trim()) {
       setError('Choose an XML export first.');
@@ -219,6 +225,14 @@ export function App() {
       </div>
 
       <div className="card">
+        {!xmlPath.trim() ? (
+          <div className="onboarding">
+            <h3>Getting Started</h3>
+            <p>1. Click Browse XML and choose a Rekordbox export file.</p>
+            <p>2. Click Parse Library.</p>
+            <p>3. Filter folders, inspect tracks, and review validation issues.</p>
+          </div>
+        ) : null}
         <div className="row">
           <input
             type="text"
@@ -413,6 +427,7 @@ export function App() {
                 <th>Playlists</th>
                 <th>Folders</th>
                 <th>Filter</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -424,6 +439,11 @@ export function App() {
                   <td>{row.playlistCount}</td>
                   <td>{row.folderCount}</td>
                   <td>{row.selectedFolders.length > 0 ? row.selectedFolders.join(', ') : 'All'}</td>
+                  <td>
+                    <button type="button" className="secondary" onClick={() => applyRecentImport(row)}>
+                      Load
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

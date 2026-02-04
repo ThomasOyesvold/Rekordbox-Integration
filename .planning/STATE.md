@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 ## Current Position
 
 Phase: 1 of 6 (Foundation & Data Layer)
-Plan: 8 completed implementation slices
+Plan: 9 completed implementation slices
 Status: In progress (working desktop foundation)
-Last activity: 2026-02-04 — Added sortable track table columns (artist/title/BPM/etc.)
+Last activity: 2026-02-04 — Added first-run UX hints and recent-import load action
 
-Progress: [████░░░░░░] ~40%
+Progress: [████░░░░░░] ~45%
 
 ## Completed work (code)
 
@@ -28,6 +28,7 @@ Progress: [████░░░░░░] ~40%
 - Track-to-playlist index and track details panel with source playlist references
 - Quick track search/filter for large result tables
 - Sortable track table columns
+- First-run onboarding hints and one-click load from recent imports
 - Tests for parser, services, state, sqlite store
 
 ## Pending Todos
@@ -35,7 +36,7 @@ Progress: [████░░░░░░] ~40%
 1. Tighten fatal vs warning criteria for specific Rekordbox parsing failures
 2. Define Phase 2 schema for similarity cache in SQLite
 3. Add larger real-world XML fixtures and edge-case tests
-4. Improve first-run UX hints (clear steps in-app when no XML loaded)
+4. Add keyboard shortcuts and focus states for fast desktop workflows
 
 ## Blockers/Concerns
 
@@ -46,5 +47,5 @@ Progress: [████░░░░░░] ~40%
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Sortable columns added to track table
+Stopped at: First-run UX hints and recent-import load flow added
 Resume anchor: `HANDOFF.md` and latest commit history

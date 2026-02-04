@@ -34,6 +34,12 @@ npm run dev:renderer
 VITE_DEV_SERVER_URL=http://localhost:5173 npm run start:electron
 ```
 
+If GPU init errors are noisy in WSL/Linux, use:
+
+```bash
+VITE_DEV_SERVER_URL=http://localhost:5173 npm run start:electron:safe
+```
+
 For production renderer build:
 
 ```bash
