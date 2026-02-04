@@ -16,13 +16,14 @@ Status: Active development
 - Track table supports keyboard shortcuts and fast focus workflow.
 - SQLite supports import history + analysis runs + similarity cache.
 - Baseline scoring pipeline is in place (BPM/key + extracted waveform/rhythm proxies).
+- Baseline result rows now include plain-language component reasoning.
 - Validation panel supports severity filtering (all/error/warning).
 
 ## Top Next Tasks
 1. Improve parser handling for non-self-closing TRACK nodes with nested metadata.
-2. Add analysis-result explanations in the UI (why a pair scored high/low).
-3. Add folder-level analysis summary cards (selected folder mix profile).
-4. Add integration test around keyboard shortcuts and severity filters.
+2. Add folder-level analysis summary cards (selected folder mix profile).
+3. Add integration test around keyboard shortcuts and severity filters.
+4. Add parse-time detection of unsupported nested Rekordbox tags for better warnings.
 
 ## Known Risks
 - Real-world Rekordbox XML variability still under-covered by fixtures.

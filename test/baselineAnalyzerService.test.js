@@ -10,6 +10,7 @@ import {
   computeBpmScore,
   computeKeyScore,
   computeRhythmScore,
+  summarizeSimilarityComponents,
   computeWaveformScore,
   computeRhythmPlaceholderScore,
   computeWaveformPlaceholderScore,
@@ -38,6 +39,7 @@ test('baseline analyzer score functions behave as expected', () => {
   assert.ok(result.components.waveform >= 0);
   assert.ok(result.components.rhythm >= 0);
   assert.equal(result.weights.bpm, DEFAULT_COMPONENT_WEIGHTS.bpm);
+  assert.match(summarizeSimilarityComponents(result.components), /BPM/i);
 });
 
 test('baseline analyzer computes then reuses cache entries', async () => {
@@ -60,6 +62,7 @@ test('baseline analyzer computes then reuses cache entries', async () => {
   assert.equal(first.algorithmVersion, 'flow-baseline-v3');
   assert.ok(first.topMatches[0].components.waveform >= 0);
   assert.ok(first.topMatches[0].components.rhythm >= 0);
+  assert.equal(typeof first.topMatches[0].reason, 'string');
 
   const second = runBaselineAnalysis({
     tracks: SAMPLE_TRACKS,

@@ -19,6 +19,7 @@ Windows desktop tool for Rekordbox XML parsing and flow-oriented playlist prep.
 - Renderer now supports keyboard shortcuts (`Ctrl/Cmd+F`, `Ctrl/Cmd+Enter`, `Ctrl/Cmd+Shift+A`).
 - Validation issues panel now supports severity filtering (all/error/warning).
 - Folder pane shows quick library stats (BPM range, avg duration, genre count, key coverage).
+- Baseline analysis table now includes a human-readable "Why" column per match.
 
 ## Key Files
 - `electron/main.js`
@@ -56,9 +57,9 @@ VITE_DEV_SERVER_URL=http://localhost:5173 npm run start:electron:safe
 
 ## Next Tasks
 1. Improve parser handling for non-self-closing TRACK nodes with nested metadata.
-2. Add analysis-result explanations in UI for each component score.
-3. Add folder-level analysis summary cards per selected folder.
-4. Add integration test coverage for keyboard shortcuts and issue filtering.
+2. Add folder-level analysis summary cards per selected folder.
+3. Add integration test coverage for keyboard shortcuts and issue filtering.
+4. Add parse-time detection of unsupported nested Rekordbox tags for clearer warnings.
 
 ## Notes
 - Keep commits small and push feature slices.

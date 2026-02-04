@@ -243,6 +243,28 @@ export function computeBaselineSimilarity(trackA, trackB, componentWeights = DEF
   };
 }
 
+function componentTier(value) {
+  if (value >= 0.85) {
+    return 'strong';
+  }
+  if (value >= 0.65) {
+    return 'good';
+  }
+  if (value >= 0.45) {
+    return 'mixed';
+  }
+  return 'weak';
+}
+
+export function summarizeSimilarityComponents(components) {
+  const bpmTier = componentTier(components?.bpm ?? 0);
+  const keyTier = componentTier(components?.key ?? 0);
+  const waveformTier = componentTier(components?.waveform ?? 0);
+  const rhythmTier = componentTier(components?.rhythm ?? 0);
+
+  return `BPM ${bpmTier}, key ${keyTier}, waveform ${waveformTier}, rhythm ${rhythmTier}`;
+}
+
 export function buildTrackPairs(tracks, maxPairs = Infinity) {
   const pairs = [];
   for (let i = 0; i < tracks.length; i += 1) {
@@ -303,18 +325,22 @@ export function runBaselineAnalysis({
 
       if (cached) {
         cacheHits += 1;
+        const reason = cached.components?.reason
+          || summarizeSimilarityComponents(cached.components);
         rows.push({
           trackAId: cached.trackAId,
           trackBId: cached.trackBId,
           score: cached.score,
           components: cached.components,
           weights: cached.components?.weights || normalizedWeights,
+          reason,
           fromCache: true
         });
         continue;
       }
 
       const result = computeBaselineSimilarity(trackA, trackB, normalizedWeights);
+      const reason = summarizeSimilarityComponents(result.components);
       saveSimilarityToCache({
         trackAId: trackA.id,
         trackBId: trackB.id,
@@ -322,6 +348,7 @@ export function runBaselineAnalysis({
         score: result.score,
         components: {
           ...result.components,
+          reason,
           weights: result.weights
         },
         analysisRunId: runId
@@ -334,6 +361,7 @@ export function runBaselineAnalysis({
         score: result.score,
         components: result.components,
         weights: result.weights,
+        reason,
         fromCache: false
       });
     }

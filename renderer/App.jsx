@@ -595,6 +595,7 @@ export function App() {
                 <th>Key</th>
                 <th>Waveform</th>
                 <th>Rhythm</th>
+                <th>Why</th>
                 <th>Source</th>
               </tr>
             </thead>
@@ -608,6 +609,7 @@ export function App() {
                   <td>{(row.components?.key ?? 0).toFixed(3)}</td>
                   <td>{(row.components?.waveform ?? 0).toFixed(3)}</td>
                   <td>{(row.components?.rhythm ?? 0).toFixed(3)}</td>
+                  <td>{row.reason || '-'}</td>
                   <td>{row.fromCache ? 'Cache' : 'Computed'}</td>
                 </tr>
               ))}
