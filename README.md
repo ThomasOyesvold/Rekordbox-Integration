@@ -8,11 +8,13 @@ Initial implementation of the foundation layer for parsing Rekordbox XML, select
 - Track metadata extraction (artist, title, BPM, key, duration, bitrate, path)
 - Folder-based filtering over parsed playlists
 - App state persistence (`app-state.json` in Electron user data)
+- SQLite import history (`rbfa.db` in Electron user data)
 - Background parsing worker with progress events
 - Desktop shell (Electron + React) with:
   - XML picker
   - Folder filter
   - Track table preview
+  - Recent import history table
 
 ## CLI usage
 

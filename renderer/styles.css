@@ -135,6 +135,7 @@ button:disabled {
   border-bottom: 1px solid #e2e8f0;
   text-align: left;
   padding: 8px;
+  vertical-align: top;
 }
 
 .progress {

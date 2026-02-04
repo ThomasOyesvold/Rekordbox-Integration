@@ -3,11 +3,13 @@ import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { buildFolderTree, filterTracksByFolders, summarizeLibrary } from '../src/services/libraryService.js';
 import { startBackgroundParse } from '../src/services/parseService.js';
+import { getRecentImports, initDatabase, saveImportHistory } from '../src/state/sqliteStore.js';
 import { loadState, saveState } from '../src/state/stateStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const statePath = path.resolve(app.getPath('userData'), 'app-state.json');
+const dbPath = path.resolve(app.getPath('userData'), 'rbfa.db');
 
 let mainWindow = null;
 
@@ -63,6 +65,14 @@ ipcMain.handle('library:parse', async (_event, payload) => {
 
   const filteredTracks = filterTracksByFolders(library, selectedFolders);
   const summary = summarizeLibrary(library);
+  saveImportHistory({
+    xmlPath,
+    parsedAt: library.parsedAt,
+    trackCount: summary.trackCount,
+    playlistCount: summary.playlistCount,
+    folderCount: summary.folderCount,
+    selectedFolders
+  });
 
   return {
     summary,
@@ -76,8 +86,10 @@ ipcMain.handle('library:parse', async (_event, payload) => {
 
 ipcMain.handle('state:load', async () => loadState(statePath));
 ipcMain.handle('state:save', async (_event, patch) => saveState(statePath, patch));
+ipcMain.handle('imports:recent', async () => getRecentImports(10));
 
 app.whenReady().then(() => {
+  initDatabase(dbPath);
   createWindow();
 
   app.on('activate', () => {

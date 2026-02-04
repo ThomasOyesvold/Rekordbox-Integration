@@ -25,6 +25,7 @@ export function App() {
   const [selectedFolders, setSelectedFolders] = useState([]);
   const [expandedFolders, setExpandedFolders] = useState(new Set());
   const [tracks, setTracks] = useState([]);
+  const [recentImports, setRecentImports] = useState([]);
   const [summary, setSummary] = useState(null);
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState('');
@@ -45,6 +46,12 @@ export function App() {
       }
     }).catch(() => {
       // best-effort state load
+    });
+
+    window.rbfa.getRecentImports().then((rows) => {
+      setRecentImports(Array.isArray(rows) ? rows : []);
+    }).catch(() => {
+      // best-effort import history load
     });
   }, []);
 
@@ -105,6 +112,8 @@ export function App() {
         lastLibraryPath: xmlPath.trim(),
         selectedFolders
       });
+      const rows = await window.rbfa.getRecentImports();
+      setRecentImports(Array.isArray(rows) ? rows : []);
     } catch (parseError) {
       setError(parseError.message || String(parseError));
     } finally {
@@ -202,6 +211,37 @@ export function App() {
           </div>
           {tracks.length > 1000 ? <p>Showing first 1000 tracks for responsiveness.</p> : null}
         </div>
+      </div>
+
+      <div className="card">
+        <h3>Recent Imports</h3>
+        {recentImports.length === 0 ? <p>No imports recorded yet.</p> : null}
+        {recentImports.length > 0 ? (
+          <table className="track-table">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>XML Path</th>
+                <th>Tracks</th>
+                <th>Playlists</th>
+                <th>Folders</th>
+                <th>Filter</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentImports.map((row) => (
+                <tr key={row.id}>
+                  <td>{new Date(row.parsedAt).toLocaleString()}</td>
+                  <td title={row.xmlPath}>{row.xmlPath}</td>
+                  <td>{row.trackCount}</td>
+                  <td>{row.playlistCount}</td>
+                  <td>{row.folderCount}</td>
+                  <td>{row.selectedFolders.length > 0 ? row.selectedFolders.join(', ') : 'All'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : null}
       </div>
     </div>
   );

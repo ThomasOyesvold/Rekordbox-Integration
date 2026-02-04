@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('rbfa', {
   parseLibrary: (xmlPath, selectedFolders) => ipcRenderer.invoke('library:parse', { xmlPath, selectedFolders }),
   loadState: () => ipcRenderer.invoke('state:load'),
   saveState: (patch) => ipcRenderer.invoke('state:save', patch),
+  getRecentImports: () => ipcRenderer.invoke('imports:recent'),
   onParseProgress: (listener) => {
     const wrapped = (_event, value) => listener(value);
     ipcRenderer.on('library:parseProgress', wrapped);
