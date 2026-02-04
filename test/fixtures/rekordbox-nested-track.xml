@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS Version="1.0.0">
+  <COLLECTION Entries="1">
+    <TRACK TrackID="31" Name="Nested Data" Artist="Meta" AverageBpm="126" TotalTime="375" Location="file://localhost/C:/Music/Meta/NestedData.mp3">
+      <TEMPO Inizio="0.0" Bpm="126.0" Battito="1" />
+      <POSITION_MARK Name="Cue" Type="0" Start="62.530" Num="0" Red="40" Green="120" Blue="220" />
+    </TRACK>
+  </COLLECTION>
+  <PLAYLISTS>
+    <NODE Type="1" Name="ROOT" Count="1">
+      <NODE Type="0" Name="Nested" Entries="1">
+        <TRACK Key="31" />
+      </NODE>
+    </NODE>
+  </PLAYLISTS>
+</DJ_PLAYLISTS>

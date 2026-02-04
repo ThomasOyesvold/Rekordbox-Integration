@@ -18,12 +18,13 @@ Status: Active development
 - Baseline scoring pipeline is in place (BPM/key + extracted waveform/rhythm proxies).
 - Baseline result rows now include plain-language component reasoning.
 - Validation panel supports severity filtering (all/error/warning).
+- Parser now warns when TRACK nodes include nested metadata blocks not yet extracted.
 
 ## Top Next Tasks
-1. Improve parser handling for non-self-closing TRACK nodes with nested metadata.
+1. Parse selected nested TRACK metadata blocks (TEMPO/POSITION_MARK) into optional track features.
 2. Add folder-level analysis summary cards (selected folder mix profile).
 3. Add integration test around keyboard shortcuts and severity filters.
-4. Add parse-time detection of unsupported nested Rekordbox tags for better warnings.
+4. Surface nested-metadata warnings with actionable remediation text in UI.
 
 ## Known Risks
 - Real-world Rekordbox XML variability still under-covered by fixtures.

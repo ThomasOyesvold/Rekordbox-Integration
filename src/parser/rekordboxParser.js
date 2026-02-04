@@ -9,6 +9,7 @@ const VALIDATION_CODES = {
   missingTrackTitle: 'MISSING_TRACK_TITLE',
   missingTrackArtist: 'MISSING_TRACK_ARTIST',
   duplicateTrackId: 'DUPLICATE_TRACK_ID',
+  nestedTrackDataUnsupported: 'NESTED_TRACK_DATA_UNSUPPORTED',
   invalidBpm: 'INVALID_BPM',
   invalidDuration: 'INVALID_DURATION',
   invalidBitrate: 'INVALID_BITRATE',
@@ -125,6 +126,24 @@ function parseCollection(xmlText, issues) {
 
   const collectionAttributes = parseXmlAttributes(collectionMatch[1] || '');
   const collectionBody = collectionMatch[2];
+  const nestedTrackRegex = /<TRACK\b([^>]*)>([\s\S]*?)<\/TRACK>/gi;
+  let nestedMatch = nestedTrackRegex.exec(collectionBody);
+  while (nestedMatch) {
+    const nestedAttributes = parseXmlAttributes(nestedMatch[1] || '');
+    const nestedBody = String(nestedMatch[2] || '').trim();
+    if (nestedBody) {
+      issues.push(
+        createIssue(
+          'warning',
+          VALIDATION_CODES.nestedTrackDataUnsupported,
+          'TRACK contains nested metadata blocks that are not parsed yet.',
+          { trackId: nestedAttributes.TrackID || null }
+        )
+      );
+    }
+    nestedMatch = nestedTrackRegex.exec(collectionBody);
+  }
+
   const trackRegex = /<TRACK\b([^>]*?)(?:\/?)>/gi;
   const tracks = [];
   const seenIds = new Set();

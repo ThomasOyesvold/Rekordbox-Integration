@@ -7,6 +7,7 @@ import { parseRekordboxXml } from '../src/parser/rekordboxParser.js';
 const fixturePath = path.resolve('test/fixtures/rekordbox-sample.xml');
 const edgeFixturePath = path.resolve('test/fixtures/rekordbox-edge-playlists.xml');
 const duplicateTrackFixturePath = path.resolve('test/fixtures/rekordbox-duplicate-trackid.xml');
+const nestedTrackFixturePath = path.resolve('test/fixtures/rekordbox-nested-track.xml');
 
 test('parseRekordboxXml parses collection tracks and playlists', async () => {
   const xml = await fs.readFile(fixturePath, 'utf8');
@@ -72,6 +73,12 @@ test('parseRekordboxXml treats duplicate track ids as fatal', async () => {
     assert.ok(error.issues.some((issue) => issue.code === 'DUPLICATE_TRACK_ID' && issue.severity === 'error'));
     return true;
   });
+});
+
+test('parseRekordboxXml warns when tracks include nested metadata blocks', async () => {
+  const xml = await fs.readFile(nestedTrackFixturePath, 'utf8');
+  const library = parseRekordboxXml(xml);
+  assert.ok(library.validation.issues.some((issue) => issue.code === 'NESTED_TRACK_DATA_UNSUPPORTED'));
 });
 
 test('parseRekordboxXml reports playlist node structure warnings', () => {

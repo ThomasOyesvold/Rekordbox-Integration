@@ -20,6 +20,7 @@ Windows desktop tool for Rekordbox XML parsing and flow-oriented playlist prep.
 - Validation issues panel now supports severity filtering (all/error/warning).
 - Folder pane shows quick library stats (BPM range, avg duration, genre count, key coverage).
 - Baseline analysis table now includes a human-readable "Why" column per match.
+- Parser warns when nested `TRACK` metadata exists (`NESTED_TRACK_DATA_UNSUPPORTED`) so gaps are explicit.
 
 ## Key Files
 - `electron/main.js`
@@ -56,10 +57,10 @@ VITE_DEV_SERVER_URL=http://localhost:5173 npm run start:electron:safe
 - `65aa21a` expanded Rekordbox schema validation coverage
 
 ## Next Tasks
-1. Improve parser handling for non-self-closing TRACK nodes with nested metadata.
+1. Parse selected nested `TRACK` metadata blocks (`TEMPO`, `POSITION_MARK`) into optional features.
 2. Add folder-level analysis summary cards per selected folder.
 3. Add integration test coverage for keyboard shortcuts and issue filtering.
-4. Add parse-time detection of unsupported nested Rekordbox tags for clearer warnings.
+4. Add actionable remediation text for parser warnings in UI.
 
 ## Notes
 - Keep commits small and push feature slices.
