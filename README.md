@@ -17,8 +17,9 @@ Initial implementation of the foundation layer for parsing Rekordbox XML, select
   - Track table preview with quick text filtering and sortable columns
   - Track details panel with source playlist references
   - Recent import history table
+  - Baseline analysis run button (BPM + key score, cache-first)
 - Structured XML validation issues panel (errors/warnings with codes and context)
-- Analysis cache service stubs for track signatures and similarity cache lookups
+- Analysis cache service for track signatures and similarity cache lookups
 
 ## CLI usage
 
@@ -26,6 +27,8 @@ Initial implementation of the foundation layer for parsing Rekordbox XML, select
 npm run test
 npm run cli -- parse /path/to/library.xml
 npm run cli -- parse /path/to/library.xml "ROOT/Techno"
+npm run cli -- analyze /path/to/library.xml
+npm run cli -- analyze /path/to/library.xml "ROOT/Techno"
 ```
 
 ## Desktop usage

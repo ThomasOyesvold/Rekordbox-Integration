@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 ## Current Position
 
 Phase: 1 of 6 (Foundation & Data Layer)
-Plan: 10 completed implementation slices
+Plan: 11 completed implementation slices
 Status: In progress (working desktop foundation)
-Last activity: 2026-02-04 — Started Phase 2 cache schema and similarity cache service stubs
+Last activity: 2026-02-04 — Added first baseline analyzer pass (BPM + key, cache-first)
 
-Progress: [█████░░░░░] ~50%
+Progress: [██████░░░░] ~55%
 
 ## Completed work (code)
 
@@ -31,11 +31,13 @@ Progress: [█████░░░░░] ~50%
 - First-run onboarding hints and one-click load from recent imports
 - Phase 2 SQLite schema foundation for similarity caching (`analysis_runs`, `tracks`, `track_similarity`)
 - Similarity cache service stubs (signature generation, cache read/write, analysis run lifecycle)
+- Baseline analyzer service (BPM + key) with cache-first storage/reuse
+- Baseline analysis action exposed in desktop UI and CLI
 - Tests for parser, services, state, sqlite store
 
 ## Pending Todos
 
-1. Wire similarity cache service into a first analyzer pass (BPM + key baseline score)
+1. Expand baseline analyzer components (waveform/rhythm placeholders + weighted scoring structure)
 2. Tighten fatal vs warning criteria for specific Rekordbox parsing failures
 3. Add larger real-world XML fixtures and edge-case tests
 4. Add keyboard shortcuts and focus states for fast desktop workflows
@@ -49,5 +51,5 @@ Progress: [█████░░░░░] ~50%
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Phase 2 cache schema/service stubs added with tests
+Stopped at: Baseline analyzer pass integrated into UI/CLI with cache-first behavior
 Resume anchor: `HANDOFF.md` and latest commit history

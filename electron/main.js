@@ -8,6 +8,7 @@ import {
   selectPlaylistsByFolders,
   summarizeLibrary
 } from '../src/services/libraryService.js';
+import { runBaselineAnalysis } from '../src/services/baselineAnalyzerService.js';
 import { startBackgroundParse } from '../src/services/parseService.js';
 import { getRecentImports, initDatabase, saveImportHistory } from '../src/state/sqliteStore.js';
 import { loadState, saveState } from '../src/state/stateStore.js';
@@ -105,6 +106,16 @@ ipcMain.handle('library:parse', async (_event, payload) => {
 ipcMain.handle('state:load', async () => loadState(statePath));
 ipcMain.handle('state:save', async (_event, patch) => saveState(statePath, patch));
 ipcMain.handle('imports:recent', async () => getRecentImports(10));
+ipcMain.handle('analysis:baseline', async (_event, payload) => {
+  const tracks = Array.isArray(payload?.tracks) ? payload.tracks : [];
+  return runBaselineAnalysis({
+    tracks,
+    sourceXmlPath: payload?.sourceXmlPath || null,
+    selectedFolders: Array.isArray(payload?.selectedFolders) ? payload.selectedFolders : [],
+    maxPairs: 5000,
+    topLimit: 20
+  });
+});
 
 app.whenReady().then(() => {
   initDatabase(dbPath);

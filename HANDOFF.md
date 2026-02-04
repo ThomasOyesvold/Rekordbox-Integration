@@ -23,6 +23,7 @@ Completed:
 - Sortable track table columns
 - First-run onboarding hints and recent-import load action
 - Phase 2 cache schema foundation and similarity cache service stubs
+- Baseline analyzer pass (BPM + key) with cache-first persistence
 - Unit tests for parser/services/state
 
 Not started yet:
@@ -37,6 +38,7 @@ Not started yet:
 - XML parser: `src/parser/rekordboxParser.js`
 - Parse worker/service: `src/worker/parseWorker.js`, `src/services/parseService.js`
 - Similarity cache service: `src/services/similarityCacheService.js`
+- Baseline analyzer: `src/services/baselineAnalyzerService.js`
 - Folder/filter helpers: `src/services/libraryService.js`
 - State persistence: `src/state/stateStore.js`, `src/state/sqliteStore.js`
 - Tests: `test/*.test.js`
@@ -71,6 +73,7 @@ npm run start:electron
 ```
 
 ## Recent milestones (latest first)
+- `844092b` feat: add phase 2 similarity cache schema and service stubs
 - `548ed09` feat: improve first-run UX and recent import loading
 - `af529f7` feat: add sortable columns to track table
 - `86ac24c` feat: add track table quick search filter
@@ -82,7 +85,7 @@ npm run start:electron
 - `10c4e5a` feat: scaffold electron+react phase 1 desktop shell
 
 ## Next recommended tasks
-1. Wire similarity cache service into a first analyzer pass (BPM + key baseline score).
+1. Expand baseline analyzer components (waveform/rhythm placeholders + weighted scoring structure).
 2. Improve Rekordbox-specific validation rules and severity classification.
 3. Add real-world XML fixtures from your Rekordbox exports to harden parser edge cases.
 4. Add keyboard shortcuts and focus states for fast desktop workflows.

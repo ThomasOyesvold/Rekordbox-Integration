@@ -54,6 +54,8 @@ export function App() {
   const [recentImports, setRecentImports] = useState([]);
   const [summary, setSummary] = useState(null);
   const [validationIssues, setValidationIssues] = useState([]);
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState('');
   const [progress, setProgress] = useParseProgress();
@@ -146,6 +148,7 @@ export function App() {
       setSelectedTrackId(firstTrackId);
       setSummary(result.summary || null);
       setValidationIssues(Array.isArray(result.validation?.issues) ? result.validation.issues : []);
+      setAnalysisResult(null);
 
       await window.rbfa.saveState({
         lastLibraryPath: xmlPath.trim(),
@@ -159,6 +162,24 @@ export function App() {
       setValidationIssues(parsedError.issues);
     } finally {
       setIsParsing(false);
+    }
+  };
+
+  const runAnalysis = async () => {
+    if (tracks.length < 2) {
+      setError('Need at least 2 tracks to run baseline analysis.');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setError('');
+    try {
+      const result = await window.rbfa.runBaselineAnalysis(tracks, xmlPath.trim(), selectedFolders);
+      setAnalysisResult(result);
+    } catch (analysisError) {
+      setError(analysisError.message || String(analysisError));
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -242,6 +263,9 @@ export function App() {
           />
           <button type="button" className="secondary" onClick={pickFile} disabled={isParsing}>Browse XML</button>
           <button type="button" onClick={parse} disabled={isParsing}>Parse Library</button>
+          <button type="button" onClick={runAnalysis} disabled={isParsing || isAnalyzing || tracks.length < 2}>
+            {isAnalyzing ? 'Analyzing...' : 'Run Baseline Analysis'}
+          </button>
         </div>
         {progress !== null && isParsing ? <p className="progress">Parsing in background: {progress}%</p> : null}
         {error ? <p style={{ color: '#be123c', margin: '8px 0 0' }}>{error}</p> : null}
@@ -450,6 +474,42 @@ export function App() {
           </table>
         ) : null}
       </div>
+
+      {analysisResult ? (
+        <div className="card">
+          <h3>Baseline Analysis</h3>
+          <div className="meta">
+            <span>Algorithm: {analysisResult.algorithmVersion}</span>
+            <span>Pairs: {analysisResult.pairCount}</span>
+            <span>Computed: {analysisResult.computed}</span>
+            <span>Cache Hits: {analysisResult.cacheHits}</span>
+          </div>
+          <table className="track-table" style={{ marginTop: '10px' }}>
+            <thead>
+              <tr>
+                <th>Track A</th>
+                <th>Track B</th>
+                <th>Score</th>
+                <th>BPM</th>
+                <th>Key</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analysisResult.topMatches.map((row) => (
+                <tr key={`${row.trackAId}-${row.trackBId}`}>
+                  <td>{row.trackAId}</td>
+                  <td>{row.trackBId}</td>
+                  <td>{row.score.toFixed(3)}</td>
+                  <td>{(row.components?.bpm ?? 0).toFixed(3)}</td>
+                  <td>{(row.components?.key ?? 0).toFixed(3)}</td>
+                  <td>{row.fromCache ? 'Cache' : 'Computed'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
     </div>
   );
 }
