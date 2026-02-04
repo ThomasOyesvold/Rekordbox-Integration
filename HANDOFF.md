@@ -19,6 +19,7 @@ Completed:
 - Structured XML validation issues in UI
 - Expanded Rekordbox-specific validation rules (collection entries, node type/name, empty playlists, missing metadata)
 - Track details panel with source playlist references
+- Quick track table search/filter
 - Unit tests for parser/services/state
 
 Not started yet:
@@ -71,7 +72,7 @@ npm run start:electron
 1. Improve Rekordbox-specific validation rules and severity classification.
 2. Start Phase 2 analysis cache schema in SQLite (track similarity table + invalidation strategy).
 3. Add real-world XML fixtures from your Rekordbox exports to harden parser edge cases.
-4. Add quick track search/filter UI for large tables.
+4. Add sortable columns for track table (BPM, artist, title).
 
 ## Notes for future sessions
 - Keep commits small and push after each feature slice.

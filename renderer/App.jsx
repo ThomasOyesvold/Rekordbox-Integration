@@ -48,6 +48,7 @@ export function App() {
   const [tracks, setTracks] = useState([]);
   const [trackPlaylistIndex, setTrackPlaylistIndex] = useState({});
   const [selectedTrackId, setSelectedTrackId] = useState(null);
+  const [trackQuery, setTrackQuery] = useState('');
   const [recentImports, setRecentImports] = useState([]);
   const [summary, setSummary] = useState(null);
   const [validationIssues, setValidationIssues] = useState([]);
@@ -157,6 +158,25 @@ export function App() {
     return tracks.find((track) => track.id === selectedTrackId) || null;
   }, [tracks, selectedTrackId]);
 
+  const visibleTracks = useMemo(() => {
+    const query = trackQuery.trim().toLowerCase();
+    if (!query) {
+      return tracks;
+    }
+
+    return tracks.filter((track) => {
+      const haystack = [
+        track.trackId,
+        track.artist,
+        track.title,
+        track.genre,
+        track.key
+      ].filter(Boolean).join(' ').toLowerCase();
+
+      return haystack.includes(query);
+    });
+  }, [tracks, trackQuery]);
+
   return (
     <div className="app-shell">
       <div className="header">
@@ -244,7 +264,15 @@ export function App() {
         </div>
 
         <div className="card">
-          <h3>Track Table ({tracks.length})</h3>
+          <h3>Track Table ({visibleTracks.length}/{tracks.length})</h3>
+          <div className="row" style={{ marginBottom: '8px' }}>
+            <input
+              type="text"
+              placeholder="Filter tracks by id, artist, title, genre, key..."
+              value={trackQuery}
+              onChange={(event) => setTrackQuery(event.target.value)}
+            />
+          </div>
           <div style={{ maxHeight: 500, overflow: 'auto' }}>
             <table className="track-table">
               <thead>
@@ -260,7 +288,7 @@ export function App() {
                 </tr>
               </thead>
               <tbody>
-                {tracks.slice(0, 1000).map((track) => (
+                {visibleTracks.slice(0, 1000).map((track) => (
                   <tr
                     key={track.id}
                     className={track.id === selectedTrackId ? 'selected-row' : ''}
@@ -279,7 +307,7 @@ export function App() {
               </tbody>
             </table>
           </div>
-          {tracks.length > 1000 ? <p>Showing first 1000 tracks for responsiveness.</p> : null}
+          {visibleTracks.length > 1000 ? <p>Showing first 1000 filtered tracks for responsiveness.</p> : null}
         </div>
       </div>
 

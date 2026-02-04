@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 ## Current Position
 
 Phase: 1 of 6 (Foundation & Data Layer)
-Plan: 6 completed implementation slices
+Plan: 7 completed implementation slices
 Status: In progress (working desktop foundation)
-Last activity: 2026-02-04 — Added track details panel with source playlist references
+Last activity: 2026-02-04 — Added quick track search/filter in table UI
 
-Progress: [███░░░░░░░] ~30%
+Progress: [████░░░░░░] ~35%
 
 ## Completed work (code)
 
@@ -26,6 +26,7 @@ Progress: [███░░░░░░░] ~30%
 - Validation issue reporting with severity/code/context
 - Expanded schema-style validation checks (collection entries, node type/name, empty playlists, missing track fields)
 - Track-to-playlist index and track details panel with source playlist references
+- Quick track search/filter for large result tables
 - Tests for parser, services, state, sqlite store
 
 ## Pending Todos
@@ -33,7 +34,7 @@ Progress: [███░░░░░░░] ~30%
 1. Tighten fatal vs warning criteria for specific Rekordbox parsing failures
 2. Define Phase 2 schema for similarity cache in SQLite
 3. Add larger real-world XML fixtures and edge-case tests
-4. Add quick track search/filter UI for large tables
+4. Add sortable columns for track table (BPM, artist, title)
 
 ## Blockers/Concerns
 
@@ -43,5 +44,5 @@ Progress: [███░░░░░░░] ~30%
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Track details panel + playlist reference index added
+Stopped at: Quick track search/filter added to track table
 Resume anchor: `HANDOFF.md` and latest commit history
