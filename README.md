@@ -27,6 +27,8 @@ npm test
 For a full walkthrough (architecture, data flow, feature map, troubleshooting, roadmap), read:
 
 - `docs/PROJECT_GUIDE.md`
+- `docs/FEATURE_VALIDATION_CHECKLIST.md`
+- `docs/commits/README.md` (per-commit notes)
 
 ## Current Features
 
