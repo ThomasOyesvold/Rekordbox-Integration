@@ -39,10 +39,12 @@ For a full walkthrough (architecture, data flow, feature map, troubleshooting, r
   - cozy/compact density
   - sticky headers
   - pagination
+  - virtualized row rendering in viewport
 - Duration formatting in `m:ss`
 - Track detail panel with source playlists
 - Validation issue table (error/warning severity filtering)
 - Baseline similarity analysis (BPM/key/waveform/rhythm weighted scoring)
+- Analysis export (`CSV` / `JSON`)
 - Parse progress events from worker thread
 - Persistent UI preferences and import state
 - SQLite-backed recent import history and analysis cache foundation
@@ -61,6 +63,26 @@ npm run cli -- analyze /path/to/library.xml "ROOT/Techno"
 ```bash
 npm run build:renderer
 npm run start:electron
+```
+
+## Optional Electron Smoke Test
+
+Runs a hidden-window smoke flow that exercises preload bridge + parse + baseline analysis:
+
+```bash
+RUN_ELECTRON_SMOKE=1 npm test
+```
+
+Or directly:
+
+```bash
+npm run smoke:electron
+```
+
+Restricted/sandboxed environments:
+
+```bash
+npm run smoke:electron:safe
 ```
 
 ## Tech Stack

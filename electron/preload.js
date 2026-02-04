@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('rbfa', {
     sourceXmlPath,
     selectedFolders
   }),
+  exportAnalysis: (payload) => ipcRenderer.invoke('analysis:export', payload),
   loadState: () => ipcRenderer.invoke('state:load'),
   saveState: (patch) => ipcRenderer.invoke('state:save', patch),
   getRecentImports: () => ipcRenderer.invoke('imports:recent'),

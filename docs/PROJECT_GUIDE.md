@@ -51,8 +51,10 @@ It is built as an Electron desktop app with a matching CLI path for scripted use
 - cozy/compact row density
 - sticky table header
 - pagination controls
+- virtualized rows for smooth scrolling
 - row click details panel
 - validation issue inspector
+- analysis export (CSV/JSON)
 
 Preferences persisted to app state include:
 
@@ -92,6 +94,18 @@ npm run build:renderer
 npm run start:electron
 ```
 
+Optional Electron smoke test:
+
+```bash
+RUN_ELECTRON_SMOKE=1 npm test
+```
+
+If running in a restricted environment, use:
+
+```bash
+npm run smoke:electron:safe
+```
+
 ## 6. Troubleshooting
 
 - Error: bridge unavailable or `parseLibrary` undefined
@@ -105,15 +119,12 @@ npm run start:electron
 
 ## 7. Current Gaps
 
-- Virtualized table rows (for very large libraries)
 - Richer scoring explainability and tuning UI
-- Export/share of analysis results (CSV/JSON)
 - More robust parsing for uncommon nested Rekordbox metadata blocks
 
 ## 8. Suggested Next Milestones
 
-1. Virtualized track table rendering
-2. Analysis result export
-3. Track detail enhancements (waveform/rhythm metadata surfacing)
-4. More parser fixtures from real-world libraries
-5. End-to-end smoke tests for Electron IPC flows
+1. Track detail enhancements (waveform/rhythm metadata surfacing)
+2. More parser fixtures from real-world libraries
+3. Expand Electron smoke to include export-path verification
+4. Weighted scoring profile presets (house/techno/open-format)

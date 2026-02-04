@@ -9,6 +9,8 @@
     "cli": "node src/index.js",
     "dev:renderer": "vite",
     "build:renderer": "vite build",
+    "smoke:electron": "npm run build:renderer && RBFA_SMOKE=1 electron .",
+    "smoke:electron:safe": "npm run build:renderer && RBFA_SMOKE=1 ELECTRON_DISABLE_SANDBOX=1 electron .",
     "start:electron": "electron .",
     "start:electron:safe": "ELECTRON_DISABLE_GPU=1 electron .",
     "test": "node --test"

@@ -13,6 +13,8 @@ const TRACK_COLUMN_WIDTHS = {
   playlists: 84
 };
 const PAGE_SIZE_OPTIONS = [50, 100, 250, 500];
+const TABLE_VIEWPORT_HEIGHT = 500;
+const VIRTUAL_OVERSCAN_ROWS = 8;
 const TRACK_COLUMN_LABELS = {
   title: 'Title',
   bpm: 'BPM',
@@ -119,6 +121,7 @@ export function App() {
   const [tableDensity, setTableDensity] = useState('cozy');
   const [pageSize, setPageSize] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
+  const [tableScrollTop, setTableScrollTop] = useState(0);
   const [recentImports, setRecentImports] = useState([]);
   const [summary, setSummary] = useState(null);
   const [validationIssues, setValidationIssues] = useState([]);
@@ -129,6 +132,7 @@ export function App() {
   const [error, setError] = useState('');
   const [progress, setProgress] = useParseProgress();
   const trackFilterInputRef = useRef(null);
+  const tableViewportRef = useRef(null);
 
   useEffect(() => {
     const bridgeApi = getBridgeApi();
@@ -393,6 +397,18 @@ export function App() {
     return sortedTracks.slice(startIndex, startIndex + pageSize);
   }, [currentPage, pageSize, sortedTracks]);
 
+  const trackIndexById = useMemo(() => {
+    return new Map(tracks.map((track) => [String(track.id), track]));
+  }, [tracks]);
+
+  const rowHeight = tableDensity === 'compact' ? 30 : 40;
+  const virtualWindowSize = Math.ceil(TABLE_VIEWPORT_HEIGHT / rowHeight) + (VIRTUAL_OVERSCAN_ROWS * 2);
+  const virtualStartIndex = Math.max(0, Math.floor(tableScrollTop / rowHeight) - VIRTUAL_OVERSCAN_ROWS);
+  const virtualEndIndex = Math.min(pagedTracks.length, virtualStartIndex + virtualWindowSize);
+  const virtualRows = pagedTracks.slice(virtualStartIndex, virtualEndIndex);
+  const topSpacerHeight = virtualStartIndex * rowHeight;
+  const bottomSpacerHeight = Math.max(0, (pagedTracks.length - virtualEndIndex) * rowHeight);
+
   const filteredIssues = useMemo(() => {
     if (issueSeverityFilter === 'all') {
       return validationIssues;
@@ -470,6 +486,44 @@ export function App() {
   useEffect(() => {
     setCurrentPage(1);
   }, [trackQuery, sortBy, sortDirection]);
+
+  useEffect(() => {
+    if (tableViewportRef.current) {
+      tableViewportRef.current.scrollTop = 0;
+    }
+    setTableScrollTop(0);
+  }, [currentPage, pageSize, tableDensity, visibleTrackColumns, trackQuery, sortBy, sortDirection]);
+
+  const onTableScroll = (event) => {
+    setTableScrollTop(event.currentTarget.scrollTop || 0);
+  };
+
+  const exportAnalysis = async (format) => {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.exportAnalysis) {
+      setError(DESKTOP_BRIDGE_ERROR);
+      return;
+    }
+
+    if (!analysisResult) {
+      setError('No analysis result to export.');
+      return;
+    }
+
+    try {
+      const result = await bridgeApi.exportAnalysis({
+        format,
+        analysisResult,
+        trackIndex: Object.fromEntries(trackIndexById)
+      });
+
+      if (!result?.canceled && result?.filePath) {
+        setError(`Exported analysis to ${result.filePath}`);
+      }
+    } catch (exportError) {
+      setError(exportError.message || String(exportError));
+    }
+  };
 
   return (
     <div className="app-shell">
@@ -641,7 +695,11 @@ export function App() {
           <p style={{ margin: '0 0 8px', color: '#475569' }}>
             Shortcuts: Ctrl/Cmd+F filter, Ctrl/Cmd+Enter parse, Ctrl/Cmd+Shift+A analyze.
           </p>
-          <div style={{ maxHeight: 500, overflow: 'auto' }}>
+          <div
+            ref={tableViewportRef}
+            style={{ maxHeight: TABLE_VIEWPORT_HEIGHT, overflow: 'auto' }}
+            onScroll={onTableScroll}
+          >
             <table className={`track-table ${tableDensity === 'compact' ? 'compact' : ''}`}>
               <colgroup>
                 <col style={{ width: `${TRACK_COLUMN_WIDTHS.id}px` }} />
@@ -702,7 +760,12 @@ export function App() {
                 </tr>
               </thead>
               <tbody>
-                {pagedTracks.map((track) => (
+                {topSpacerHeight > 0 ? (
+                  <tr>
+                    <td colSpan={1 + TRACK_COLUMN_ORDER.filter((columnKey) => visibleTrackColumns[columnKey]).length} style={{ height: `${topSpacerHeight}px`, padding: 0, borderBottom: 'none' }} />
+                  </tr>
+                ) : null}
+                {virtualRows.map((track) => (
                   <tr
                     key={track.id}
                     className={track.id === selectedTrackId ? 'selected-row' : ''}
@@ -718,6 +781,11 @@ export function App() {
                     {visibleTrackColumns.playlists ? <td>{trackPlaylistIndex[track.id]?.length || 0}</td> : null}
                   </tr>
                 ))}
+                {bottomSpacerHeight > 0 ? (
+                  <tr>
+                    <td colSpan={1 + TRACK_COLUMN_ORDER.filter((columnKey) => visibleTrackColumns[columnKey]).length} style={{ height: `${bottomSpacerHeight}px`, padding: 0, borderBottom: 'none' }} />
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>
@@ -817,7 +885,17 @@ export function App() {
 
       {analysisResult ? (
         <div className="card">
-          <h3>Baseline Analysis</h3>
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <h3 style={{ margin: 0 }}>Baseline Analysis</h3>
+            <div className="row">
+              <button type="button" className="secondary" onClick={() => exportAnalysis('csv')}>
+                Export CSV
+              </button>
+              <button type="button" className="secondary" onClick={() => exportAnalysis('json')}>
+                Export JSON
+              </button>
+            </div>
+          </div>
           <div className="meta">
             <span>Algorithm: {analysisResult.algorithmVersion}</span>
             <span>Pairs: {analysisResult.pairCount}</span>
