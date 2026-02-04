@@ -9,6 +9,8 @@ import {
   computeBaselineSimilarity,
   computeBpmScore,
   computeKeyScore,
+  computeRhythmScore,
+  computeWaveformScore,
   computeRhythmPlaceholderScore,
   computeWaveformPlaceholderScore,
   runBaselineAnalysis
@@ -25,6 +27,8 @@ test('baseline analyzer score functions behave as expected', () => {
   assert.equal(computeBpmScore(126, 130), 0.75);
   assert.equal(computeKeyScore('8A', '8A'), 1);
   assert.equal(computeKeyScore('8A', '8B'), 0.85);
+  assert.ok(computeWaveformScore(SAMPLE_TRACKS[0], SAMPLE_TRACKS[1]) > computeWaveformScore(SAMPLE_TRACKS[0], SAMPLE_TRACKS[2]));
+  assert.ok(computeRhythmScore(SAMPLE_TRACKS[0], SAMPLE_TRACKS[1]) > computeRhythmScore(SAMPLE_TRACKS[0], SAMPLE_TRACKS[2]));
   assert.ok(computeWaveformPlaceholderScore(SAMPLE_TRACKS[0], SAMPLE_TRACKS[1]) >= 0);
   assert.ok(computeRhythmPlaceholderScore(SAMPLE_TRACKS[0], SAMPLE_TRACKS[1]) >= 0);
 
@@ -53,7 +57,7 @@ test('baseline analyzer computes then reuses cache entries', async () => {
   assert.equal(first.cacheHits, 0);
   assert.equal(first.computed, 3);
   assert.equal(first.topMatches.length, 3);
-  assert.equal(first.algorithmVersion, 'flow-baseline-v2');
+  assert.equal(first.algorithmVersion, 'flow-baseline-v3');
   assert.ok(first.topMatches[0].components.waveform >= 0);
   assert.ok(first.topMatches[0].components.rhythm >= 0);
 

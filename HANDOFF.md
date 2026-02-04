@@ -13,7 +13,7 @@ Windows desktop tool for Rekordbox XML parsing and flow-oriented playlist prep.
 - Filter by folder tree.
 - Inspect tracks (search/sort/select/details + source playlists).
 - Persist import history and analysis cache in SQLite.
-- Run baseline similarity analysis (cache-first).
+- Run baseline similarity analysis (cache-first, metadata-derived component scoring).
 
 ## Key Files
 - `electron/main.js`
@@ -39,6 +39,7 @@ VITE_DEV_SERVER_URL=http://localhost:5173 npm run start:electron:safe
 ```
 
 ## Latest Commits (most recent first)
+- `ded93f9` docs: compact state and handoff context
 - `b3c42e7` weighted baseline scoring with placeholder components
 - `8d6683b` baseline analyzer pass with cache-first execution
 - `844092b` Phase 2 similarity cache schema + service stubs
@@ -49,10 +50,10 @@ VITE_DEV_SERVER_URL=http://localhost:5173 npm run start:electron:safe
 - `65aa21a` expanded Rekordbox schema validation coverage
 
 ## Next Tasks
-1. Replace waveform/rhythm placeholders with real extracted features.
-2. Tighten parser error-vs-warning rules.
-3. Add sanitized real Rekordbox XML fixtures.
-4. Add keyboard shortcuts/focus states.
+1. Tighten parser error-vs-warning rules.
+2. Add sanitized real Rekordbox XML fixtures.
+3. Add keyboard shortcuts/focus states.
+4. Add folder-level analysis summary cards in renderer.
 
 ## Notes
 - Keep commits small and push feature slices.
