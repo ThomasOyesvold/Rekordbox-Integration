@@ -7,6 +7,7 @@
   "description": "Foundation modules and desktop shell for Rekordbox Flow Analyzer",
   "scripts": {
     "cli": "node src/index.js",
+    "extract:waveform": "node scripts/testWaveformExtraction.js",
     "dev:renderer": "vite",
     "build:renderer": "vite build",
     "stress:phase2": "node scripts/phase2Stress.js",
@@ -19,7 +20,8 @@
   },
   "dependencies": {
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "rekordbox-parser": "^0.1.2"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.0",
