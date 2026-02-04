@@ -10,6 +10,7 @@
     "dev:renderer": "vite",
     "build:renderer": "vite build",
     "stress:phase2": "node scripts/phase2Stress.js",
+    "validate:waveform": "node scripts/validateWaveformExtraction.js",
     "smoke:electron": "npm run build:renderer && RBFA_SMOKE=1 electron .",
     "smoke:electron:safe": "npm run build:renderer && RBFA_SMOKE=1 ELECTRON_DISABLE_SANDBOX=1 electron .",
     "start:electron": "electron .",

@@ -29,6 +29,7 @@ For a full walkthrough (architecture, data flow, feature map, troubleshooting, r
 - `docs/PROJECT_GUIDE.md`
 - `docs/FEATURE_VALIDATION_CHECKLIST.md`
 - `docs/PHASE2_STRESS_TEST.md`
+- `docs/qa/WAVEFORM_VALIDATION_2026-02-04.md`
 - `docs/commits/README.md` (per-commit notes)
 
 ## Current Features
