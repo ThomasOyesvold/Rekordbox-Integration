@@ -44,7 +44,10 @@ async function run() {
   } catch (error) {
     parentPort.postMessage({
       type: 'error',
-      error: error instanceof Error ? error.message : String(error)
+      error: {
+        message: error instanceof Error ? error.message : String(error),
+        issues: Array.isArray(error?.issues) ? error.issues : []
+      }
     });
   }
 }

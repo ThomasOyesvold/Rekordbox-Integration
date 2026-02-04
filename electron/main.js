@@ -57,11 +57,19 @@ ipcMain.handle('library:parse', async (_event, payload) => {
     throw new Error('Missing xmlPath.');
   }
 
-  const library = await startBackgroundParse(xmlPath, (progress) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('library:parseProgress', progress);
-    }
-  });
+  let library;
+  try {
+    library = await startBackgroundParse(xmlPath, (progress) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('library:parseProgress', progress);
+      }
+    });
+  } catch (error) {
+    throw new Error(JSON.stringify({
+      message: error.message,
+      issues: Array.isArray(error.issues) ? error.issues : []
+    }));
+  }
 
   const filteredTracks = filterTracksByFolders(library, selectedFolders);
   const summary = summarizeLibrary(library);
@@ -80,7 +88,8 @@ ipcMain.handle('library:parse', async (_event, payload) => {
     folderTree: buildFolderTree(library.folders),
     playlists: library.playlists,
     filteredTracks,
-    parsedAt: library.parsedAt
+    parsedAt: library.parsedAt,
+    validation: library.validation || { issues: [], warningCount: 0, errorCount: 0 }
   };
 });
 

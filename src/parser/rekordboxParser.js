@@ -1,5 +1,23 @@
 import { parseXmlAttributes } from './xmlAttributes.js';
 
+const VALIDATION_CODES = {
+  missingCollection: 'MISSING_COLLECTION',
+  missingRoot: 'MISSING_ROOT',
+  unescapedAmpersand: 'UNESCAPED_AMPERSAND',
+  missingTrackIdentity: 'MISSING_TRACK_IDENTITY',
+  duplicateTrackId: 'DUPLICATE_TRACK_ID',
+  invalidBpm: 'INVALID_BPM',
+  invalidDuration: 'INVALID_DURATION',
+  invalidBitrate: 'INVALID_BITRATE',
+  suspiciousLocationEncoding: 'SUSPICIOUS_LOCATION_ENCODING',
+  missingWindowsPath: 'MISSING_WINDOWS_PATH',
+  danglingTrackReference: 'DANGLING_TRACK_REFERENCE'
+};
+
+function createIssue(severity, code, message, context = {}) {
+  return { severity, code, message, context };
+}
+
 function parseNumber(value) {
   if (value === undefined || value === null || value === '') {
     return null;
@@ -20,21 +38,114 @@ function parseLocation(rawLocation) {
     .replace(/%20/g, ' ');
 }
 
-function parseCollection(xmlText) {
+function validateTrackAttributes(rawAttributes, attributes, issues, index) {
+  if (/&(?!amp;|lt;|gt;|quot;|apos;)/.test(rawAttributes)) {
+    issues.push(
+      createIssue(
+        'warning',
+        VALIDATION_CODES.unescapedAmpersand,
+        'Track contains a raw ampersand. XML may fail in strict parsers.',
+        { trackIndex: index, trackId: attributes.TrackID || null }
+      )
+    );
+  }
+
+  if (attributes.AverageBpm !== undefined && parseNumber(attributes.AverageBpm) === null) {
+    issues.push(
+      createIssue('warning', VALIDATION_CODES.invalidBpm, 'Track BPM is not numeric.', {
+        trackIndex: index,
+        trackId: attributes.TrackID || null,
+        value: attributes.AverageBpm
+      })
+    );
+  }
+
+  if (attributes.TotalTime !== undefined && parseNumber(attributes.TotalTime) === null) {
+    issues.push(
+      createIssue('warning', VALIDATION_CODES.invalidDuration, 'Track duration is not numeric.', {
+        trackIndex: index,
+        trackId: attributes.TrackID || null,
+        value: attributes.TotalTime
+      })
+    );
+  }
+
+  if (attributes.BitRate !== undefined && parseNumber(attributes.BitRate) === null) {
+    issues.push(
+      createIssue('warning', VALIDATION_CODES.invalidBitrate, 'Track bitrate is not numeric.', {
+        trackIndex: index,
+        trackId: attributes.TrackID || null,
+        value: attributes.BitRate
+      })
+    );
+  }
+
+  if (attributes.Location && /%[0-9A-F]{2}/i.test(attributes.Location) && !/%20/i.test(attributes.Location)) {
+    issues.push(
+      createIssue(
+        'warning',
+        VALIDATION_CODES.suspiciousLocationEncoding,
+        'Track path contains encoded characters besides spaces; verify special characters.',
+        { trackIndex: index, trackId: attributes.TrackID || null, value: attributes.Location }
+      )
+    );
+  }
+}
+
+function parseCollection(xmlText, issues) {
   const collectionMatch = /<COLLECTION\b[^>]*>([\s\S]*?)<\/COLLECTION>/i.exec(xmlText);
   if (!collectionMatch) {
-    throw new Error('Missing <COLLECTION> section in Rekordbox XML.');
+    issues.push(createIssue('error', VALIDATION_CODES.missingCollection, 'Missing <COLLECTION> section.'));
+    return [];
   }
 
   const collectionBody = collectionMatch[1];
   const trackRegex = /<TRACK\b([^>]*?)(?:\/?)>/gi;
   const tracks = [];
+  const seenIds = new Set();
   let match = trackRegex.exec(collectionBody);
+  let index = 0;
 
   while (match) {
-    const attributes = parseXmlAttributes(match[1]);
+    const rawAttributes = match[1];
+    const attributes = parseXmlAttributes(rawAttributes);
+    validateTrackAttributes(rawAttributes, attributes, issues, index);
+
     const location = parseLocation(attributes.Location || '');
-    const id = attributes.TrackID || location || `${attributes.Artist || ''}-${attributes.Name || ''}`;
+    const fallbackId = `${attributes.Artist || ''}-${attributes.Name || ''}`.trim();
+    const id = attributes.TrackID || location || fallbackId;
+
+    if (!id) {
+      issues.push(
+        createIssue('error', VALIDATION_CODES.missingTrackIdentity, 'Track missing both TrackID and Location.', {
+          trackIndex: index
+        })
+      );
+      match = trackRegex.exec(collectionBody);
+      index += 1;
+      continue;
+    }
+
+    if (seenIds.has(id)) {
+      issues.push(
+        createIssue('warning', VALIDATION_CODES.duplicateTrackId, 'Duplicate track identifier detected.', {
+          trackIndex: index,
+          trackId: id
+        })
+      );
+    }
+    seenIds.add(id);
+
+    if (location && !/^[A-Za-z]:\//.test(location)) {
+      issues.push(
+        createIssue(
+          'warning',
+          VALIDATION_CODES.missingWindowsPath,
+          'Track location is not a Windows absolute path.',
+          { trackIndex: index, trackId: id, value: location }
+        )
+      );
+    }
 
     tracks.push({
       id,
@@ -51,12 +162,13 @@ function parseCollection(xmlText) {
     });
 
     match = trackRegex.exec(collectionBody);
+    index += 1;
   }
 
   return tracks;
 }
 
-function parsePlaylists(xmlText) {
+function parsePlaylists(xmlText, issues) {
   const playlistsMatch = /<PLAYLISTS\b[^>]*>([\s\S]*?)<\/PLAYLISTS>/i.exec(xmlText);
   if (!playlistsMatch) {
     return [];
@@ -91,20 +203,18 @@ function parsePlaylists(xmlText) {
       const isSelfClosing = token[0].endsWith('/>');
 
       const parentPath = stack.length > 0 ? stack[stack.length - 1].path : '';
-      const path = parentPath && name ? `${parentPath}/${name}` : name;
-
-      const kind = type === '0' ? 'playlist' : 'folder';
+      const currentPath = parentPath && name ? `${parentPath}/${name}` : name;
 
       const node = {
         name,
-        path,
-        kind,
+        path: currentPath,
+        kind: type === '0' ? 'playlist' : 'folder',
         trackIds: []
       };
 
       if (!isSelfClosing) {
         stack.push(node);
-      } else if (kind === 'playlist') {
+      } else if (node.kind === 'playlist') {
         playlists.push(node);
       }
 
@@ -117,9 +227,9 @@ function parsePlaylists(xmlText) {
       const trackRef = attributes.Key || attributes.TrackID || attributes.ID;
 
       if (trackRef) {
-        for (let i = stack.length - 1; i >= 0; i -= 1) {
-          if (stack[i].kind === 'playlist') {
-            stack[i].trackIds.push(trackRef);
+        for (let index = stack.length - 1; index >= 0; index -= 1) {
+          if (stack[index].kind === 'playlist') {
+            stack[index].trackIds.push(trackRef);
             break;
           }
         }
@@ -149,21 +259,55 @@ function uniqueParentFolders(playlists) {
   return Array.from(folderSet).sort();
 }
 
+function validateTrackReferences(playlists, tracksById, issues) {
+  for (const playlist of playlists) {
+    for (const trackId of playlist.trackIds) {
+      if (!tracksById[trackId]) {
+        issues.push(
+          createIssue(
+            'warning',
+            VALIDATION_CODES.danglingTrackReference,
+            'Playlist references track not found in collection.',
+            { playlist: playlist.path, trackId }
+          )
+        );
+      }
+    }
+  }
+}
+
 export function parseRekordboxXml(xmlText) {
+  const issues = [];
+
   if (!xmlText.includes('<DJ_PLAYLISTS')) {
-    throw new Error('Not a Rekordbox XML export: missing <DJ_PLAYLISTS> root.');
+    issues.push(createIssue('error', VALIDATION_CODES.missingRoot, 'Missing <DJ_PLAYLISTS> root element.'));
+    const error = new Error('Not a Rekordbox XML export: missing <DJ_PLAYLISTS> root.');
+    error.issues = issues;
+    throw error;
   }
 
-  const tracks = parseCollection(xmlText);
-  const playlists = parsePlaylists(xmlText);
+  const tracks = parseCollection(xmlText, issues);
+  const playlists = parsePlaylists(xmlText, issues);
   const tracksById = Object.fromEntries(tracks.map((track) => [track.id, track]));
-  const folders = uniqueParentFolders(playlists);
+  validateTrackReferences(playlists, tracksById, issues);
+
+  const hasFatalError = issues.some((issue) => issue.severity === 'error');
+  if (hasFatalError) {
+    const error = new Error('Rekordbox XML has validation errors.');
+    error.issues = issues;
+    throw error;
+  }
 
   return {
     parsedAt: new Date().toISOString(),
     tracks,
     tracksById,
     playlists,
-    folders
+    folders: uniqueParentFolders(playlists),
+    validation: {
+      issues,
+      warningCount: issues.filter((issue) => issue.severity === 'warning').length,
+      errorCount: 0
+    }
   };
 }

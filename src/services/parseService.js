@@ -20,7 +20,9 @@ export function startBackgroundParse(xmlPath, onProgress) {
       }
 
       if (message.type === 'error') {
-        reject(new Error(message.error));
+        const error = new Error(message.error?.message || 'Parser worker failed.');
+        error.issues = Array.isArray(message.error?.issues) ? message.error.issues : [];
+        reject(error);
       }
     });
 

@@ -15,6 +15,7 @@ Initial implementation of the foundation layer for parsing Rekordbox XML, select
   - Folder filter
   - Track table preview
   - Recent import history table
+  - Structured XML validation issues panel (errors/warnings with codes and context)
 
 ## CLI usage
 

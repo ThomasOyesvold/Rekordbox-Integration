@@ -18,6 +18,27 @@ function useParseProgress() {
   return [progress, setProgress];
 }
 
+function parseErrorPayload(error) {
+  const fallback = {
+    message: error?.message || String(error),
+    issues: []
+  };
+
+  if (!error?.message) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(error.message);
+    return {
+      message: parsed?.message || fallback.message,
+      issues: Array.isArray(parsed?.issues) ? parsed.issues : []
+    };
+  } catch {
+    return fallback;
+  }
+}
+
 export function App() {
   const [xmlPath, setXmlPath] = useState('');
   const [folders, setFolders] = useState([]);
@@ -27,6 +48,7 @@ export function App() {
   const [tracks, setTracks] = useState([]);
   const [recentImports, setRecentImports] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [validationIssues, setValidationIssues] = useState([]);
   const [isParsing, setIsParsing] = useState(false);
   const [error, setError] = useState('');
   const [progress, setProgress] = useParseProgress();
@@ -90,11 +112,13 @@ export function App() {
   const parse = async () => {
     if (!xmlPath.trim()) {
       setError('Choose an XML export first.');
+      setValidationIssues([]);
       return;
     }
 
     setIsParsing(true);
     setError('');
+    setValidationIssues([]);
     setProgress(0);
 
     try {
@@ -107,6 +131,7 @@ export function App() {
       }
       setTracks(result.filteredTracks || []);
       setSummary(result.summary || null);
+      setValidationIssues(Array.isArray(result.validation?.issues) ? result.validation.issues : []);
 
       await window.rbfa.saveState({
         lastLibraryPath: xmlPath.trim(),
@@ -115,7 +140,9 @@ export function App() {
       const rows = await window.rbfa.getRecentImports();
       setRecentImports(Array.isArray(rows) ? rows : []);
     } catch (parseError) {
-      setError(parseError.message || String(parseError));
+      const parsedError = parseErrorPayload(parseError);
+      setError(parsedError.message);
+      setValidationIssues(parsedError.issues);
     } finally {
       setIsParsing(false);
     }
@@ -150,6 +177,32 @@ export function App() {
           </div>
         ) : null}
       </div>
+
+      {validationIssues.length > 0 ? (
+        <div className="card">
+          <h3>Validation Issues ({validationIssues.length})</h3>
+          <table className="track-table">
+            <thead>
+              <tr>
+                <th>Severity</th>
+                <th>Code</th>
+                <th>Message</th>
+                <th>Context</th>
+              </tr>
+            </thead>
+            <tbody>
+              {validationIssues.map((issue, index) => (
+                <tr key={`${issue.code}-${index}`}>
+                  <td>{issue.severity}</td>
+                  <td>{issue.code}</td>
+                  <td>{issue.message}</td>
+                  <td>{Object.keys(issue.context || {}).length > 0 ? JSON.stringify(issue.context) : '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
 
       <div className="grid">
         <div className="card">
