@@ -20,6 +20,8 @@ Optional custom DB path:
 npm run stress:phase2 -- --xml /home/thomas/rekordbox_backup.xml --db .planning/rbfa-stress-techno.db
 ```
 
+Tip for clean "cold run" benchmarks: use a fresh `--db` file per run step.
+
 ## What it does
 
 1. Parses XML in background worker.

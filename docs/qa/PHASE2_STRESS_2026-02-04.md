@@ -44,3 +44,39 @@ npm run stress:phase2 -- --xml /home/thomas/rekordbox_backup.xml --max-pairs 500
 1. Repeat with folder-scoped runs (`--folders`) to benchmark real workflow slices.
 2. Run stepped pair caps: `100k`, `200k`, `500k` and record trend.
 3. Add optional progress logging during analysis loop for long runs.
+
+---
+
+## Follow-up Run (100,000 pairs) - 2026-02-04
+
+Command:
+
+```bash
+npm run stress:phase2 -- --xml /home/thomas/rekordbox_backup.xml --max-pairs 100000
+```
+
+Results:
+
+- Parse time: `0.592s`
+- Cold analysis time: `750.304s`
+- Warm analysis time: `158.585s`
+- Cold run:
+  - pairs: `100,000`
+  - computed: `50,000`
+  - cache hits: `50,000`
+- Warm run:
+  - pairs: `100,000`
+  - computed: `0`
+  - cache hits: `100,000`
+
+Memory snapshots:
+
+- Start: `rss=50.8MB heapUsed=5.4MB`
+- After parse: `rss=195.5MB heapUsed=36.8MB`
+- After cold run: `rss=401.4MB heapUsed=119.5MB`
+- After warm run: `rss=453.1MB heapUsed=120.3MB`
+
+Notes:
+
+- The `50,000` cache hits in this cold run came from the earlier 50k run against the same DB.
+- For a true clean cold baseline at each step, use a fresh DB path via `--db`.
