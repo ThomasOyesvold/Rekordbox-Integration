@@ -2,25 +2,27 @@
 
 Updated: 2026-02-04
 Phase: 1 of 6 (Foundation)
-Progress: ~70%
+Progress: ~75%
 Status: Active development
 
 ## Current Focus
-- Parser severity tuning and fixture coverage are in progress.
-- Next step is keyboard shortcuts/focus flow and folder-level analysis summary cards.
+- Desktop workflow now includes keyboard shortcuts, issue filtering, and quick library stats.
+- Next step is deeper parser support for nested TRACK metadata and richer analysis explanations.
 
 ## Snapshot
 - Desktop shell working (Electron + React).
 - XML parse + validation + folder filtering working.
 - Track table supports filter, sort, selection, and details.
+- Track table supports keyboard shortcuts and fast focus workflow.
 - SQLite supports import history + analysis runs + similarity cache.
 - Baseline scoring pipeline is in place (BPM/key + extracted waveform/rhythm proxies).
+- Validation panel supports severity filtering (all/error/warning).
 
 ## Top Next Tasks
-1. Add keyboard shortcuts/focus flow for faster desktop workflow.
-2. Start folder-level analysis summary cards in renderer.
-3. Add import-time warning filters in the renderer issues panel.
-4. Improve parser handling for non-self-closing TRACK nodes with nested metadata.
+1. Improve parser handling for non-self-closing TRACK nodes with nested metadata.
+2. Add analysis-result explanations in the UI (why a pair scored high/low).
+3. Add folder-level analysis summary cards (selected folder mix profile).
+4. Add integration test around keyboard shortcuts and severity filters.
 
 ## Known Risks
 - Real-world Rekordbox XML variability still under-covered by fixtures.

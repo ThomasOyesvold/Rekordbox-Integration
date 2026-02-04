@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 function useParseProgress() {
   const [progress, setProgress] = useState(null);
@@ -57,8 +57,10 @@ export function App() {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
+  const [issueSeverityFilter, setIssueSeverityFilter] = useState('all');
   const [error, setError] = useState('');
   const [progress, setProgress] = useParseProgress();
+  const trackFilterInputRef = useRef(null);
 
   useEffect(() => {
     if (!window.rbfa?.loadState) {
@@ -183,6 +185,46 @@ export function App() {
     }
   };
 
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+
+      const targetTag = String(event.target?.tagName || '').toLowerCase();
+      const isTextInput = targetTag === 'input' || targetTag === 'textarea';
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+        event.preventDefault();
+        trackFilterInputRef.current?.focus();
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        if (!isParsing) {
+          parse();
+        }
+        return;
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'a') {
+        event.preventDefault();
+        if (!isParsing && !isAnalyzing && tracks.length >= 2) {
+          runAnalysis();
+        }
+        return;
+      }
+
+      if (event.key === 'Escape' && isTextInput && trackQuery) {
+        setTrackQuery('');
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isAnalyzing, isParsing, parse, runAnalysis, trackQuery, tracks.length]);
+
   const selectedTrack = useMemo(() => {
     return tracks.find((track) => track.id === selectedTrackId) || null;
   }, [tracks, selectedTrackId]);
@@ -227,6 +269,39 @@ export function App() {
 
     return values;
   }, [visibleTracks, sortBy, sortDirection]);
+
+  const filteredIssues = useMemo(() => {
+    if (issueSeverityFilter === 'all') {
+      return validationIssues;
+    }
+
+    return validationIssues.filter((issue) => issue.severity === issueSeverityFilter);
+  }, [issueSeverityFilter, validationIssues]);
+
+  const libraryStats = useMemo(() => {
+    if (!tracks.length) {
+      return null;
+    }
+
+    const bpmValues = tracks.map((track) => Number(track.bpm)).filter((value) => Number.isFinite(value));
+    const durationValues = tracks.map((track) => Number(track.durationSeconds)).filter((value) => Number.isFinite(value));
+    const withKeyCount = tracks.filter((track) => String(track.key || '').trim()).length;
+    const genreCount = new Set(
+      tracks
+        .map((track) => String(track.genre || '').trim().toLowerCase())
+        .filter(Boolean)
+    ).size;
+
+    return {
+      bpmMin: bpmValues.length ? Math.min(...bpmValues) : null,
+      bpmMax: bpmValues.length ? Math.max(...bpmValues) : null,
+      avgDuration: durationValues.length
+        ? (durationValues.reduce((sum, value) => sum + value, 0) / durationValues.length)
+        : null,
+      keyCoverage: tracks.length ? withKeyCount / tracks.length : 0,
+      genreCount
+    };
+  }, [tracks]);
 
   const toggleSort = (nextSortBy) => {
     if (sortBy === nextSortBy) {
@@ -281,7 +356,14 @@ export function App() {
 
       {validationIssues.length > 0 ? (
         <div className="card">
-          <h3>Validation Issues ({validationIssues.length})</h3>
+          <h3>Validation Issues ({filteredIssues.length}/{validationIssues.length})</h3>
+          <div className="row" style={{ marginBottom: '8px' }}>
+            <select value={issueSeverityFilter} onChange={(event) => setIssueSeverityFilter(event.target.value)}>
+              <option value="all">All severities</option>
+              <option value="error">Errors</option>
+              <option value="warning">Warnings</option>
+            </select>
+          </div>
           <table className="track-table">
             <thead>
               <tr>
@@ -292,7 +374,7 @@ export function App() {
               </tr>
             </thead>
             <tbody>
-              {validationIssues.map((issue, index) => (
+              {filteredIssues.map((issue, index) => (
                 <tr key={`${issue.code}-${index}`}>
                   <td>{issue.severity}</td>
                   <td>{issue.code}</td>
@@ -333,18 +415,30 @@ export function App() {
             </button>
             <button type="button" onClick={parse} disabled={isParsing || !xmlPath.trim()}>Re-Parse with Filter</button>
           </div>
+          {libraryStats ? (
+            <div className="meta" style={{ marginTop: '10px' }}>
+              <span>BPM Range: {libraryStats.bpmMin !== null ? `${libraryStats.bpmMin} - ${libraryStats.bpmMax}` : '-'}</span>
+              <span>Avg Duration: {libraryStats.avgDuration !== null ? `${Math.round(libraryStats.avgDuration)}s` : '-'}</span>
+              <span>Genres: {libraryStats.genreCount}</span>
+              <span>Key Coverage: {(libraryStats.keyCoverage * 100).toFixed(0)}%</span>
+            </div>
+          ) : null}
         </div>
 
         <div className="card">
           <h3>Track Table ({sortedTracks.length}/{tracks.length})</h3>
           <div className="row" style={{ marginBottom: '8px' }}>
             <input
+              ref={trackFilterInputRef}
               type="text"
               placeholder="Filter tracks by id, artist, title, genre, key..."
               value={trackQuery}
               onChange={(event) => setTrackQuery(event.target.value)}
             />
           </div>
+          <p style={{ margin: '0 0 8px', color: '#475569' }}>
+            Shortcuts: Ctrl/Cmd+F filter, Ctrl/Cmd+Enter parse, Ctrl/Cmd+Shift+A analyze.
+          </p>
           <div style={{ maxHeight: 500, overflow: 'auto' }}>
             <table className="track-table">
               <thead>
