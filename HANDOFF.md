@@ -20,6 +20,7 @@ Completed:
 - Expanded Rekordbox-specific validation rules (collection entries, node type/name, empty playlists, missing metadata)
 - Track details panel with source playlist references
 - Quick track table search/filter
+- Sortable track table columns
 - Unit tests for parser/services/state
 
 Not started yet:
@@ -62,6 +63,8 @@ npm run start:electron
 ```
 
 ## Recent milestones (latest first)
+- `86ac24c` feat: add track table quick search filter
+- `63de59e` feat: add track details panel with playlist source mapping
 - `d81694b` feat: add structured XML validation and UI issue reporting
 - `d920993` feat: persist import history in sqlite and show recent runs
 - `9925ba7` feat: add expandable nested folder tree filter UI
@@ -72,9 +75,10 @@ npm run start:electron
 1. Improve Rekordbox-specific validation rules and severity classification.
 2. Start Phase 2 analysis cache schema in SQLite (track similarity table + invalidation strategy).
 3. Add real-world XML fixtures from your Rekordbox exports to harden parser edge cases.
-4. Add sortable columns for track table (BPM, artist, title).
+4. Improve first-run UX hints (clear in-app steps when no XML is loaded).
 
 ## Notes for future sessions
 - Keep commits small and push after each feature slice.
 - Preserve non-destructive behavior: never modify Rekordbox source data.
 - Prioritize conservative correctness over aggressive matching (trust-first).
+- If renderer build fails with EACCES in `node_modules/.vite-temp`, reinstall deps without sudo (`rm -rf node_modules package-lock.json && npm install`) before continuing.

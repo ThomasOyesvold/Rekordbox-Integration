@@ -138,6 +138,14 @@ button:disabled {
   vertical-align: top;
 }
 
+.sort-button {
+  border: 0;
+  background: transparent;
+  color: #0f172a;
+  font-weight: 600;
+  padding: 0;
+}
+
 .track-table tbody tr {
   cursor: pointer;
 }

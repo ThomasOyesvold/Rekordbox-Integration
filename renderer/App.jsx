@@ -49,6 +49,8 @@ export function App() {
   const [trackPlaylistIndex, setTrackPlaylistIndex] = useState({});
   const [selectedTrackId, setSelectedTrackId] = useState(null);
   const [trackQuery, setTrackQuery] = useState('');
+  const [sortBy, setSortBy] = useState('artist');
+  const [sortDirection, setSortDirection] = useState('asc');
   const [recentImports, setRecentImports] = useState([]);
   const [summary, setSummary] = useState(null);
   const [validationIssues, setValidationIssues] = useState([]);
@@ -177,6 +179,38 @@ export function App() {
     });
   }, [tracks, trackQuery]);
 
+  const sortedTracks = useMemo(() => {
+    const values = [...visibleTracks];
+    const factor = sortDirection === 'asc' ? 1 : -1;
+
+    values.sort((a, b) => {
+      const aValue = a[sortBy];
+      const bValue = b[sortBy];
+
+      const aNumber = typeof aValue === 'number' ? aValue : Number.NaN;
+      const bNumber = typeof bValue === 'number' ? bValue : Number.NaN;
+      const bothNumeric = Number.isFinite(aNumber) && Number.isFinite(bNumber);
+
+      if (bothNumeric) {
+        return (aNumber - bNumber) * factor;
+      }
+
+      return String(aValue || '').localeCompare(String(bValue || '')) * factor;
+    });
+
+    return values;
+  }, [visibleTracks, sortBy, sortDirection]);
+
+  const toggleSort = (nextSortBy) => {
+    if (sortBy === nextSortBy) {
+      setSortDirection((current) => (current === 'asc' ? 'desc' : 'asc'));
+      return;
+    }
+
+    setSortBy(nextSortBy);
+    setSortDirection('asc');
+  };
+
   return (
     <div className="app-shell">
       <div className="header">
@@ -264,7 +298,7 @@ export function App() {
         </div>
 
         <div className="card">
-          <h3>Track Table ({visibleTracks.length}/{tracks.length})</h3>
+          <h3>Track Table ({sortedTracks.length}/{tracks.length})</h3>
           <div className="row" style={{ marginBottom: '8px' }}>
             <input
               type="text"
@@ -278,17 +312,41 @@ export function App() {
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Artist</th>
-                  <th>Title</th>
-                  <th>BPM</th>
-                  <th>Key</th>
-                  <th>Genre</th>
-                  <th>Duration</th>
+                  <th>
+                    <button type="button" className="sort-button" onClick={() => toggleSort('artist')}>
+                      Artist {sortBy === 'artist' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" className="sort-button" onClick={() => toggleSort('title')}>
+                      Title {sortBy === 'title' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" className="sort-button" onClick={() => toggleSort('bpm')}>
+                      BPM {sortBy === 'bpm' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" className="sort-button" onClick={() => toggleSort('key')}>
+                      Key {sortBy === 'key' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" className="sort-button" onClick={() => toggleSort('genre')}>
+                      Genre {sortBy === 'genre' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                    </button>
+                  </th>
+                  <th>
+                    <button type="button" className="sort-button" onClick={() => toggleSort('durationSeconds')}>
+                      Duration {sortBy === 'durationSeconds' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                    </button>
+                  </th>
                   <th>Playlists</th>
                 </tr>
               </thead>
               <tbody>
-                {visibleTracks.slice(0, 1000).map((track) => (
+                {sortedTracks.slice(0, 1000).map((track) => (
                   <tr
                     key={track.id}
                     className={track.id === selectedTrackId ? 'selected-row' : ''}
@@ -307,7 +365,7 @@ export function App() {
               </tbody>
             </table>
           </div>
-          {visibleTracks.length > 1000 ? <p>Showing first 1000 filtered tracks for responsiveness.</p> : null}
+          {sortedTracks.length > 1000 ? <p>Showing first 1000 filtered tracks for responsiveness.</p> : null}
         </div>
       </div>
 
