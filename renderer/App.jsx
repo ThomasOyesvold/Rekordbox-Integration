@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 const DESKTOP_BRIDGE_ERROR = 'Desktop bridge unavailable. Relaunch from Electron (not browser-only mode).';
-const TRACK_COLUMN_ORDER = ['title', 'bpm', 'key', 'genre', 'durationSeconds', 'artist', 'playlists'];
+const TRACK_COLUMN_ORDER = ['id', 'title', 'bpm', 'key', 'genre', 'durationSeconds', 'artist', 'playlists'];
 const TRACK_COLUMN_WIDTHS = {
   id: 110,
   title: 380,
@@ -16,6 +16,7 @@ const PAGE_SIZE_OPTIONS = [50, 100, 250, 500];
 const TABLE_VIEWPORT_HEIGHT = 500;
 const VIRTUAL_OVERSCAN_ROWS = 8;
 const TRACK_COLUMN_LABELS = {
+  id: 'ID',
   title: 'Title',
   bpm: 'BPM',
   key: 'Key',
@@ -25,6 +26,7 @@ const TRACK_COLUMN_LABELS = {
   playlists: 'Playlists'
 };
 const DEFAULT_VISIBLE_TRACK_COLUMNS = {
+  id: true,
   title: true,
   bpm: true,
   key: true,
@@ -408,6 +410,7 @@ export function App() {
   const virtualRows = pagedTracks.slice(virtualStartIndex, virtualEndIndex);
   const topSpacerHeight = virtualStartIndex * rowHeight;
   const bottomSpacerHeight = Math.max(0, (pagedTracks.length - virtualEndIndex) * rowHeight);
+  const visibleTrackColumnCount = TRACK_COLUMN_ORDER.filter((columnKey) => visibleTrackColumns[columnKey]).length;
 
   const filteredIssues = useMemo(() => {
     if (issueSeverityFilter === 'all') {
@@ -702,7 +705,7 @@ export function App() {
           >
             <table className={`track-table ${tableDensity === 'compact' ? 'compact' : ''}`}>
               <colgroup>
-                <col style={{ width: `${TRACK_COLUMN_WIDTHS.id}px` }} />
+                {visibleTrackColumns.id ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.id}px` }} /> : null}
                 {visibleTrackColumns.title ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.title}px` }} /> : null}
                 {visibleTrackColumns.bpm ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.bpm}px` }} /> : null}
                 {visibleTrackColumns.key ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.key}px` }} /> : null}
@@ -713,7 +716,7 @@ export function App() {
               </colgroup>
               <thead>
                 <tr>
-                  <th>ID</th>
+                  {visibleTrackColumns.id ? <th>ID</th> : null}
                   {visibleTrackColumns.title ? (
                     <th>
                       <button type="button" className="sort-button" onClick={() => toggleSort('title')}>
@@ -762,7 +765,7 @@ export function App() {
               <tbody>
                 {topSpacerHeight > 0 ? (
                   <tr>
-                    <td colSpan={1 + TRACK_COLUMN_ORDER.filter((columnKey) => visibleTrackColumns[columnKey]).length} style={{ height: `${topSpacerHeight}px`, padding: 0, borderBottom: 'none' }} />
+                    <td colSpan={visibleTrackColumnCount} style={{ height: `${topSpacerHeight}px`, padding: 0, borderBottom: 'none' }} />
                   </tr>
                 ) : null}
                 {virtualRows.map((track) => (
@@ -771,7 +774,7 @@ export function App() {
                     className={track.id === selectedTrackId ? 'selected-row' : ''}
                     onClick={() => setSelectedTrackId(track.id)}
                   >
-                    <td>{track.trackId || track.id}</td>
+                    {visibleTrackColumns.id ? <td>{track.trackId || track.id}</td> : null}
                     {visibleTrackColumns.title ? <td>{track.title || '-'}</td> : null}
                     {visibleTrackColumns.bpm ? <td>{track.bpm ?? '-'}</td> : null}
                     {visibleTrackColumns.key ? <td>{track.key || '-'}</td> : null}
@@ -783,7 +786,7 @@ export function App() {
                 ))}
                 {bottomSpacerHeight > 0 ? (
                   <tr>
-                    <td colSpan={1 + TRACK_COLUMN_ORDER.filter((columnKey) => visibleTrackColumns[columnKey]).length} style={{ height: `${bottomSpacerHeight}px`, padding: 0, borderBottom: 'none' }} />
+                    <td colSpan={visibleTrackColumnCount} style={{ height: `${bottomSpacerHeight}px`, padding: 0, borderBottom: 'none' }} />
                   </tr>
                 ) : null}
               </tbody>
