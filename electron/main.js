@@ -1,7 +1,13 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
-import { buildFolderTree, filterTracksByFolders, summarizeLibrary } from '../src/services/libraryService.js';
+import {
+  buildFolderTree,
+  buildTrackPlaylistIndex,
+  filterTracksByFolders,
+  selectPlaylistsByFolders,
+  summarizeLibrary
+} from '../src/services/libraryService.js';
 import { startBackgroundParse } from '../src/services/parseService.js';
 import { getRecentImports, initDatabase, saveImportHistory } from '../src/state/sqliteStore.js';
 import { loadState, saveState } from '../src/state/stateStore.js';
@@ -72,6 +78,8 @@ ipcMain.handle('library:parse', async (_event, payload) => {
   }
 
   const filteredTracks = filterTracksByFolders(library, selectedFolders);
+  const scopedPlaylists = selectPlaylistsByFolders(library.playlists, selectedFolders);
+  const trackPlaylistIndex = buildTrackPlaylistIndex(scopedPlaylists);
   const summary = summarizeLibrary(library);
   saveImportHistory({
     xmlPath,
@@ -86,7 +94,8 @@ ipcMain.handle('library:parse', async (_event, payload) => {
     summary,
     folders: library.folders,
     folderTree: buildFolderTree(library.folders),
-    playlists: library.playlists,
+    playlists: scopedPlaylists,
+    trackPlaylistIndex,
     filteredTracks,
     parsedAt: library.parsedAt,
     validation: library.validation || { issues: [], warningCount: 0, errorCount: 0 }

@@ -3,7 +3,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { parseRekordboxXml } from '../src/parser/rekordboxParser.js';
-import { buildFolderTree, filterTracksByFolders, summarizeLibrary } from '../src/services/libraryService.js';
+import {
+  buildFolderTree,
+  buildTrackPlaylistIndex,
+  filterTracksByFolders,
+  selectPlaylistsByFolders,
+  summarizeLibrary
+} from '../src/services/libraryService.js';
 
 const fixturePath = path.resolve('test/fixtures/rekordbox-sample.xml');
 
@@ -36,4 +42,22 @@ test('buildFolderTree builds nested folder nodes', () => {
   assert.equal(rootNode.children.length, 1);
   assert.equal(rootNode.children[0].path, 'ROOT/Techno');
   assert.equal(rootNode.children[0].children[0].path, 'ROOT/Techno/Peak Time');
+});
+
+test('selectPlaylistsByFolders scopes playlist set correctly', async () => {
+  const xml = await fs.readFile(fixturePath, 'utf8');
+  const library = parseRekordboxXml(xml);
+  const scoped = selectPlaylistsByFolders(library.playlists, ['ROOT/Techno']);
+
+  assert.equal(scoped.length, 1);
+  assert.equal(scoped[0].path, 'ROOT/Techno/Peak Time');
+});
+
+test('buildTrackPlaylistIndex maps track ids to playlist paths', async () => {
+  const xml = await fs.readFile(fixturePath, 'utf8');
+  const library = parseRekordboxXml(xml);
+  const index = buildTrackPlaylistIndex(library.playlists);
+
+  assert.deepEqual(index['1'], ['ROOT/Techno/Peak Time']);
+  assert.deepEqual(index['2'], ['ROOT/Techno/Peak Time']);
 });

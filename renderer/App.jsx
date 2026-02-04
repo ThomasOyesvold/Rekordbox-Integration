@@ -46,6 +46,8 @@ export function App() {
   const [selectedFolders, setSelectedFolders] = useState([]);
   const [expandedFolders, setExpandedFolders] = useState(new Set());
   const [tracks, setTracks] = useState([]);
+  const [trackPlaylistIndex, setTrackPlaylistIndex] = useState({});
+  const [selectedTrackId, setSelectedTrackId] = useState(null);
   const [recentImports, setRecentImports] = useState([]);
   const [summary, setSummary] = useState(null);
   const [validationIssues, setValidationIssues] = useState([]);
@@ -130,6 +132,9 @@ export function App() {
         setExpandedFolders(defaultExpanded);
       }
       setTracks(result.filteredTracks || []);
+      setTrackPlaylistIndex(result.trackPlaylistIndex || {});
+      const firstTrackId = result.filteredTracks?.[0]?.id || null;
+      setSelectedTrackId(firstTrackId);
       setSummary(result.summary || null);
       setValidationIssues(Array.isArray(result.validation?.issues) ? result.validation.issues : []);
 
@@ -147,6 +152,10 @@ export function App() {
       setIsParsing(false);
     }
   };
+
+  const selectedTrack = useMemo(() => {
+    return tracks.find((track) => track.id === selectedTrackId) || null;
+  }, [tracks, selectedTrackId]);
 
   return (
     <div className="app-shell">
@@ -240,23 +249,31 @@ export function App() {
             <table className="track-table">
               <thead>
                 <tr>
+                  <th>ID</th>
                   <th>Artist</th>
                   <th>Title</th>
                   <th>BPM</th>
                   <th>Key</th>
                   <th>Genre</th>
                   <th>Duration</th>
+                  <th>Playlists</th>
                 </tr>
               </thead>
               <tbody>
                 {tracks.slice(0, 1000).map((track) => (
-                  <tr key={track.id}>
+                  <tr
+                    key={track.id}
+                    className={track.id === selectedTrackId ? 'selected-row' : ''}
+                    onClick={() => setSelectedTrackId(track.id)}
+                  >
+                    <td>{track.trackId || track.id}</td>
                     <td>{track.artist || '-'}</td>
                     <td>{track.title || '-'}</td>
                     <td>{track.bpm ?? '-'}</td>
                     <td>{track.key || '-'}</td>
                     <td>{track.genre || '-'}</td>
                     <td>{track.durationSeconds ?? '-'}</td>
+                    <td>{trackPlaylistIndex[track.id]?.length || 0}</td>
                   </tr>
                 ))}
               </tbody>
@@ -264,6 +281,37 @@ export function App() {
           </div>
           {tracks.length > 1000 ? <p>Showing first 1000 tracks for responsiveness.</p> : null}
         </div>
+      </div>
+
+      <div className="card">
+        <h3>Track Details</h3>
+        {!selectedTrack ? <p>Select a track row to inspect metadata and source playlists.</p> : null}
+        {selectedTrack ? (
+          <div>
+            <div className="meta">
+              <span>ID: {selectedTrack.trackId || selectedTrack.id}</span>
+              <span>Artist: {selectedTrack.artist || '-'}</span>
+              <span>Title: {selectedTrack.title || '-'}</span>
+              <span>BPM: {selectedTrack.bpm ?? '-'}</span>
+              <span>Key: {selectedTrack.key || '-'}</span>
+            </div>
+            <p style={{ marginTop: '8px' }}>
+              Location: {selectedTrack.location || '-'}
+            </p>
+            <h4 style={{ margin: '12px 0 8px' }}>
+              Source Playlists ({trackPlaylistIndex[selectedTrack.id]?.length || 0})
+            </h4>
+            {(trackPlaylistIndex[selectedTrack.id] || []).length === 0 ? (
+              <p>No playlist references found for this track in the active filter scope.</p>
+            ) : (
+              <ul className="playlist-list">
+                {(trackPlaylistIndex[selectedTrack.id] || []).map((playlistPath) => (
+                  <li key={playlistPath}>{playlistPath}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div className="card">

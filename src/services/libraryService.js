@@ -11,28 +11,50 @@ export function summarizeLibrary(library) {
 }
 
 export function filterTracksByFolders(library, selectedFolders) {
-  if (!Array.isArray(selectedFolders) || selectedFolders.length === 0) {
-    return library.tracks;
-  }
-
-  const selected = selectedFolders.map((folder) => folder.trim()).filter(Boolean);
+  const scopedPlaylists = selectPlaylistsByFolders(library.playlists, selectedFolders);
   const includedTrackIds = new Set();
 
-  for (const playlist of library.playlists) {
-    const includePlaylist = selected.some((folderPath) => {
-      return playlist.path === folderPath || playlist.path.startsWith(`${folderPath}/`);
-    });
-
-    if (!includePlaylist) {
-      continue;
-    }
-
+  for (const playlist of scopedPlaylists) {
     for (const trackId of playlist.trackIds) {
       includedTrackIds.add(trackId);
     }
   }
 
+  if (!Array.isArray(selectedFolders) || selectedFolders.length === 0) {
+    return library.tracks;
+  }
+
   return library.tracks.filter((track) => includedTrackIds.has(track.id));
+}
+
+export function selectPlaylistsByFolders(playlists, selectedFolders) {
+  if (!Array.isArray(selectedFolders) || selectedFolders.length === 0) {
+    return playlists;
+  }
+
+  const selected = selectedFolders.map((folder) => folder.trim()).filter(Boolean);
+
+  return playlists.filter((playlist) => {
+    return selected.some((folderPath) => {
+      return playlist.path === folderPath || playlist.path.startsWith(`${folderPath}/`);
+    });
+  });
+}
+
+export function buildTrackPlaylistIndex(playlists) {
+  const index = {};
+
+  for (const playlist of playlists) {
+    for (const trackId of playlist.trackIds) {
+      if (!index[trackId]) {
+        index[trackId] = [];
+      }
+
+      index[trackId].push(playlist.path);
+    }
+  }
+
+  return index;
 }
 
 export function buildFolderTree(folders) {

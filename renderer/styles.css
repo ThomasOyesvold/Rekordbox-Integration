@@ -138,9 +138,22 @@ button:disabled {
   vertical-align: top;
 }
 
+.track-table tbody tr {
+  cursor: pointer;
+}
+
+.track-table tbody tr.selected-row {
+  background: #ecfeff;
+}
+
 .progress {
   color: #0369a1;
   font-weight: 600;
+}
+
+.playlist-list {
+  margin: 0;
+  padding-left: 20px;
 }
 
 @media (max-width: 980px) {
