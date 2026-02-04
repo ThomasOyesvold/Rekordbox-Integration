@@ -21,7 +21,9 @@ function useParseProgress() {
 export function App() {
   const [xmlPath, setXmlPath] = useState('');
   const [folders, setFolders] = useState([]);
+  const [folderTree, setFolderTree] = useState(null);
   const [selectedFolders, setSelectedFolders] = useState([]);
+  const [expandedFolders, setExpandedFolders] = useState(new Set());
   const [tracks, setTracks] = useState([]);
   const [summary, setSummary] = useState(null);
   const [isParsing, setIsParsing] = useState(false);
@@ -58,6 +60,18 @@ export function App() {
     });
   };
 
+  const toggleExpanded = (folderPath) => {
+    setExpandedFolders((current) => {
+      const next = new Set(current);
+      if (next.has(folderPath)) {
+        next.delete(folderPath);
+      } else {
+        next.add(folderPath);
+      }
+      return next;
+    });
+  };
+
   const pickFile = async () => {
     const picked = await window.rbfa.pickXmlFile();
     if (picked) {
@@ -79,6 +93,11 @@ export function App() {
     try {
       const result = await window.rbfa.parseLibrary(xmlPath.trim(), selectedFolders);
       setFolders(result.folders || []);
+      setFolderTree(result.folderTree || null);
+      if (result.folderTree?.children?.length) {
+        const defaultExpanded = new Set(result.folderTree.children.map((node) => node.path));
+        setExpandedFolders(defaultExpanded);
+      }
       setTracks(result.filteredTracks || []);
       setSummary(result.summary || null);
 
@@ -125,18 +144,19 @@ export function App() {
 
       <div className="grid">
         <div className="card">
-          <h3>Folder Filter</h3>
+          <h3>Folder Filter Tree</h3>
           <div className="folder-list">
             {folders.length === 0 ? <p>No folders parsed yet.</p> : null}
-            {folders.map((folderPath) => (
-              <label key={folderPath} className="folder-item">
-                <input
-                  type="checkbox"
-                  checked={selectedSet.has(folderPath)}
-                  onChange={() => toggleFolder(folderPath)}
-                />{' '}
-                {folderPath}
-              </label>
+            {folderTree?.children?.map((node) => (
+              <FolderNode
+                key={node.path}
+                node={node}
+                depth={0}
+                selectedSet={selectedSet}
+                expandedFolders={expandedFolders}
+                onToggleFolder={toggleFolder}
+                onToggleExpanded={toggleExpanded}
+              />
             ))}
           </div>
           <div className="row" style={{ marginTop: '10px' }}>
@@ -183,6 +203,59 @@ export function App() {
           {tracks.length > 1000 ? <p>Showing first 1000 tracks for responsiveness.</p> : null}
         </div>
       </div>
+    </div>
+  );
+}
+
+function FolderNode({
+  node,
+  depth,
+  selectedSet,
+  expandedFolders,
+  onToggleFolder,
+  onToggleExpanded
+}) {
+  const hasChildren = Array.isArray(node.children) && node.children.length > 0;
+  const isExpanded = expandedFolders.has(node.path);
+  const indentStyle = { paddingLeft: `${depth * 14}px` };
+
+  return (
+    <div>
+      <div className="folder-row" style={indentStyle}>
+        {hasChildren ? (
+          <button
+            type="button"
+            className="disclosure"
+            onClick={() => onToggleExpanded(node.path)}
+            aria-label={isExpanded ? `Collapse ${node.name}` : `Expand ${node.name}`}
+          >
+            {isExpanded ? '▾' : '▸'}
+          </button>
+        ) : (
+          <span className="disclosure-spacer" />
+        )}
+        <label className="folder-item">
+          <input
+            type="checkbox"
+            checked={selectedSet.has(node.path)}
+            onChange={() => onToggleFolder(node.path)}
+          />{' '}
+          {node.name}
+        </label>
+      </div>
+      {hasChildren && isExpanded
+        ? node.children.map((child) => (
+            <FolderNode
+              key={child.path}
+              node={child}
+              depth={depth + 1}
+              selectedSet={selectedSet}
+              expandedFolders={expandedFolders}
+              onToggleFolder={onToggleFolder}
+              onToggleExpanded={onToggleExpanded}
+            />
+          ))
+        : null}
     </div>
   );
 }

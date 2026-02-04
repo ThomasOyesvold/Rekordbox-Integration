@@ -92,8 +92,28 @@ button:disabled {
 
 .folder-item {
   display: block;
-  margin-bottom: 7px;
+  margin-bottom: 3px;
   font-size: 0.92rem;
+}
+
+.folder-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.disclosure {
+  border: 0;
+  background: transparent;
+  color: #0f172a;
+  padding: 0 4px;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.disclosure-spacer {
+  display: inline-block;
+  width: 18px;
 }
 
 .meta {

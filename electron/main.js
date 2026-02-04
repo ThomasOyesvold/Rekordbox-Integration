@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
-import { filterTracksByFolders, summarizeLibrary } from '../src/services/libraryService.js';
+import { buildFolderTree, filterTracksByFolders, summarizeLibrary } from '../src/services/libraryService.js';
 import { startBackgroundParse } from '../src/services/parseService.js';
 import { loadState, saveState } from '../src/state/stateStore.js';
 
@@ -67,6 +67,7 @@ ipcMain.handle('library:parse', async (_event, payload) => {
   return {
     summary,
     folders: library.folders,
+    folderTree: buildFolderTree(library.folders),
     playlists: library.playlists,
     filteredTracks,
     parsedAt: library.parsedAt

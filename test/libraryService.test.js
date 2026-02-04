@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { parseRekordboxXml } from '../src/parser/rekordboxParser.js';
-import { filterTracksByFolders, summarizeLibrary } from '../src/services/libraryService.js';
+import { buildFolderTree, filterTracksByFolders, summarizeLibrary } from '../src/services/libraryService.js';
 
 const fixturePath = path.resolve('test/fixtures/rekordbox-sample.xml');
 
@@ -26,4 +26,14 @@ test('filterTracksByFolders filters tracks by folder prefix', async () => {
 
   assert.equal(filtered.length, 2);
   assert.equal(filtered[0].artist, 'Artist A');
+});
+
+test('buildFolderTree builds nested folder nodes', () => {
+  const tree = buildFolderTree(['ROOT', 'ROOT/Techno', 'ROOT/Techno/Peak Time']);
+  const rootNode = tree.children.find((node) => node.path === 'ROOT');
+
+  assert.ok(rootNode);
+  assert.equal(rootNode.children.length, 1);
+  assert.equal(rootNode.children[0].path, 'ROOT/Techno');
+  assert.equal(rootNode.children[0].children[0].path, 'ROOT/Techno/Peak Time');
 });
