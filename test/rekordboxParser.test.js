@@ -75,10 +75,15 @@ test('parseRekordboxXml treats duplicate track ids as fatal', async () => {
   });
 });
 
-test('parseRekordboxXml warns when tracks include nested metadata blocks', async () => {
+test('parseRekordboxXml parses nested track metadata blocks', async () => {
   const xml = await fs.readFile(nestedTrackFixturePath, 'utf8');
   const library = parseRekordboxXml(xml);
-  assert.ok(library.validation.issues.some((issue) => issue.code === 'NESTED_TRACK_DATA_UNSUPPORTED'));
+  assert.equal(library.validation.issues.some((issue) => issue.code === 'NESTED_TRACK_DATA_UNSUPPORTED'), false);
+  assert.equal(library.tracks.length, 1);
+  assert.equal(library.tracks[0].nestedTempoPoints.length, 1);
+  assert.equal(library.tracks[0].nestedTempoPoints[0].bpm, 126);
+  assert.equal(library.tracks[0].nestedPositionMarks.length, 1);
+  assert.equal(library.tracks[0].nestedPositionMarks[0].name, 'Cue');
 });
 
 test('parseRekordboxXml reports playlist node structure warnings', () => {

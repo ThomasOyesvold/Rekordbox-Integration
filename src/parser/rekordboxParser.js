@@ -9,7 +9,6 @@ const VALIDATION_CODES = {
   missingTrackTitle: 'MISSING_TRACK_TITLE',
   missingTrackArtist: 'MISSING_TRACK_ARTIST',
   duplicateTrackId: 'DUPLICATE_TRACK_ID',
-  nestedTrackDataUnsupported: 'NESTED_TRACK_DATA_UNSUPPORTED',
   invalidBpm: 'INVALID_BPM',
   invalidDuration: 'INVALID_DURATION',
   invalidBitrate: 'INVALID_BITRATE',
@@ -126,25 +125,7 @@ function parseCollection(xmlText, issues) {
 
   const collectionAttributes = parseXmlAttributes(collectionMatch[1] || '');
   const collectionBody = collectionMatch[2];
-  const nestedTrackRegex = /<TRACK\b([^>]*)>([\s\S]*?)<\/TRACK>/gi;
-  let nestedMatch = nestedTrackRegex.exec(collectionBody);
-  while (nestedMatch) {
-    const nestedAttributes = parseXmlAttributes(nestedMatch[1] || '');
-    const nestedBody = String(nestedMatch[2] || '').trim();
-    if (nestedBody) {
-      issues.push(
-        createIssue(
-          'warning',
-          VALIDATION_CODES.nestedTrackDataUnsupported,
-          'TRACK contains nested metadata blocks that are not parsed yet.',
-          { trackId: nestedAttributes.TrackID || null }
-        )
-      );
-    }
-    nestedMatch = nestedTrackRegex.exec(collectionBody);
-  }
-
-  const trackRegex = /<TRACK\b([^>]*?)(?:\/?)>/gi;
+  const trackRegex = /<TRACK\b([^>]*?)(?:\/>|>([\s\S]*?)<\/TRACK>)/gi;
   const tracks = [];
   const seenIds = new Set();
   let match = trackRegex.exec(collectionBody);
@@ -152,6 +133,7 @@ function parseCollection(xmlText, issues) {
 
   while (match) {
     const rawAttributes = match[1];
+    const nestedBody = String(match[2] || '');
     const attributes = parseXmlAttributes(rawAttributes);
     validateTrackAttributes(rawAttributes, attributes, issues, index);
 
@@ -191,6 +173,38 @@ function parseCollection(xmlText, issues) {
       );
     }
 
+    const nestedTempoPoints = [];
+    const nestedTempoRegex = /<TEMPO\b([^>]*?)\/?>/gi;
+    let tempoMatch = nestedTempoRegex.exec(nestedBody);
+    while (tempoMatch) {
+      const tempoAttributes = parseXmlAttributes(tempoMatch[1] || '');
+      nestedTempoPoints.push({
+        inizio: parseNumber(tempoAttributes.Inizio),
+        bpm: parseNumber(tempoAttributes.Bpm),
+        battito: parseNumber(tempoAttributes.Battito)
+      });
+      tempoMatch = nestedTempoRegex.exec(nestedBody);
+    }
+
+    const nestedPositionMarks = [];
+    const nestedPositionRegex = /<POSITION_MARK\b([^>]*?)\/?>/gi;
+    let positionMatch = nestedPositionRegex.exec(nestedBody);
+    while (positionMatch) {
+      const markAttributes = parseXmlAttributes(positionMatch[1] || '');
+      nestedPositionMarks.push({
+        name: markAttributes.Name || '',
+        type: markAttributes.Type || '',
+        start: parseNumber(markAttributes.Start),
+        number: parseNumber(markAttributes.Num),
+        color: {
+          red: parseNumber(markAttributes.Red),
+          green: parseNumber(markAttributes.Green),
+          blue: parseNumber(markAttributes.Blue)
+        }
+      });
+      positionMatch = nestedPositionRegex.exec(nestedBody);
+    }
+
     tracks.push({
       id,
       trackId: attributes.TrackID || null,
@@ -202,7 +216,9 @@ function parseCollection(xmlText, issues) {
       key: attributes.Tonality || '',
       durationSeconds: parseNumber(attributes.TotalTime),
       bitrate: parseNumber(attributes.BitRate),
-      location
+      location,
+      nestedTempoPoints,
+      nestedPositionMarks
     });
 
     match = trackRegex.exec(collectionBody);
