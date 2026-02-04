@@ -137,6 +137,7 @@ button:disabled {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.9rem;
+  table-layout: fixed;
 }
 
 .track-table th,
@@ -145,6 +146,20 @@ button:disabled {
   text-align: left;
   padding: 8px;
   vertical-align: top;
+  word-break: break-word;
+}
+
+.track-table th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  z-index: 1;
+}
+
+.track-table.compact th,
+.track-table.compact td {
+  padding: 5px 8px;
+  font-size: 0.84rem;
 }
 
 .sort-button {

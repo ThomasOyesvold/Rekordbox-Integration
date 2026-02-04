@@ -1,14 +1,51 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
+const DESKTOP_BRIDGE_ERROR = 'Desktop bridge unavailable. Relaunch from Electron (not browser-only mode).';
+const TRACK_COLUMN_ORDER = ['title', 'bpm', 'key', 'genre', 'durationSeconds', 'artist', 'playlists'];
+const TRACK_COLUMN_WIDTHS = {
+  id: 110,
+  title: 380,
+  bpm: 84,
+  key: 80,
+  genre: 130,
+  durationSeconds: 96,
+  artist: 220,
+  playlists: 84
+};
+const PAGE_SIZE_OPTIONS = [50, 100, 250, 500];
+const TRACK_COLUMN_LABELS = {
+  title: 'Title',
+  bpm: 'BPM',
+  key: 'Key',
+  genre: 'Genre',
+  durationSeconds: 'Duration',
+  artist: 'Artist',
+  playlists: 'Playlists'
+};
+const DEFAULT_VISIBLE_TRACK_COLUMNS = {
+  title: true,
+  bpm: true,
+  key: true,
+  genre: true,
+  durationSeconds: true,
+  artist: true,
+  playlists: true
+};
+
+function getBridgeApi() {
+  return window.rbfa || window.electron?.rbfa || null;
+}
+
 function useParseProgress() {
   const [progress, setProgress] = useState(null);
 
   useEffect(() => {
-    if (!window.rbfa?.onParseProgress) {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.onParseProgress) {
       return undefined;
     }
 
-    const dispose = window.rbfa.onParseProgress((value) => {
+    const dispose = bridgeApi.onParseProgress((value) => {
       setProgress(value);
     });
 
@@ -39,6 +76,33 @@ function parseErrorPayload(error) {
   }
 }
 
+function formatDuration(seconds) {
+  const numericValue = Number(seconds);
+  if (!Number.isFinite(numericValue)) {
+    return '-';
+  }
+
+  const totalSeconds = Math.max(0, Math.round(numericValue));
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+}
+
+function normalizeVisibleTrackColumns(value) {
+  const next = { ...DEFAULT_VISIBLE_TRACK_COLUMNS };
+  if (!value || typeof value !== 'object') {
+    return next;
+  }
+
+  for (const key of TRACK_COLUMN_ORDER) {
+    if (typeof value[key] === 'boolean') {
+      next[key] = value[key];
+    }
+  }
+
+  return next;
+}
+
 export function App() {
   const [xmlPath, setXmlPath] = useState('');
   const [folders, setFolders] = useState([]);
@@ -49,8 +113,12 @@ export function App() {
   const [trackPlaylistIndex, setTrackPlaylistIndex] = useState({});
   const [selectedTrackId, setSelectedTrackId] = useState(null);
   const [trackQuery, setTrackQuery] = useState('');
-  const [sortBy, setSortBy] = useState('artist');
+  const [sortBy, setSortBy] = useState('title');
   const [sortDirection, setSortDirection] = useState('asc');
+  const [visibleTrackColumns, setVisibleTrackColumns] = useState(DEFAULT_VISIBLE_TRACK_COLUMNS);
+  const [tableDensity, setTableDensity] = useState('cozy');
+  const [pageSize, setPageSize] = useState(100);
+  const [currentPage, setCurrentPage] = useState(1);
   const [recentImports, setRecentImports] = useState([]);
   const [summary, setSummary] = useState(null);
   const [validationIssues, setValidationIssues] = useState([]);
@@ -63,11 +131,12 @@ export function App() {
   const trackFilterInputRef = useRef(null);
 
   useEffect(() => {
-    if (!window.rbfa?.loadState) {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.loadState) {
       return;
     }
 
-    window.rbfa.loadState().then((state) => {
+    bridgeApi.loadState().then((state) => {
       if (state?.lastLibraryPath) {
         setXmlPath(state.lastLibraryPath);
       }
@@ -75,11 +144,30 @@ export function App() {
       if (Array.isArray(state?.selectedFolders)) {
         setSelectedFolders(state.selectedFolders);
       }
+
+      if (typeof state?.tableSortBy === 'string') {
+        setSortBy(state.tableSortBy);
+      }
+
+      if (state?.tableSortDirection === 'asc' || state?.tableSortDirection === 'desc') {
+        setSortDirection(state.tableSortDirection);
+      }
+
+      setVisibleTrackColumns(normalizeVisibleTrackColumns(state?.visibleTrackColumns));
+
+      if (state?.tableDensity === 'compact' || state?.tableDensity === 'cozy') {
+        setTableDensity(state.tableDensity);
+      }
+
+      const parsedPageSize = Number(state?.tablePageSize);
+      if (PAGE_SIZE_OPTIONS.includes(parsedPageSize)) {
+        setPageSize(parsedPageSize);
+      }
     }).catch(() => {
       // best-effort state load
     });
 
-    window.rbfa.getRecentImports().then((rows) => {
+    bridgeApi.getRecentImports().then((rows) => {
       setRecentImports(Array.isArray(rows) ? rows : []);
     }).catch(() => {
       // best-effort import history load
@@ -111,7 +199,13 @@ export function App() {
   };
 
   const pickFile = async () => {
-    const picked = await window.rbfa.pickXmlFile();
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.pickXmlFile) {
+      setError(DESKTOP_BRIDGE_ERROR);
+      return;
+    }
+
+    const picked = await bridgeApi.pickXmlFile();
     if (picked) {
       setXmlPath(picked);
       setError('');
@@ -125,6 +219,12 @@ export function App() {
   };
 
   const parse = async () => {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.parseLibrary) {
+      setError(DESKTOP_BRIDGE_ERROR);
+      return;
+    }
+
     if (!xmlPath.trim()) {
       setError('Choose an XML export first.');
       setValidationIssues([]);
@@ -137,7 +237,7 @@ export function App() {
     setProgress(0);
 
     try {
-      const result = await window.rbfa.parseLibrary(xmlPath.trim(), selectedFolders);
+      const result = await bridgeApi.parseLibrary(xmlPath.trim(), selectedFolders);
       setFolders(result.folders || []);
       setFolderTree(result.folderTree || null);
       if (result.folderTree?.children?.length) {
@@ -152,11 +252,11 @@ export function App() {
       setValidationIssues(Array.isArray(result.validation?.issues) ? result.validation.issues : []);
       setAnalysisResult(null);
 
-      await window.rbfa.saveState({
+      await bridgeApi.saveState({
         lastLibraryPath: xmlPath.trim(),
         selectedFolders
       });
-      const rows = await window.rbfa.getRecentImports();
+      const rows = await bridgeApi.getRecentImports();
       setRecentImports(Array.isArray(rows) ? rows : []);
     } catch (parseError) {
       const parsedError = parseErrorPayload(parseError);
@@ -168,6 +268,12 @@ export function App() {
   };
 
   const runAnalysis = async () => {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.runBaselineAnalysis) {
+      setError(DESKTOP_BRIDGE_ERROR);
+      return;
+    }
+
     if (tracks.length < 2) {
       setError('Need at least 2 tracks to run baseline analysis.');
       return;
@@ -176,7 +282,7 @@ export function App() {
     setIsAnalyzing(true);
     setError('');
     try {
-      const result = await window.rbfa.runBaselineAnalysis(tracks, xmlPath.trim(), selectedFolders);
+      const result = await bridgeApi.runBaselineAnalysis(tracks, xmlPath.trim(), selectedFolders);
       setAnalysisResult(result);
     } catch (analysisError) {
       setError(analysisError.message || String(analysisError));
@@ -270,6 +376,23 @@ export function App() {
     return values;
   }, [visibleTracks, sortBy, sortDirection]);
 
+  const totalPages = useMemo(() => {
+    if (!sortedTracks.length) {
+      return 1;
+    }
+
+    return Math.max(1, Math.ceil(sortedTracks.length / pageSize));
+  }, [pageSize, sortedTracks.length]);
+
+  useEffect(() => {
+    setCurrentPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
+
+  const pagedTracks = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return sortedTracks.slice(startIndex, startIndex + pageSize);
+  }, [currentPage, pageSize, sortedTracks]);
+
   const filteredIssues = useMemo(() => {
     if (issueSeverityFilter === 'all') {
       return validationIssues;
@@ -312,6 +435,41 @@ export function App() {
     setSortBy(nextSortBy);
     setSortDirection('asc');
   };
+
+  const toggleTrackColumn = (columnKey) => {
+    setVisibleTrackColumns((current) => {
+      const enabledCount = Object.values(current).filter(Boolean).length;
+      if (enabledCount <= 1 && current[columnKey]) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [columnKey]: !current[columnKey]
+      };
+    });
+  };
+
+  useEffect(() => {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.saveState) {
+      return;
+    }
+
+    bridgeApi.saveState({
+      tableSortBy: sortBy,
+      tableSortDirection: sortDirection,
+      visibleTrackColumns,
+      tableDensity,
+      tablePageSize: pageSize
+    }).catch(() => {
+      // best-effort UI preference save
+    });
+  }, [sortBy, sortDirection, visibleTrackColumns, tableDensity, pageSize]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [trackQuery, sortBy, sortDirection]);
 
   return (
     <div className="app-shell">
@@ -418,7 +576,7 @@ export function App() {
           {libraryStats ? (
             <div className="meta" style={{ marginTop: '10px' }}>
               <span>BPM Range: {libraryStats.bpmMin !== null ? `${libraryStats.bpmMin} - ${libraryStats.bpmMax}` : '-'}</span>
-              <span>Avg Duration: {libraryStats.avgDuration !== null ? `${Math.round(libraryStats.avgDuration)}s` : '-'}</span>
+              <span>Avg Duration: {libraryStats.avgDuration !== null ? formatDuration(libraryStats.avgDuration) : '-'}</span>
               <span>Genres: {libraryStats.genreCount}</span>
               <span>Key Coverage: {(libraryStats.keyCoverage * 100).toFixed(0)}%</span>
             </div>
@@ -436,68 +594,156 @@ export function App() {
               onChange={(event) => setTrackQuery(event.target.value)}
             />
           </div>
+          <div className="row" style={{ marginBottom: '8px' }}>
+            <span style={{ fontSize: '0.9rem', color: '#334155' }}>Density:</span>
+            <button
+              type="button"
+              className={tableDensity === 'cozy' ? '' : 'secondary'}
+              onClick={() => setTableDensity('cozy')}
+              style={{ padding: '6px 10px' }}
+            >
+              Cozy
+            </button>
+            <button
+              type="button"
+              className={tableDensity === 'compact' ? '' : 'secondary'}
+              onClick={() => setTableDensity('compact')}
+              style={{ padding: '6px 10px' }}
+            >
+              Compact
+            </button>
+            <span style={{ fontSize: '0.9rem', color: '#334155', marginLeft: '8px' }}>Page Size:</span>
+            <select
+              value={pageSize}
+              onChange={(event) => {
+                setPageSize(Number(event.target.value));
+                setCurrentPage(1);
+              }}
+            >
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+          </div>
+          <div className="row" style={{ marginBottom: '8px' }}>
+            <span style={{ fontSize: '0.9rem', color: '#334155' }}>Columns:</span>
+            {TRACK_COLUMN_ORDER.map((columnKey) => (
+              <label key={columnKey} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.9rem' }}>
+                <input
+                  type="checkbox"
+                  checked={visibleTrackColumns[columnKey]}
+                  onChange={() => toggleTrackColumn(columnKey)}
+                />
+                {TRACK_COLUMN_LABELS[columnKey]}
+              </label>
+            ))}
+          </div>
           <p style={{ margin: '0 0 8px', color: '#475569' }}>
             Shortcuts: Ctrl/Cmd+F filter, Ctrl/Cmd+Enter parse, Ctrl/Cmd+Shift+A analyze.
           </p>
           <div style={{ maxHeight: 500, overflow: 'auto' }}>
-            <table className="track-table">
+            <table className={`track-table ${tableDensity === 'compact' ? 'compact' : ''}`}>
+              <colgroup>
+                <col style={{ width: `${TRACK_COLUMN_WIDTHS.id}px` }} />
+                {visibleTrackColumns.title ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.title}px` }} /> : null}
+                {visibleTrackColumns.bpm ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.bpm}px` }} /> : null}
+                {visibleTrackColumns.key ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.key}px` }} /> : null}
+                {visibleTrackColumns.genre ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.genre}px` }} /> : null}
+                {visibleTrackColumns.durationSeconds ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.durationSeconds}px` }} /> : null}
+                {visibleTrackColumns.artist ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.artist}px` }} /> : null}
+                {visibleTrackColumns.playlists ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.playlists}px` }} /> : null}
+              </colgroup>
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>
-                    <button type="button" className="sort-button" onClick={() => toggleSort('artist')}>
-                      Artist {sortBy === 'artist' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" className="sort-button" onClick={() => toggleSort('title')}>
-                      Title {sortBy === 'title' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" className="sort-button" onClick={() => toggleSort('bpm')}>
-                      BPM {sortBy === 'bpm' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" className="sort-button" onClick={() => toggleSort('key')}>
-                      Key {sortBy === 'key' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" className="sort-button" onClick={() => toggleSort('genre')}>
-                      Genre {sortBy === 'genre' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
-                    </button>
-                  </th>
-                  <th>
-                    <button type="button" className="sort-button" onClick={() => toggleSort('durationSeconds')}>
-                      Duration {sortBy === 'durationSeconds' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
-                    </button>
-                  </th>
-                  <th>Playlists</th>
+                  {visibleTrackColumns.title ? (
+                    <th>
+                      <button type="button" className="sort-button" onClick={() => toggleSort('title')}>
+                        Title {sortBy === 'title' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                      </button>
+                    </th>
+                  ) : null}
+                  {visibleTrackColumns.bpm ? (
+                    <th>
+                      <button type="button" className="sort-button" onClick={() => toggleSort('bpm')}>
+                        BPM {sortBy === 'bpm' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                      </button>
+                    </th>
+                  ) : null}
+                  {visibleTrackColumns.key ? (
+                    <th>
+                      <button type="button" className="sort-button" onClick={() => toggleSort('key')}>
+                        Key {sortBy === 'key' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                      </button>
+                    </th>
+                  ) : null}
+                  {visibleTrackColumns.genre ? (
+                    <th>
+                      <button type="button" className="sort-button" onClick={() => toggleSort('genre')}>
+                        Genre {sortBy === 'genre' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                      </button>
+                    </th>
+                  ) : null}
+                  {visibleTrackColumns.durationSeconds ? (
+                    <th>
+                      <button type="button" className="sort-button" onClick={() => toggleSort('durationSeconds')}>
+                        Duration {sortBy === 'durationSeconds' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                      </button>
+                    </th>
+                  ) : null}
+                  {visibleTrackColumns.artist ? (
+                    <th>
+                      <button type="button" className="sort-button" onClick={() => toggleSort('artist')}>
+                        Artist {sortBy === 'artist' ? (sortDirection === 'asc' ? '▲' : '▼') : ''}
+                      </button>
+                    </th>
+                  ) : null}
+                  {visibleTrackColumns.playlists ? <th>Playlists</th> : null}
                 </tr>
               </thead>
               <tbody>
-                {sortedTracks.slice(0, 1000).map((track) => (
+                {pagedTracks.map((track) => (
                   <tr
                     key={track.id}
                     className={track.id === selectedTrackId ? 'selected-row' : ''}
                     onClick={() => setSelectedTrackId(track.id)}
                   >
                     <td>{track.trackId || track.id}</td>
-                    <td>{track.artist || '-'}</td>
-                    <td>{track.title || '-'}</td>
-                    <td>{track.bpm ?? '-'}</td>
-                    <td>{track.key || '-'}</td>
-                    <td>{track.genre || '-'}</td>
-                    <td>{track.durationSeconds ?? '-'}</td>
-                    <td>{trackPlaylistIndex[track.id]?.length || 0}</td>
+                    {visibleTrackColumns.title ? <td>{track.title || '-'}</td> : null}
+                    {visibleTrackColumns.bpm ? <td>{track.bpm ?? '-'}</td> : null}
+                    {visibleTrackColumns.key ? <td>{track.key || '-'}</td> : null}
+                    {visibleTrackColumns.genre ? <td>{track.genre || '-'}</td> : null}
+                    {visibleTrackColumns.durationSeconds ? <td>{formatDuration(track.durationSeconds)}</td> : null}
+                    {visibleTrackColumns.artist ? <td>{track.artist || '-'}</td> : null}
+                    {visibleTrackColumns.playlists ? <td>{trackPlaylistIndex[track.id]?.length || 0}</td> : null}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {sortedTracks.length > 1000 ? <p>Showing first 1000 filtered tracks for responsiveness.</p> : null}
+          <div className="row" style={{ marginTop: '10px', justifyContent: 'space-between' }}>
+            <span style={{ color: '#475569' }}>
+              Page {currentPage} of {totalPages} ({pagedTracks.length} shown)
+            </span>
+            <div className="row">
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setCurrentPage((value) => Math.max(1, value - 1))}
+                disabled={currentPage <= 1}
+              >
+                Prev
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setCurrentPage((value) => Math.min(totalPages, value + 1))}
+                disabled={currentPage >= totalPages}
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

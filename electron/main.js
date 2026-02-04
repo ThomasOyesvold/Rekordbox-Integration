@@ -27,7 +27,8 @@ function createWindow() {
     minWidth: 1000,
     minHeight: 700,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      // Keep preload in CommonJS for compatibility with Electron sandboxed renderers.
+      preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false
     }
