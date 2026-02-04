@@ -484,6 +484,13 @@ export function App() {
             <span>Computed: {analysisResult.computed}</span>
             <span>Cache Hits: {analysisResult.cacheHits}</span>
           </div>
+          <div className="meta">
+            <span>Weights</span>
+            <span>BPM: {(analysisResult.weights?.bpm ?? 0).toFixed(2)}</span>
+            <span>Key: {(analysisResult.weights?.key ?? 0).toFixed(2)}</span>
+            <span>Waveform: {(analysisResult.weights?.waveform ?? 0).toFixed(2)}</span>
+            <span>Rhythm: {(analysisResult.weights?.rhythm ?? 0).toFixed(2)}</span>
+          </div>
           <table className="track-table" style={{ marginTop: '10px' }}>
             <thead>
               <tr>
@@ -492,6 +499,8 @@ export function App() {
                 <th>Score</th>
                 <th>BPM</th>
                 <th>Key</th>
+                <th>Waveform</th>
+                <th>Rhythm</th>
                 <th>Source</th>
               </tr>
             </thead>
@@ -503,6 +512,8 @@ export function App() {
                   <td>{row.score.toFixed(3)}</td>
                   <td>{(row.components?.bpm ?? 0).toFixed(3)}</td>
                   <td>{(row.components?.key ?? 0).toFixed(3)}</td>
+                  <td>{(row.components?.waveform ?? 0).toFixed(3)}</td>
+                  <td>{(row.components?.rhythm ?? 0).toFixed(3)}</td>
                   <td>{row.fromCache ? 'Cache' : 'Computed'}</td>
                 </tr>
               ))}

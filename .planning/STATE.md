@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 ## Current Position
 
 Phase: 1 of 6 (Foundation & Data Layer)
-Plan: 11 completed implementation slices
+Plan: 12 completed implementation slices
 Status: In progress (working desktop foundation)
-Last activity: 2026-02-04 — Added first baseline analyzer pass (BPM + key, cache-first)
+Last activity: 2026-02-04 — Added weighted baseline scoring structure (BPM/key/waveform/rhythm placeholders)
 
-Progress: [██████░░░░] ~55%
+Progress: [██████░░░░] ~60%
 
 ## Completed work (code)
 
@@ -33,11 +33,12 @@ Progress: [██████░░░░] ~55%
 - Similarity cache service stubs (signature generation, cache read/write, analysis run lifecycle)
 - Baseline analyzer service (BPM + key) with cache-first storage/reuse
 - Baseline analysis action exposed in desktop UI and CLI
+- Weighted baseline scoring with waveform/rhythm placeholder components
 - Tests for parser, services, state, sqlite store
 
 ## Pending Todos
 
-1. Expand baseline analyzer components (waveform/rhythm placeholders + weighted scoring structure)
+1. Replace waveform/rhythm placeholders with real extracted features when available
 2. Tighten fatal vs warning criteria for specific Rekordbox parsing failures
 3. Add larger real-world XML fixtures and edge-case tests
 4. Add keyboard shortcuts and focus states for fast desktop workflows
@@ -51,5 +52,5 @@ Progress: [██████░░░░] ~55%
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Baseline analyzer pass integrated into UI/CLI with cache-first behavior
+Stopped at: Weighted baseline scoring integrated in analyzer and analysis UI
 Resume anchor: `HANDOFF.md` and latest commit history

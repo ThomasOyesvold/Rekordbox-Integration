@@ -6,6 +6,13 @@ import {
   upsertTrackSignatures
 } from './similarityCacheService.js';
 
+export const DEFAULT_COMPONENT_WEIGHTS = {
+  bpm: 0.35,
+  key: 0.35,
+  waveform: 0.15,
+  rhythm: 0.15
+};
+
 function clamp(value, min = 0, max = 1) {
   return Math.max(min, Math.min(max, value));
 }
@@ -33,6 +40,25 @@ function parseCamelot(raw) {
   return {
     number,
     letter: match[2]
+  };
+}
+
+function normalizeWeights(inputWeights = DEFAULT_COMPONENT_WEIGHTS) {
+  const merged = {
+    ...DEFAULT_COMPONENT_WEIGHTS,
+    ...(inputWeights || {})
+  };
+
+  const total = Object.values(merged).reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+  if (total <= 0) {
+    return { ...DEFAULT_COMPONENT_WEIGHTS };
+  }
+
+  return {
+    bpm: merged.bpm / total,
+    key: merged.key / total,
+    waveform: merged.waveform / total,
+    rhythm: merged.rhythm / total
   };
 }
 
@@ -89,17 +115,56 @@ export function computeKeyScore(keyA, keyB) {
   return 0.25;
 }
 
-export function computeBaselineSimilarity(trackA, trackB) {
+export function computeWaveformPlaceholderScore(trackA, trackB) {
+  const genreA = String(trackA.genre || '').trim().toLowerCase();
+  const genreB = String(trackB.genre || '').trim().toLowerCase();
+  const genreScore = genreA && genreB ? (genreA === genreB ? 0.75 : 0.5) : 0.55;
+
+  const durationA = asNumber(trackA.durationSeconds);
+  const durationB = asNumber(trackB.durationSeconds);
+  let durationScore = 0.55;
+  if (durationA !== null && durationB !== null) {
+    const diff = Math.abs(durationA - durationB);
+    if (diff <= 8) {
+      durationScore = 0.8;
+    } else if (diff <= 20) {
+      durationScore = 0.65;
+    } else {
+      durationScore = 0.45;
+    }
+  }
+
+  return clamp((genreScore + durationScore) / 2);
+}
+
+export function computeRhythmPlaceholderScore(trackA, trackB) {
   const bpmScore = computeBpmScore(trackA.bpm, trackB.bpm);
   const keyScore = computeKeyScore(trackA.key, trackB.key);
-  const score = clamp((bpmScore + keyScore) / 2);
+
+  return clamp((bpmScore * 0.7) + (keyScore * 0.3));
+}
+
+export function computeBaselineSimilarity(trackA, trackB, componentWeights = DEFAULT_COMPONENT_WEIGHTS) {
+  const weights = normalizeWeights(componentWeights);
+
+  const components = {
+    bpm: computeBpmScore(trackA.bpm, trackB.bpm),
+    key: computeKeyScore(trackA.key, trackB.key),
+    waveform: computeWaveformPlaceholderScore(trackA, trackB),
+    rhythm: computeRhythmPlaceholderScore(trackA, trackB)
+  };
+
+  const score = clamp(
+    (components.bpm * weights.bpm)
+    + (components.key * weights.key)
+    + (components.waveform * weights.waveform)
+    + (components.rhythm * weights.rhythm)
+  );
 
   return {
     score,
-    components: {
-      bpm: bpmScore,
-      key: keyScore
-    }
+    components,
+    weights
   };
 }
 
@@ -123,7 +188,7 @@ export function rankSimilarityRows(rows, limit = 20) {
     .slice(0, limit);
 }
 
-export function createAnalyzerVersion(tag = 'baseline-v1') {
+export function createAnalyzerVersion(tag = 'baseline-v2') {
   return `flow-${tag}`;
 }
 
@@ -131,11 +196,13 @@ export function runBaselineAnalysis({
   tracks,
   sourceXmlPath = null,
   selectedFolders = [],
+  componentWeights = DEFAULT_COMPONENT_WEIGHTS,
   algorithmVersion = createAnalyzerVersion(),
   maxPairs = 5000,
   topLimit = 20
 }) {
   const safeTracks = Array.isArray(tracks) ? tracks : [];
+  const normalizedWeights = normalizeWeights(componentWeights);
   upsertTrackSignatures(safeTracks);
 
   const runId = beginAnalysisRun({
@@ -166,18 +233,22 @@ export function runBaselineAnalysis({
           trackBId: cached.trackBId,
           score: cached.score,
           components: cached.components,
+          weights: cached.components?.weights || normalizedWeights,
           fromCache: true
         });
         continue;
       }
 
-      const result = computeBaselineSimilarity(trackA, trackB);
+      const result = computeBaselineSimilarity(trackA, trackB, normalizedWeights);
       saveSimilarityToCache({
         trackAId: trackA.id,
         trackBId: trackB.id,
         algorithmVersion,
         score: result.score,
-        components: result.components,
+        components: {
+          ...result.components,
+          weights: result.weights
+        },
         analysisRunId: runId
       });
 
@@ -187,6 +258,7 @@ export function runBaselineAnalysis({
         trackBId: String(trackB.id),
         score: result.score,
         components: result.components,
+        weights: result.weights,
         fromCache: false
       });
     }
@@ -199,6 +271,7 @@ export function runBaselineAnalysis({
       pairCount: rows.length,
       cacheHits,
       computed,
+      weights: normalizedWeights,
       topMatches: rankSimilarityRows(rows, topLimit)
     };
   } catch (error) {

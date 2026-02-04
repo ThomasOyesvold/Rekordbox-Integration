@@ -20,6 +20,7 @@ Initial implementation of the foundation layer for parsing Rekordbox XML, select
   - Baseline analysis run button (BPM + key score, cache-first)
 - Structured XML validation issues panel (errors/warnings with codes and context)
 - Analysis cache service for track signatures and similarity cache lookups
+- Weighted baseline analysis components (BPM, key, waveform placeholder, rhythm placeholder)
 
 ## CLI usage
 
