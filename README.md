@@ -9,6 +9,7 @@ Initial implementation of the foundation layer for parsing Rekordbox XML, select
 - Folder-based filtering over parsed playlists
 - App state persistence (`app-state.json` in Electron user data)
 - SQLite import history (`rbfa.db` in Electron user data)
+- Phase 2 cache schema foundation in SQLite (`analysis_runs`, `tracks`, `track_similarity`)
 - Background parsing worker with progress events
 - Desktop shell (Electron + React) with:
   - XML picker
@@ -16,7 +17,8 @@ Initial implementation of the foundation layer for parsing Rekordbox XML, select
   - Track table preview with quick text filtering and sortable columns
   - Track details panel with source playlist references
   - Recent import history table
-  - Structured XML validation issues panel (errors/warnings with codes and context)
+- Structured XML validation issues panel (errors/warnings with codes and context)
+- Analysis cache service stubs for track signatures and similarity cache lookups
 
 ## CLI usage
 

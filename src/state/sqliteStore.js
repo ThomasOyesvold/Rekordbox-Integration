@@ -4,6 +4,28 @@ import { DatabaseSync } from 'node:sqlite';
 
 let db = null;
 
+function normalizeTrackPair(trackAId, trackBId) {
+  if (!trackAId || !trackBId) {
+    throw new Error('trackAId and trackBId are required.');
+  }
+
+  return String(trackAId) <= String(trackBId)
+    ? [String(trackAId), String(trackBId)]
+    : [String(trackBId), String(trackAId)];
+}
+
+function parseJson(value, fallback) {
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
 export function initDatabase(dbFilePath) {
   if (db) {
     return db;
@@ -24,7 +46,48 @@ export function initDatabase(dbFilePath) {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS analysis_runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      created_at TEXT NOT NULL,
+      completed_at TEXT,
+      status TEXT NOT NULL,
+      algorithm_version TEXT NOT NULL,
+      source_xml_path TEXT,
+      selected_folders TEXT NOT NULL,
+      track_count INTEGER NOT NULL,
+      notes TEXT
+    );
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tracks (
+      track_id TEXT PRIMARY KEY,
+      signature TEXT NOT NULL,
+      signature_version TEXT NOT NULL,
+      bpm REAL,
+      musical_key TEXT,
+      duration_seconds REAL,
+      updated_at TEXT NOT NULL
+    );
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS track_similarity (
+      track_a_id TEXT NOT NULL,
+      track_b_id TEXT NOT NULL,
+      algorithm_version TEXT NOT NULL,
+      score REAL NOT NULL,
+      components TEXT NOT NULL,
+      computed_at TEXT NOT NULL,
+      analysis_run_id INTEGER,
+      PRIMARY KEY (track_a_id, track_b_id, algorithm_version)
+    );
+  `);
+
   db.exec('CREATE INDEX IF NOT EXISTS idx_import_history_parsed_at ON import_history(parsed_at DESC);');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_analysis_runs_created_at ON analysis_runs(created_at DESC);');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_track_similarity_computed_at ON track_similarity(computed_at DESC);');
 
   return db;
 }
@@ -78,8 +141,192 @@ export function getRecentImports(limit = 10) {
     trackCount: row.track_count,
     playlistCount: row.playlist_count,
     folderCount: row.folder_count,
-    selectedFolders: JSON.parse(row.selected_folders)
+    selectedFolders: parseJson(row.selected_folders, [])
   }));
+}
+
+export function createAnalysisRun(entry) {
+  assertDb();
+
+  const statement = db.prepare(`
+    INSERT INTO analysis_runs (
+      created_at,
+      status,
+      algorithm_version,
+      source_xml_path,
+      selected_folders,
+      track_count,
+      notes
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const now = new Date().toISOString();
+  const result = statement.run(
+    now,
+    entry.status || 'running',
+    entry.algorithmVersion,
+    entry.sourceXmlPath || null,
+    JSON.stringify(entry.selectedFolders || []),
+    entry.trackCount || 0,
+    entry.notes || null
+  );
+
+  return Number(result.lastInsertRowid);
+}
+
+export function completeAnalysisRun(runId, status = 'completed', notes = null) {
+  assertDb();
+
+  const statement = db.prepare(`
+    UPDATE analysis_runs
+    SET completed_at = ?, status = ?, notes = ?
+    WHERE id = ?
+  `);
+
+  statement.run(new Date().toISOString(), status, notes, runId);
+}
+
+export function getAnalysisRun(runId) {
+  assertDb();
+
+  const statement = db.prepare(`
+    SELECT id, created_at, completed_at, status, algorithm_version, source_xml_path, selected_folders, track_count, notes
+    FROM analysis_runs
+    WHERE id = ?
+  `);
+
+  const row = statement.get(runId);
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    createdAt: row.created_at,
+    completedAt: row.completed_at,
+    status: row.status,
+    algorithmVersion: row.algorithm_version,
+    sourceXmlPath: row.source_xml_path,
+    selectedFolders: parseJson(row.selected_folders, []),
+    trackCount: row.track_count,
+    notes: row.notes
+  };
+}
+
+export function upsertTrackSignature(entry) {
+  assertDb();
+
+  const statement = db.prepare(`
+    INSERT INTO tracks (
+      track_id,
+      signature,
+      signature_version,
+      bpm,
+      musical_key,
+      duration_seconds,
+      updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(track_id) DO UPDATE SET
+      signature = excluded.signature,
+      signature_version = excluded.signature_version,
+      bpm = excluded.bpm,
+      musical_key = excluded.musical_key,
+      duration_seconds = excluded.duration_seconds,
+      updated_at = excluded.updated_at
+  `);
+
+  statement.run(
+    String(entry.trackId),
+    entry.signature,
+    entry.signatureVersion,
+    entry.bpm ?? null,
+    entry.musicalKey || null,
+    entry.durationSeconds ?? null,
+    new Date().toISOString()
+  );
+}
+
+export function getTrackSignature(trackId) {
+  assertDb();
+
+  const statement = db.prepare(`
+    SELECT track_id, signature, signature_version, bpm, musical_key, duration_seconds, updated_at
+    FROM tracks
+    WHERE track_id = ?
+  `);
+
+  const row = statement.get(String(trackId));
+  if (!row) {
+    return null;
+  }
+
+  return {
+    trackId: row.track_id,
+    signature: row.signature,
+    signatureVersion: row.signature_version,
+    bpm: row.bpm,
+    musicalKey: row.musical_key,
+    durationSeconds: row.duration_seconds,
+    updatedAt: row.updated_at
+  };
+}
+
+export function saveSimilarityScore(entry) {
+  assertDb();
+
+  const [trackAId, trackBId] = normalizeTrackPair(entry.trackAId, entry.trackBId);
+  const statement = db.prepare(`
+    INSERT INTO track_similarity (
+      track_a_id,
+      track_b_id,
+      algorithm_version,
+      score,
+      components,
+      computed_at,
+      analysis_run_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(track_a_id, track_b_id, algorithm_version) DO UPDATE SET
+      score = excluded.score,
+      components = excluded.components,
+      computed_at = excluded.computed_at,
+      analysis_run_id = excluded.analysis_run_id
+  `);
+
+  statement.run(
+    trackAId,
+    trackBId,
+    entry.algorithmVersion,
+    entry.score,
+    JSON.stringify(entry.components || {}),
+    new Date().toISOString(),
+    entry.analysisRunId || null
+  );
+}
+
+export function getCachedSimilarity(entry) {
+  assertDb();
+
+  const [trackAId, trackBId] = normalizeTrackPair(entry.trackAId, entry.trackBId);
+  const statement = db.prepare(`
+    SELECT track_a_id, track_b_id, algorithm_version, score, components, computed_at, analysis_run_id
+    FROM track_similarity
+    WHERE track_a_id = ? AND track_b_id = ? AND algorithm_version = ?
+  `);
+
+  const row = statement.get(trackAId, trackBId, entry.algorithmVersion);
+  if (!row) {
+    return null;
+  }
+
+  return {
+    trackAId: row.track_a_id,
+    trackBId: row.track_b_id,
+    algorithmVersion: row.algorithm_version,
+    score: row.score,
+    components: parseJson(row.components, {}),
+    computedAt: row.computed_at,
+    analysisRunId: row.analysis_run_id
+  };
 }
 
 export function closeDatabase() {
