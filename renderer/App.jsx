@@ -114,25 +114,61 @@ function normalizeAudioLocation(rawLocation) {
     return '';
   }
 
-  const cleaned = String(rawLocation)
+  const bridge = getBridgeApi();
+  const platform = bridge?.platform || '';
+  const isWsl = Boolean(bridge?.isWsl);
+
+  let cleaned = String(rawLocation)
+    .replace(/^file:\/\/localhost\//i, '/')
     .replace(/^file:\/\//i, '')
-    .replace(/^localhost\//i, '')
-    .replace(/%20/g, ' ')
+    .replace(/^localhost\//i, '/')
+    .replace(/\\/g, '/')
     .trim();
+
+  if (/^\/[A-Za-z]:\//.test(cleaned)) {
+    cleaned = cleaned.slice(1);
+  }
+
+  // Map Windows drive paths to WSL mounts when running on Linux/WSL.
+  if (/^[A-Za-z]:\//.test(cleaned) && (platform === 'linux' || isWsl)) {
+    const driveLetter = cleaned[0].toLowerCase();
+    const rest = cleaned.slice(2); // keep leading /
+    cleaned = `/mnt/${driveLetter}${rest}`;
+  }
+
+  try {
+    cleaned = decodeURIComponent(cleaned);
+  } catch {
+    // Keep raw value if it is not valid URI encoding.
+  }
 
   if (!cleaned) {
     return '';
   }
 
+  const encoded = encodeURI(cleaned)
+    .replace(/#/g, '%23')
+    .replace(/\?/g, '%3F');
+
   if (/^[A-Za-z]:\//.test(cleaned)) {
-    return `file:///${encodeURI(cleaned)}`;
+    return `file:///${encoded}`;
   }
 
   if (cleaned.startsWith('/')) {
-    return `file://${encodeURI(cleaned)}`;
+    return `file://${encoded}`;
   }
 
-  return cleaned;
+  const hasScheme = /^[A-Za-z][A-Za-z0-9+.-]*:/.test(encoded);
+  if (!hasScheme) {
+    if (/^[A-Za-z]:\//.test(encoded)) {
+      return `file:///${encoded}`;
+    }
+    if (encoded.startsWith('/')) {
+      return `file://${encoded}`;
+    }
+  }
+
+  return encoded;
 }
 
 function clamp(value, min, max) {
@@ -557,11 +593,18 @@ export function App() {
   const ensureAudio = (track) => {
     const trackId = track.id;
     const existing = audioRegistryRef.current.get(trackId);
+    const src = normalizeAudioLocation(track.location);
+    if (!src) {
+      console.warn('[rbfa] empty audio src', { trackId, location: track.location });
+    }
     if (existing?.audio) {
+      if (src && existing.audio.src !== src) {
+        existing.audio.src = src;
+        existing.audio.load();
+      }
       return existing.audio;
     }
 
-    const src = normalizeAudioLocation(track.location);
     const audio = new Audio();
     audio.preload = 'metadata';
     audio.src = src;
@@ -599,11 +642,15 @@ export function App() {
       });
     };
     const onError = () => {
+      const mediaError = audio.error;
+      const errorCode = mediaError?.code ? ` (code ${mediaError.code})` : '';
       updatePlaybackState(trackId, {
         status: 'error',
         loading: false,
-        error: 'Audio unavailable or failed to load.'
+        error: `Audio unavailable or failed to load${errorCode}.`
       });
+      // Helpful during dev runs
+      console.error('[rbfa] audio error', { trackId, src: audio.src, mediaError });
     };
 
     audio.addEventListener('loadedmetadata', onLoadedMeta);
@@ -653,8 +700,15 @@ export function App() {
     updatePlaybackState(track.id, { loading: audio.readyState < 1, error: '' });
     try {
       await audio.play();
-    } catch {
-      updatePlaybackState(track.id, { status: 'error', loading: false, error: 'Unable to start playback.' });
+    } catch (error) {
+      const name = error?.name ? ` (${error.name})` : '';
+      const message = error?.message ? ` ${error.message}` : '';
+      updatePlaybackState(track.id, {
+        status: 'error',
+        loading: false,
+        error: `Unable to start playback${name}.${message}`
+      });
+      console.error('[rbfa] audio play failed', { trackId: track.id, src: audio.src, error });
     }
   };
 

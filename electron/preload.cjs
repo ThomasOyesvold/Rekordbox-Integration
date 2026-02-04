@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('rbfa', {
+  platform: process.platform,
+  isWsl: Boolean(process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP),
   pickXmlFile: () => ipcRenderer.invoke('dialog:pickXml'),
   parseLibrary: (xmlPath, selectedFolders, options = {}) => ipcRenderer.invoke('library:parse', {
     xmlPath,

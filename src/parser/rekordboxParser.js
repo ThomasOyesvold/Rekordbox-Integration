@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { parseXmlAttributes } from './xmlAttributes.js';
 
 const VALIDATION_CODES = {
@@ -38,10 +39,32 @@ function parseLocation(rawLocation) {
     return '';
   }
 
-  return rawLocation
+  const trimmed = String(rawLocation).trim();
+
+  if (/^file:/i.test(trimmed)) {
+    try {
+      return fileURLToPath(new URL(trimmed));
+    } catch {
+      // Fall through to manual normalization.
+    }
+  }
+
+  let value = trimmed
     .replace(/^file:\/\//i, '')
     .replace(/^localhost\//i, '')
-    .replace(/%20/g, ' ');
+    .replace(/\\/g, '/');
+
+  if (/^\/[A-Za-z]:\//.test(value)) {
+    value = value.slice(1);
+  }
+
+  try {
+    value = decodeURIComponent(value);
+  } catch {
+    // If decoding fails, keep raw value.
+  }
+
+  return value;
 }
 
 function validateTrackAttributes(rawAttributes, attributes, issues, index) {

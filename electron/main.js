@@ -25,6 +25,9 @@ const isSmokeMode = process.env.RBFA_SMOKE === '1';
 let mainWindow = null;
 
 function createWindow() {
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+  const isDev = Boolean(devServerUrl);
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 860,
@@ -35,11 +38,11 @@ function createWindow() {
       // Keep preload in CommonJS for compatibility with Electron sandboxed renderers.
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      // Allow media to load from file:// while running the dev server.
+      webSecurity: !isDev
     }
   });
-
-  const devServerUrl = process.env.VITE_DEV_SERVER_URL;
 
   if (devServerUrl) {
     mainWindow.loadURL(devServerUrl);

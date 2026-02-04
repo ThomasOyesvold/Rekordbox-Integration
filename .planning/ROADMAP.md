@@ -89,6 +89,7 @@ Plans:
 
 Plans:
 - [ ] TBD (planned during phase planning)
+- [ ] Fix WSL playback path mapping and ensure absolute `file://` audio URLs (avoid `rbfa://` resolution in dev)
 
 ### Phase 5: Approval & User Control
 **Goal**: User can approve or reject suggested playlists with meaningful names and understand why tracks were grouped together
