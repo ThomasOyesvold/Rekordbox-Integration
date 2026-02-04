@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS Version="1.0.0">
+  <PRODUCT Name="rekordbox" Version="6.7.0" Company="AlphaTheta"/>
+  <COLLECTION Entries="2">
+    <TRACK TrackID="1" Name="Track One" Artist="Artist A" Album="Alpha" Genre="Techno" AverageBpm="126.00" Tonality="8A" TotalTime="322" BitRate="320" Location="file://localhost/C:/Music/Artist%20A/Track%20One.mp3" />
+    <TRACK TrackID="2" Name="Track &amp; Two" Artist="Artist B" Album="Beta" Genre="House" AverageBpm="124.50" Tonality="9A" TotalTime="301" BitRate="320" Location="file://localhost/C:/Music/Artist%20B/Track%20Two.mp3" />
+  </COLLECTION>
+  <PLAYLISTS>
+    <NODE Type="1" Name="ROOT" Count="1">
+      <NODE Type="1" Name="Techno" Count="1">
+        <NODE Type="0" Name="Peak Time" Entries="2">
+          <TRACK Key="1"/>
+          <TRACK Key="2"/>
+        </NODE>
+      </NODE>
+    </NODE>
+  </PLAYLISTS>
+</DJ_PLAYLISTS>
