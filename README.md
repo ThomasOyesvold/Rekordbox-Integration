@@ -1,38 +1,8 @@
-# Rekordbox Flow Analyzer (Phase 1 Start)
+# Rekordbox Flow Analyzer
 
-Initial implementation of the foundation layer for parsing Rekordbox XML, selecting folders, and running parsing in a background worker.
+Desktop and CLI toolkit for importing Rekordbox XML libraries, filtering playlists/folders, and running baseline compatibility analysis across tracks.
 
-## What is implemented
-
-- Rekordbox XML parser for tracks and playlist folders
-- Track metadata extraction (artist, title, BPM, key, duration, bitrate, path)
-- Folder-based filtering over parsed playlists
-- App state persistence (`app-state.json` in Electron user data)
-- SQLite import history (`rbfa.db` in Electron user data)
-- Phase 2 cache schema foundation in SQLite (`analysis_runs`, `tracks`, `track_similarity`)
-- Background parsing worker with progress events
-- Desktop shell (Electron + React) with:
-  - XML picker
-  - Folder filter
-  - Track table preview with quick text filtering and sortable columns
-  - Track details panel with source playlist references
-  - Recent import history table
-  - Baseline analysis run button (BPM + key score, cache-first)
-- Structured XML validation issues panel (errors/warnings with codes and context)
-- Analysis cache service for track signatures and similarity cache lookups
-- Weighted baseline analysis components (BPM, key, metadata-extracted waveform/rhythm proxies)
-
-## CLI usage
-
-```bash
-npm run test
-npm run cli -- parse /path/to/library.xml
-npm run cli -- parse /path/to/library.xml "ROOT/Techno"
-npm run cli -- analyze /path/to/library.xml
-npm run cli -- analyze /path/to/library.xml "ROOT/Techno"
-```
-
-## Desktop usage
+## Quick Start
 
 ```bash
 npm install
@@ -40,20 +10,61 @@ npm run dev:renderer
 VITE_DEV_SERVER_URL=http://localhost:5173 npm run start:electron
 ```
 
-If GPU init errors are noisy in WSL/Linux, use:
+If GPU init errors are noisy in WSL/Linux:
 
 ```bash
 VITE_DEV_SERVER_URL=http://localhost:5173 npm run start:electron:safe
 ```
 
-For production renderer build:
+Run tests:
+
+```bash
+npm test
+```
+
+## Project Guide
+
+For a full walkthrough (architecture, data flow, feature map, troubleshooting, roadmap), read:
+
+- `docs/PROJECT_GUIDE.md`
+
+## Current Features
+
+- Rekordbox XML parsing for tracks + playlists
+- Folder tree filtering for scoped imports
+- Track table with:
+  - search filter
+  - sortable columns
+  - column visibility toggles
+  - cozy/compact density
+  - sticky headers
+  - pagination
+- Duration formatting in `m:ss`
+- Track detail panel with source playlists
+- Validation issue table (error/warning severity filtering)
+- Baseline similarity analysis (BPM/key/waveform/rhythm weighted scoring)
+- Parse progress events from worker thread
+- Persistent UI preferences and import state
+- SQLite-backed recent import history and analysis cache foundation
+
+## CLI Usage
+
+```bash
+npm run cli -- parse /path/to/library.xml
+npm run cli -- parse /path/to/library.xml "ROOT/Techno"
+npm run cli -- analyze /path/to/library.xml
+npm run cli -- analyze /path/to/library.xml "ROOT/Techno"
+```
+
+## Build Renderer (Production)
 
 ```bash
 npm run build:renderer
 npm run start:electron
 ```
 
-## Notes
+## Tech Stack
 
-- This is the first coding pass for roadmap Phase 1.
-- Parser is strict enough for common Rekordbox export structure and can be hardened further using real-world XML samples.
+- Electron + React + Vite
+- Node.js worker for background parsing
+- SQLite for import history and analysis cache metadata
