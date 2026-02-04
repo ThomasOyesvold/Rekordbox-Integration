@@ -39,7 +39,7 @@ Plans:
 - [x] Implement folder-tree filtering and track table inspection
 - [x] Persist app state and import history (JSON + SQLite)
 - [x] Add structured validation issue reporting
-- [ ] Complete manual QA checklist items (dialog behavior, folder-scope reparse confirmation)
+- [x] Complete manual QA checklist items (dialog behavior, folder-scope reparse confirmation)
 
 ### Phase 2: Analysis Engine & Caching
 **Goal**: System can compute multi-factor similarity scores between tracks and cache results to avoid reprocessing 12K+ track libraries
@@ -126,7 +126,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Data Layer | 5/6 | In progress | Background parse, folder filter, persistence, validation UI, table UX |
+| 1. Foundation & Data Layer | 6/6 | Completed | Background parse, folder filter, persistence, validation UI, table UX |
 | 2. Analysis Engine & Caching | 4/6 | In progress | Baseline analyzer, SQLite cache, export, analysis UI |
 | 3. Playlist Generation | 0/TBD | Not started | - |
 | 4. Verification Workflow & Playback | 0/TBD | Not started | - |
