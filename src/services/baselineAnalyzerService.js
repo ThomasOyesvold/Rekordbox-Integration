@@ -70,6 +70,97 @@ function distanceToScore(diff, scale) {
   return clamp(Math.exp(-Math.abs(diff) / scale));
 }
 
+function parseTempoPoints(track) {
+  const points = Array.isArray(track?.nestedTempoPoints) ? track.nestedTempoPoints : [];
+  return points
+    .map((point) => ({
+      inizio: asNumber(point?.inizio),
+      bpm: asNumber(point?.bpm),
+      battito: asNumber(point?.battito)
+    }))
+    .filter((point) => point.inizio !== null || point.bpm !== null || point.battito !== null)
+    .sort((a, b) => (a.inizio ?? 0) - (b.inizio ?? 0));
+}
+
+function parsePositionMarks(track) {
+  const marks = Array.isArray(track?.nestedPositionMarks) ? track.nestedPositionMarks : [];
+  return marks
+    .map((mark) => ({
+      start: asNumber(mark?.start),
+      red: asNumber(mark?.color?.red),
+      green: asNumber(mark?.color?.green),
+      blue: asNumber(mark?.color?.blue)
+    }))
+    .filter((mark) => mark.start !== null || mark.red !== null || mark.green !== null || mark.blue !== null)
+    .sort((a, b) => (a.start ?? 0) - (b.start ?? 0));
+}
+
+function compareNestedTempoMaps(trackA, trackB) {
+  const tempoA = parseTempoPoints(trackA);
+  const tempoB = parseTempoPoints(trackB);
+
+  if (!tempoA.length || !tempoB.length) {
+    return null;
+  }
+
+  const overlap = Math.min(tempoA.length, tempoB.length, 16);
+  let bpmScoreSum = 0;
+  let phaseScoreSum = 0;
+  let timingScoreSum = 0;
+
+  for (let index = 0; index < overlap; index += 1) {
+    bpmScoreSum += distanceToScore((tempoA[index].bpm ?? 0) - (tempoB[index].bpm ?? 0), 2);
+    phaseScoreSum += distanceToScore((tempoA[index].battito ?? 0) - (tempoB[index].battito ?? 0), 1);
+    timingScoreSum += distanceToScore((tempoA[index].inizio ?? 0) - (tempoB[index].inizio ?? 0), 8);
+  }
+
+  const bpmScore = bpmScoreSum / overlap;
+  const phaseScore = phaseScoreSum / overlap;
+  const timingScore = timingScoreSum / overlap;
+  const countScore = distanceToScore(tempoA.length - tempoB.length, 3);
+
+  return clamp((bpmScore * 0.45) + (phaseScore * 0.2) + (timingScore * 0.25) + (countScore * 0.1));
+}
+
+function compareNestedWaveformMarks(trackA, trackB) {
+  const marksA = parsePositionMarks(trackA);
+  const marksB = parsePositionMarks(trackB);
+
+  if (!marksA.length || !marksB.length) {
+    return null;
+  }
+
+  const overlap = Math.min(marksA.length, marksB.length, 16);
+  const durationA = asNumber(trackA.durationSeconds);
+  const durationB = asNumber(trackB.durationSeconds);
+  let colorScoreSum = 0;
+  let timingScoreSum = 0;
+
+  for (let index = 0; index < overlap; index += 1) {
+    const markA = marksA[index];
+    const markB = marksB[index];
+    const redDiff = Math.abs((markA.red ?? 0) - (markB.red ?? 0));
+    const greenDiff = Math.abs((markA.green ?? 0) - (markB.green ?? 0));
+    const blueDiff = Math.abs((markA.blue ?? 0) - (markB.blue ?? 0));
+    const avgDiff = (redDiff + greenDiff + blueDiff) / 3;
+    colorScoreSum += clamp(1 - (avgDiff / 255));
+
+    if (durationA && durationB && durationA > 0 && durationB > 0) {
+      const normalizedA = (markA.start ?? 0) / durationA;
+      const normalizedB = (markB.start ?? 0) / durationB;
+      timingScoreSum += distanceToScore(normalizedA - normalizedB, 0.08);
+    } else {
+      timingScoreSum += distanceToScore((markA.start ?? 0) - (markB.start ?? 0), 10);
+    }
+  }
+
+  const colorScore = colorScoreSum / overlap;
+  const timingScore = timingScoreSum / overlap;
+  const countScore = distanceToScore(marksA.length - marksB.length, 4);
+
+  return clamp((colorScore * 0.45) + (timingScore * 0.4) + (countScore * 0.15));
+}
+
 function parseCamelot(raw) {
   if (typeof raw !== 'string') {
     return null;
@@ -182,7 +273,13 @@ export function computeWaveformScore(trackA, trackB) {
     ? 0.5
     : distanceToScore(beatsPerSecondA - beatsPerSecondB, 0.35);
 
-  return clamp((durationScore * 0.35) + (bitrateScore * 0.2) + (energyScore * 0.2) + (tokenScore * 0.25));
+  const baseScore = clamp((durationScore * 0.35) + (bitrateScore * 0.2) + (energyScore * 0.2) + (tokenScore * 0.25));
+  const nestedScore = compareNestedWaveformMarks(trackA, trackB);
+  if (nestedScore === null) {
+    return baseScore;
+  }
+
+  return clamp((baseScore * 0.55) + (nestedScore * 0.45));
 }
 
 function computePhraseAlignmentScore(trackA, trackB) {
@@ -207,8 +304,13 @@ export function computeRhythmScore(trackA, trackB) {
   const bpmScore = computeBpmScore(trackA.bpm, trackB.bpm);
   const phraseScore = computePhraseAlignmentScore(trackA, trackB);
   const tokenScore = jaccardScore(toTokenSet(trackA), toTokenSet(trackB));
+  const baseScore = clamp((bpmScore * 0.55) + (phraseScore * 0.3) + (tokenScore * 0.15));
+  const nestedTempoScore = compareNestedTempoMaps(trackA, trackB);
+  if (nestedTempoScore === null) {
+    return baseScore;
+  }
 
-  return clamp((bpmScore * 0.55) + (phraseScore * 0.3) + (tokenScore * 0.15));
+  return clamp((baseScore * 0.6) + (nestedTempoScore * 0.4));
 }
 
 export function computeWaveformPlaceholderScore(trackA, trackB) {

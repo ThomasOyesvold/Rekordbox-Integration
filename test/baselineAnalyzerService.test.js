@@ -23,6 +23,57 @@ const SAMPLE_TRACKS = [
   { id: '3', artist: 'C', title: 'Three', bpm: 132, key: '11B', durationSeconds: 330, genre: 'House' }
 ];
 
+const NESTED_TRACKS = [
+  {
+    id: 'n1',
+    artist: 'Nested A',
+    title: 'Driver',
+    bpm: 128,
+    key: '9A',
+    durationSeconds: 360,
+    nestedTempoPoints: [
+      { inizio: 0, bpm: 128, battito: 1 },
+      { inizio: 90, bpm: 128, battito: 1 }
+    ],
+    nestedPositionMarks: [
+      { start: 32, color: { red: 40, green: 120, blue: 220 } },
+      { start: 128, color: { red: 80, green: 140, blue: 200 } }
+    ]
+  },
+  {
+    id: 'n2',
+    artist: 'Nested B',
+    title: 'Follower',
+    bpm: 128.2,
+    key: '9A',
+    durationSeconds: 362,
+    nestedTempoPoints: [
+      { inizio: 0, bpm: 128.1, battito: 1 },
+      { inizio: 90.5, bpm: 128.2, battito: 1 }
+    ],
+    nestedPositionMarks: [
+      { start: 33, color: { red: 44, green: 119, blue: 219 } },
+      { start: 129, color: { red: 79, green: 138, blue: 202 } }
+    ]
+  },
+  {
+    id: 'n3',
+    artist: 'Nested C',
+    title: 'Contrast',
+    bpm: 136,
+    key: '2B',
+    durationSeconds: 300,
+    nestedTempoPoints: [
+      { inizio: 0, bpm: 136, battito: 3 },
+      { inizio: 60, bpm: 136, battito: 2 }
+    ],
+    nestedPositionMarks: [
+      { start: 10, color: { red: 220, green: 60, blue: 40 } },
+      { start: 200, color: { red: 200, green: 70, blue: 20 } }
+    ]
+  }
+];
+
 test('baseline analyzer score functions behave as expected', () => {
   assert.equal(computeBpmScore(126, 126), 1);
   assert.equal(computeBpmScore(126, 130), 0.75);
@@ -79,4 +130,14 @@ test('baseline analyzer computes then reuses cache entries', async () => {
 
   closeDatabase();
   await fs.rm(tempDir, { recursive: true, force: true });
+});
+
+test('baseline analyzer uses nested Rekordbox metadata in waveform and rhythm scores', () => {
+  const waveformClose = computeWaveformScore(NESTED_TRACKS[0], NESTED_TRACKS[1]);
+  const waveformFar = computeWaveformScore(NESTED_TRACKS[0], NESTED_TRACKS[2]);
+  const rhythmClose = computeRhythmScore(NESTED_TRACKS[0], NESTED_TRACKS[1]);
+  const rhythmFar = computeRhythmScore(NESTED_TRACKS[0], NESTED_TRACKS[2]);
+
+  assert.ok(waveformClose > waveformFar);
+  assert.ok(rhythmClose > rhythmFar);
 });
