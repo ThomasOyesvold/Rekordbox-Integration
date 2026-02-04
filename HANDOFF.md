@@ -14,6 +14,8 @@ Windows desktop tool for Rekordbox XML parsing and flow-oriented playlist prep.
 - Inspect tracks (search/sort/select/details + source playlists).
 - Persist import history and analysis cache in SQLite.
 - Run baseline similarity analysis (cache-first, metadata-derived component scoring).
+- Parser severity now treats duplicate track IDs as fatal (prevents ambiguous cache/signature mapping).
+- Added extra XML fixtures for edge playlist structures and duplicate-track validation.
 
 ## Key Files
 - `electron/main.js`
@@ -50,10 +52,10 @@ VITE_DEV_SERVER_URL=http://localhost:5173 npm run start:electron:safe
 - `65aa21a` expanded Rekordbox schema validation coverage
 
 ## Next Tasks
-1. Tighten parser error-vs-warning rules.
-2. Add sanitized real Rekordbox XML fixtures.
-3. Add keyboard shortcuts/focus states.
-4. Add folder-level analysis summary cards in renderer.
+1. Add keyboard shortcuts/focus states.
+2. Add folder-level analysis summary cards in renderer.
+3. Add import-time warning filters in renderer issues panel.
+4. Improve parser handling for non-self-closing TRACK nodes with nested metadata.
 
 ## Notes
 - Keep commits small and push feature slices.

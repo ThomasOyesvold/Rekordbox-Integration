@@ -5,6 +5,8 @@ import path from 'node:path';
 import { parseRekordboxXml } from '../src/parser/rekordboxParser.js';
 
 const fixturePath = path.resolve('test/fixtures/rekordbox-sample.xml');
+const edgeFixturePath = path.resolve('test/fixtures/rekordbox-edge-playlists.xml');
+const duplicateTrackFixturePath = path.resolve('test/fixtures/rekordbox-duplicate-trackid.xml');
 
 test('parseRekordboxXml parses collection tracks and playlists', async () => {
   const xml = await fs.readFile(fixturePath, 'utf8');
@@ -23,6 +25,16 @@ test('parseRekordboxXml parses collection tracks and playlists', async () => {
 
 test('parseRekordboxXml rejects non-Rekordbox XML', () => {
   assert.throws(() => parseRekordboxXml('<root></root>'), /Not a Rekordbox XML export/);
+});
+
+test('parseRekordboxXml parses edge playlist fixture and keeps non-fatal warnings', async () => {
+  const xml = await fs.readFile(edgeFixturePath, 'utf8');
+  const library = parseRekordboxXml(xml);
+
+  assert.equal(library.tracks.length, 3);
+  assert.equal(library.playlists.length, 2);
+  assert.deepEqual(library.folders, ['ROOT', 'ROOT/Warmup']);
+  assert.ok(library.validation.issues.some((issue) => issue.code === 'DANGLING_TRACK_REFERENCE'));
 });
 
 test('parseRekordboxXml reports non-fatal warnings for malformed fields', () => {
@@ -49,6 +61,17 @@ test('parseRekordboxXml reports non-fatal warnings for malformed fields', () => 
   assert.ok(codes.includes('SUSPICIOUS_LOCATION_ENCODING'));
   assert.ok(codes.includes('INVALID_COLLECTION_ENTRIES'));
   assert.ok(codes.includes('DANGLING_TRACK_REFERENCE'));
+});
+
+test('parseRekordboxXml treats duplicate track ids as fatal', async () => {
+  const xml = await fs.readFile(duplicateTrackFixturePath, 'utf8');
+
+  assert.throws(() => parseRekordboxXml(xml), (error) => {
+    assert.match(error.message, /validation errors/i);
+    assert.ok(Array.isArray(error.issues));
+    assert.ok(error.issues.some((issue) => issue.code === 'DUPLICATE_TRACK_ID' && issue.severity === 'error'));
+    return true;
+  });
 });
 
 test('parseRekordboxXml reports playlist node structure warnings', () => {

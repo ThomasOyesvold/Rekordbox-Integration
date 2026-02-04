@@ -153,7 +153,7 @@ function parseCollection(xmlText, issues) {
 
     if (seenIds.has(id)) {
       issues.push(
-        createIssue('warning', VALIDATION_CODES.duplicateTrackId, 'Duplicate track identifier detected.', {
+        createIssue('error', VALIDATION_CODES.duplicateTrackId, 'Duplicate track identifier detected.', {
           trackIndex: index,
           trackId: id
         })
