@@ -161,6 +161,43 @@ function compareNestedWaveformMarks(trackA, trackB) {
   return clamp((colorScore * 0.45) + (timingScore * 0.4) + (countScore * 0.15));
 }
 
+function compareAnlzWaveformSummaries(trackA, trackB) {
+  const waveformA = trackA?.anlzWaveform;
+  const waveformB = trackB?.anlzWaveform;
+  if (!waveformA || !waveformB) {
+    return null;
+  }
+
+  const binsA = Array.isArray(waveformA.bins) ? waveformA.bins : [];
+  const binsB = Array.isArray(waveformB.bins) ? waveformB.bins : [];
+  if (!binsA.length || !binsB.length) {
+    return null;
+  }
+
+  const overlap = Math.min(binsA.length, binsB.length);
+  let diffSum = 0;
+  for (let index = 0; index < overlap; index += 1) {
+    diffSum += Math.abs((Number(binsA[index]) || 0) - (Number(binsB[index]) || 0));
+  }
+  const avgHeightDiff = diffSum / overlap;
+  const heightScore = clamp(1 - (avgHeightDiff / 31));
+
+  const colorA = waveformA.avgColor || {};
+  const colorB = waveformB.avgColor || {};
+  const redDiff = Math.abs((Number(colorA.red) || 0) - (Number(colorB.red) || 0));
+  const greenDiff = Math.abs((Number(colorA.green) || 0) - (Number(colorB.green) || 0));
+  const blueDiff = Math.abs((Number(colorA.blue) || 0) - (Number(colorB.blue) || 0));
+  const colorScore = clamp(1 - (((redDiff + greenDiff + blueDiff) / 3) / 255));
+
+  const durationA = asNumber(waveformA.durationSeconds);
+  const durationB = asNumber(waveformB.durationSeconds);
+  const durationScore = durationA === null || durationB === null
+    ? 0.5
+    : distanceToScore(durationA - durationB, 45);
+
+  return clamp((heightScore * 0.65) + (colorScore * 0.2) + (durationScore * 0.15));
+}
+
 function parseCamelot(raw) {
   if (typeof raw !== 'string') {
     return null;
@@ -255,6 +292,11 @@ export function computeKeyScore(keyA, keyB) {
 }
 
 export function computeWaveformScore(trackA, trackB) {
+  const anlzScore = compareAnlzWaveformSummaries(trackA, trackB);
+  if (anlzScore !== null) {
+    return anlzScore;
+  }
+
   const durationA = asNumber(trackA.durationSeconds);
   const durationB = asNumber(trackB.durationSeconds);
   const bitrateA = asNumber(trackA.bitrate);

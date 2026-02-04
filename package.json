@@ -8,6 +8,7 @@
   "scripts": {
     "cli": "node src/index.js",
     "extract:waveform": "node scripts/testWaveformExtraction.js",
+    "map:anlz": "node scripts/buildAnlzMapping.js",
     "dev:renderer": "vite",
     "build:renderer": "vite build",
     "stress:phase2": "node scripts/phase2Stress.js",

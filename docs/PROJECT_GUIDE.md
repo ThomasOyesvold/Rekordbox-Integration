@@ -124,7 +124,18 @@ npm run smoke:electron:safe
 
 ## 8. Suggested Next Milestones
 
-1. Track detail enhancements (waveform/rhythm metadata surfacing)
-2. More parser fixtures from real-world libraries
-3. Expand Electron smoke to include export-path verification
-4. Weighted scoring profile presets (house/techno/open-format)
+1. Phase 2 closure: improve ANLZ mapping coverage from ~80% toward 90%+ (secondary matcher for renamed/duplicate filenames).
+2. Persist ANLZ waveform summaries in SQLite cache to avoid re-reading `.EXT` files each analysis run.
+3. Track detail enhancements (surface ANLZ waveform summary: sample count, color profile, envelope bins).
+4. Expand Electron smoke to include export-path verification and one ANLZ-assisted analysis run.
+5. Playback UX refinements (keyboard shortcuts, speed toggle, per-track audio error recovery).
+
+## 9. Roadmap Status (2026-02-04)
+
+- Phase 1 (POC extraction): Completed.
+- Phase 2 (correlation + integration): In progress.
+  - Completed: PWV5 parser, PPTH-based mapper, duration/token disambiguation, baseline waveform scoring now prefers real ANLZ summaries when present, ANLZ waveform summary persistence in SQLite cache, renderer track details now surface ANLZ waveform summary metadata and a desktop waveform preview chart with per-bin ANLZ colors, track table now supports optional mini waveform previews via column toggle, per-track audio playback with mini-waveform seek + playhead.
+  - Current measured mapping coverage on real library: `9075/11328` (`80.11%`).
+  - Current cache behavior: second analysis run reuses cached waveform summaries (`cacheHits=99`, `parsedFromFile=0` on `--anlz-max-tracks 120` test).
+  - Remaining: raise mapping coverage and add ANLZ-assisted integration coverage.
+- Phase 3 (validation at scale): Pending after Phase 2 cache + coverage improvements.

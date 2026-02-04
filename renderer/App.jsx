@@ -1,35 +1,41 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 const DESKTOP_BRIDGE_ERROR = 'Desktop bridge unavailable. Relaunch from Electron (not browser-only mode).';
-const TRACK_COLUMN_ORDER = ['id', 'title', 'bpm', 'key', 'genre', 'durationSeconds', 'artist', 'playlists'];
+const TRACK_COLUMN_ORDER = ['play', 'id', 'title', 'bpm', 'key', 'waveformPreview', 'genre', 'durationSeconds', 'artist', 'playlists'];
 const TRACK_COLUMN_WIDTHS = {
+  play: 90,
   id: 110,
   title: 380,
   bpm: 84,
   key: 80,
+  waveformPreview: 160,
   genre: 130,
   durationSeconds: 96,
   artist: 220,
   playlists: 84
 };
 const PAGE_SIZE_OPTIONS = [50, 100, 250, 500];
-const TABLE_VIEWPORT_HEIGHT = 500;
+const TABLE_VIEWPORT_HEIGHT = 620;
 const VIRTUAL_OVERSCAN_ROWS = 8;
 const TRACK_COLUMN_LABELS = {
+  play: 'Play',
   id: 'ID',
   title: 'Title',
   bpm: 'BPM',
   key: 'Key',
+  waveformPreview: 'Waveform',
   genre: 'Genre',
   durationSeconds: 'Duration',
   artist: 'Artist',
   playlists: 'Playlists'
 };
 const DEFAULT_VISIBLE_TRACK_COLUMNS = {
+  play: true,
   id: true,
   title: true,
   bpm: true,
   key: true,
+  waveformPreview: false,
   genre: true,
   durationSeconds: true,
   artist: true,
@@ -92,6 +98,140 @@ function formatDuration(seconds) {
   return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
+function formatBinPreview(bins, maxItems = 20) {
+  if (!Array.isArray(bins) || bins.length === 0) {
+    return '-';
+  }
+
+  return bins
+    .slice(0, maxItems)
+    .map((value) => Number(value).toFixed(1))
+    .join(', ');
+}
+
+function normalizeAudioLocation(rawLocation) {
+  if (!rawLocation) {
+    return '';
+  }
+
+  const cleaned = String(rawLocation)
+    .replace(/^file:\/\//i, '')
+    .replace(/^localhost\//i, '')
+    .replace(/%20/g, ' ')
+    .trim();
+
+  if (!cleaned) {
+    return '';
+  }
+
+  if (/^[A-Za-z]:\//.test(cleaned)) {
+    return `file:///${encodeURI(cleaned)}`;
+  }
+
+  if (cleaned.startsWith('/')) {
+    return `file://${encodeURI(cleaned)}`;
+  }
+
+  return cleaned;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function formatClock(seconds) {
+  const numericValue = Number(seconds);
+  if (!Number.isFinite(numericValue)) {
+    return '--:--';
+  }
+  const totalSeconds = Math.max(0, Math.floor(numericValue));
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+}
+
+function WaveformPreview({ waveform }) {
+  const bins = Array.isArray(waveform?.bins) ? waveform.bins : [];
+  if (!bins.length) {
+    return <p style={{ marginTop: '6px' }}>No waveform bins available.</p>;
+  }
+
+  const binColors = Array.isArray(waveform?.binColors) ? waveform.binColors : [];
+  const fallbackColor = waveform?.avgColor || { red: 0, green: 170, blue: 255 };
+  const maxHeight = 31;
+
+  return (
+    <div className="waveform-preview">
+      {bins.map((rawHeight, index) => {
+        const height = Math.max(0, Math.min(maxHeight, Number(rawHeight) || 0));
+        const normalized = height / maxHeight;
+        const color = binColors[index] || fallbackColor;
+        const red = Math.max(0, Math.min(255, Number(color.red) || 0));
+        const green = Math.max(0, Math.min(255, Number(color.green) || 0));
+        const blue = Math.max(0, Math.min(255, Number(color.blue) || 0));
+
+        return (
+          <div
+            key={`wave-bin-${index}`}
+            className="waveform-bin"
+            title={`Bin ${index + 1}: h=${height.toFixed(2)} rgb(${red}, ${green}, ${blue})`}
+            style={{
+              height: `${Math.max(4, normalized * 100)}%`,
+              backgroundColor: `rgb(${red}, ${green}, ${blue})`
+            }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function MiniWaveform({ waveform, progress = 0, isActive = false, onSeek }) {
+  const bins = Array.isArray(waveform?.bins) ? waveform.bins : [];
+  if (!bins.length) {
+    return <span className="mini-waveform-empty">-</span>;
+  }
+
+  const binColors = Array.isArray(waveform?.binColors) ? waveform.binColors : [];
+  const fallbackColor = waveform?.avgColor || { red: 0, green: 170, blue: 255 };
+  const maxHeight = 31;
+  const step = Math.max(1, Math.ceil(bins.length / 36));
+  const compactBins = [];
+  for (let index = 0; index < bins.length; index += step) {
+    compactBins.push({
+      height: bins[index],
+      color: binColors[index] || fallbackColor
+    });
+  }
+
+  const progressPercent = clamp(progress, 0, 1) * 100;
+
+  return (
+    <div className="mini-waveform" onClick={onSeek} role="button" tabIndex={0}>
+      {compactBins.map((item, index) => {
+        const height = Math.max(0, Math.min(maxHeight, Number(item.height) || 0));
+        const normalized = height / maxHeight;
+        const red = Math.max(0, Math.min(255, Number(item.color.red) || 0));
+        const green = Math.max(0, Math.min(255, Number(item.color.green) || 0));
+        const blue = Math.max(0, Math.min(255, Number(item.color.blue) || 0));
+        return (
+          <div
+            key={`mini-bin-${index}`}
+            className="mini-waveform-bin"
+            style={{
+              height: `${Math.max(2, normalized * 100)}%`,
+              backgroundColor: `rgb(${red}, ${green}, ${blue})`
+            }}
+          />
+        );
+      })}
+      {isActive ? (
+        <div className="mini-waveform-playhead" style={{ left: `${progressPercent}%` }} />
+      ) : null}
+    </div>
+  );
+}
+
 function normalizeVisibleTrackColumns(value) {
   const next = { ...DEFAULT_VISIBLE_TRACK_COLUMNS };
   if (!value || typeof value !== 'object') {
@@ -109,6 +249,7 @@ function normalizeVisibleTrackColumns(value) {
 
 export function App() {
   const [xmlPath, setXmlPath] = useState('');
+  const [anlzMapPath, setAnlzMapPath] = useState('');
   const [folders, setFolders] = useState([]);
   const [folderTree, setFolderTree] = useState(null);
   const [selectedFolders, setSelectedFolders] = useState([]);
@@ -126,15 +267,24 @@ export function App() {
   const [tableScrollTop, setTableScrollTop] = useState(0);
   const [recentImports, setRecentImports] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [anlzAttachSummary, setAnlzAttachSummary] = useState(null);
   const [validationIssues, setValidationIssues] = useState([]);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [issueSeverityFilter, setIssueSeverityFilter] = useState('all');
+  const [showValidationIssues, setShowValidationIssues] = useState(false);
+  const [showTrackMeta, setShowTrackMeta] = useState(false);
+  const [showTrackLocation, setShowTrackLocation] = useState(false);
+  const [showTrackAnlzMeta, setShowTrackAnlzMeta] = useState(false);
+  const [showTrackPlaylists, setShowTrackPlaylists] = useState(false);
   const [error, setError] = useState('');
   const [progress, setProgress] = useParseProgress();
   const trackFilterInputRef = useRef(null);
   const tableViewportRef = useRef(null);
+  const audioRegistryRef = useRef(new Map());
+  const [playbackStates, setPlaybackStates] = useState({});
+  const [activeTrackId, setActiveTrackId] = useState(null);
 
   useEffect(() => {
     const bridgeApi = getBridgeApi();
@@ -145,6 +295,10 @@ export function App() {
     bridgeApi.loadState().then((state) => {
       if (state?.lastLibraryPath) {
         setXmlPath(state.lastLibraryPath);
+      }
+
+      if (typeof state?.anlzMapPath === 'string') {
+        setAnlzMapPath(state.anlzMapPath);
       }
 
       if (Array.isArray(state?.selectedFolders)) {
@@ -240,10 +394,14 @@ export function App() {
     setIsParsing(true);
     setError('');
     setValidationIssues([]);
+    setAnlzAttachSummary(null);
     setProgress(0);
 
     try {
-      const result = await bridgeApi.parseLibrary(xmlPath.trim(), selectedFolders);
+      const result = await bridgeApi.parseLibrary(xmlPath.trim(), selectedFolders, {
+        anlzMapPath: anlzMapPath.trim(),
+        anlzMaxTracks: 5000
+      });
       setFolders(result.folders || []);
       setFolderTree(result.folderTree || null);
       if (result.folderTree?.children?.length) {
@@ -255,12 +413,18 @@ export function App() {
       const firstTrackId = result.filteredTracks?.[0]?.id || null;
       setSelectedTrackId(firstTrackId);
       setSummary(result.summary || null);
+      setAnlzAttachSummary(result.anlzAttach || null);
       setValidationIssues(Array.isArray(result.validation?.issues) ? result.validation.issues : []);
       setAnalysisResult(null);
 
+      if (result.anlzAttachError) {
+        setError(`Parsed XML, but ANLZ attach failed: ${result.anlzAttachError}`);
+      }
+
       await bridgeApi.saveState({
         lastLibraryPath: xmlPath.trim(),
-        selectedFolders
+        selectedFolders,
+        anlzMapPath: anlzMapPath.trim()
       });
       const rows = await bridgeApi.getRecentImports();
       setRecentImports(Array.isArray(rows) ? rows : []);
@@ -360,11 +524,172 @@ export function App() {
     });
   }, [tracks, trackQuery]);
 
+  const updatePlaybackState = (trackId, patch) => {
+    setPlaybackStates((current) => ({
+      ...current,
+      [trackId]: {
+        ...(current[trackId] || { status: 'idle', currentTime: 0, duration: 0, loading: false, error: '' }),
+        ...patch
+      }
+    }));
+  };
+
+  const getPlaybackState = (trackId) => {
+    return playbackStates[trackId] || { status: 'idle', currentTime: 0, duration: 0, loading: false, error: '' };
+  };
+
+  const stopPlayback = (trackId) => {
+    if (!trackId) {
+      return;
+    }
+    const entry = audioRegistryRef.current.get(trackId);
+    if (entry?.audio) {
+      entry.audio.pause();
+      entry.audio.currentTime = 0;
+    }
+    updatePlaybackState(trackId, {
+      status: 'idle',
+      currentTime: 0,
+      loading: false
+    });
+  };
+
+  const ensureAudio = (track) => {
+    const trackId = track.id;
+    const existing = audioRegistryRef.current.get(trackId);
+    if (existing?.audio) {
+      return existing.audio;
+    }
+
+    const src = normalizeAudioLocation(track.location);
+    const audio = new Audio();
+    audio.preload = 'metadata';
+    audio.src = src;
+
+    const onLoadedMeta = () => {
+      updatePlaybackState(trackId, {
+        duration: Number.isFinite(audio.duration) ? audio.duration : 0,
+        loading: false,
+        error: ''
+      });
+    };
+    const onTimeUpdate = () => {
+      updatePlaybackState(trackId, {
+        currentTime: audio.currentTime,
+        duration: Number.isFinite(audio.duration) ? audio.duration : getPlaybackState(trackId).duration
+      });
+    };
+    const onPlay = () => {
+      updatePlaybackState(trackId, {
+        status: 'playing',
+        loading: false,
+        error: ''
+      });
+      setActiveTrackId(trackId);
+    };
+    const onPause = () => {
+      updatePlaybackState(trackId, {
+        status: 'paused'
+      });
+    };
+    const onEnded = () => {
+      updatePlaybackState(trackId, {
+        status: 'idle',
+        currentTime: 0
+      });
+    };
+    const onError = () => {
+      updatePlaybackState(trackId, {
+        status: 'error',
+        loading: false,
+        error: 'Audio unavailable or failed to load.'
+      });
+    };
+
+    audio.addEventListener('loadedmetadata', onLoadedMeta);
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+    audio.addEventListener('ended', onEnded);
+    audio.addEventListener('error', onError);
+
+    audioRegistryRef.current.set(trackId, {
+      audio,
+      cleanup: () => {
+        audio.removeEventListener('loadedmetadata', onLoadedMeta);
+        audio.removeEventListener('timeupdate', onTimeUpdate);
+        audio.removeEventListener('play', onPlay);
+        audio.removeEventListener('pause', onPause);
+        audio.removeEventListener('ended', onEnded);
+        audio.removeEventListener('error', onError);
+      }
+    });
+
+    updatePlaybackState(trackId, { loading: true });
+    return audio;
+  };
+
+  const playTrack = async (track, seekSeconds = null) => {
+    if (!track?.location) {
+      updatePlaybackState(track.id, { status: 'error', error: 'Missing audio path.' });
+      return;
+    }
+
+    if (activeTrackId && activeTrackId !== track.id) {
+      stopPlayback(activeTrackId);
+    }
+
+    const audio = ensureAudio(track);
+    const duration = Number.isFinite(audio.duration) && audio.duration > 0
+      ? audio.duration
+      : Number(track.durationSeconds) || 0;
+
+    if (seekSeconds !== null && Number.isFinite(seekSeconds)) {
+      const target = clamp(seekSeconds, 0, duration || seekSeconds);
+      audio.currentTime = target;
+      updatePlaybackState(track.id, { currentTime: target });
+    }
+
+    updatePlaybackState(track.id, { loading: audio.readyState < 1, error: '' });
+    try {
+      await audio.play();
+    } catch {
+      updatePlaybackState(track.id, { status: 'error', loading: false, error: 'Unable to start playback.' });
+    }
+  };
+
+  const togglePlayPause = async (track) => {
+    const state = getPlaybackState(track.id);
+    const entry = audioRegistryRef.current.get(track.id);
+    if (state.status === 'playing' && entry?.audio) {
+      entry.audio.pause();
+      return;
+    }
+
+    await playTrack(track, state.currentTime || 0);
+  };
+
+  const seekFromWaveform = async (track, event) => {
+    const state = getPlaybackState(track.id);
+    const container = event.currentTarget;
+    if (!container) {
+      return;
+    }
+    const rect = container.getBoundingClientRect();
+    const ratio = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+    const duration = Number(state.duration) || Number(track.durationSeconds) || 0;
+    const target = ratio * duration;
+    await playTrack(track, target);
+  };
+
   const sortedTracks = useMemo(() => {
     const values = [...visibleTracks];
     const factor = sortDirection === 'asc' ? 1 : -1;
 
     values.sort((a, b) => {
+      if (sortBy === 'play' || sortBy === 'waveformPreview') {
+        return 0;
+      }
       const aValue = a[sortBy];
       const bValue = b[sortBy];
 
@@ -557,6 +882,14 @@ export function App() {
             {isAnalyzing ? 'Analyzing...' : 'Run Baseline Analysis'}
           </button>
         </div>
+        <div className="row" style={{ marginTop: '8px' }}>
+          <input
+            type="text"
+            placeholder="Optional ANLZ map path (.planning/anlz-track-map.json)"
+            value={anlzMapPath}
+            onChange={(event) => setAnlzMapPath(event.target.value)}
+          />
+        </div>
         {progress !== null && isParsing ? <p className="progress">Parsing in background: {progress}%</p> : null}
         {error ? <p style={{ color: '#be123c', margin: '8px 0 0' }}>{error}</p> : null}
         {summary ? (
@@ -565,42 +898,11 @@ export function App() {
             <span>Playlists: {summary.playlistCount}</span>
             <span>Folders: {summary.folderCount}</span>
             <span>Selected Folders: {selectedFolders.length || 'All'}</span>
+            <span>ANLZ Map: {anlzMapPath.trim() ? 'Configured' : 'Not set'}</span>
+            {anlzAttachSummary ? <span>ANLZ Attached: {anlzAttachSummary.attached || 0}</span> : null}
           </div>
         ) : null}
       </div>
-
-      {validationIssues.length > 0 ? (
-        <div className="card">
-          <h3>Validation Issues ({filteredIssues.length}/{validationIssues.length})</h3>
-          <div className="row" style={{ marginBottom: '8px' }}>
-            <select value={issueSeverityFilter} onChange={(event) => setIssueSeverityFilter(event.target.value)}>
-              <option value="all">All severities</option>
-              <option value="error">Errors</option>
-              <option value="warning">Warnings</option>
-            </select>
-          </div>
-          <table className="track-table">
-            <thead>
-              <tr>
-                <th>Severity</th>
-                <th>Code</th>
-                <th>Message</th>
-                <th>Context</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredIssues.map((issue, index) => (
-                <tr key={`${issue.code}-${index}`}>
-                  <td>{issue.severity}</td>
-                  <td>{issue.code}</td>
-                  <td>{issue.message}</td>
-                  <td>{Object.keys(issue.context || {}).length > 0 ? JSON.stringify(issue.context) : '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
 
       <div className="grid">
         <div className="card">
@@ -705,10 +1007,12 @@ export function App() {
           >
             <table className={`track-table ${tableDensity === 'compact' ? 'compact' : ''}`}>
               <colgroup>
+                {visibleTrackColumns.play ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.play}px` }} /> : null}
                 {visibleTrackColumns.id ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.id}px` }} /> : null}
                 {visibleTrackColumns.title ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.title}px` }} /> : null}
                 {visibleTrackColumns.bpm ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.bpm}px` }} /> : null}
                 {visibleTrackColumns.key ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.key}px` }} /> : null}
+                {visibleTrackColumns.waveformPreview ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.waveformPreview}px` }} /> : null}
                 {visibleTrackColumns.genre ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.genre}px` }} /> : null}
                 {visibleTrackColumns.durationSeconds ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.durationSeconds}px` }} /> : null}
                 {visibleTrackColumns.artist ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.artist}px` }} /> : null}
@@ -716,6 +1020,7 @@ export function App() {
               </colgroup>
               <thead>
                 <tr>
+                  {visibleTrackColumns.play ? <th>Play</th> : null}
                   {visibleTrackColumns.id ? <th>ID</th> : null}
                   {visibleTrackColumns.title ? (
                     <th>
@@ -738,6 +1043,7 @@ export function App() {
                       </button>
                     </th>
                   ) : null}
+                  {visibleTrackColumns.waveformPreview ? <th>Waveform</th> : null}
                   {visibleTrackColumns.genre ? (
                     <th>
                       <button type="button" className="sort-button" onClick={() => toggleSort('genre')}>
@@ -774,10 +1080,50 @@ export function App() {
                     className={track.id === selectedTrackId ? 'selected-row' : ''}
                     onClick={() => setSelectedTrackId(track.id)}
                   >
+                    {visibleTrackColumns.play ? (
+                      <td>
+                        <div className="playback-cell">
+                          <button
+                            type="button"
+                            className="playback-button"
+                            onClick={() => togglePlayPause(track)}
+                            disabled={getPlaybackState(track.id).loading}
+                          >
+                            {getPlaybackState(track.id).loading
+                              ? 'Loading'
+                              : getPlaybackState(track.id).status === 'playing'
+                                ? 'Pause'
+                                : 'Play'}
+                          </button>
+                          <span className="playback-time">
+                            {formatClock(getPlaybackState(track.id).currentTime)}
+                          </span>
+                        </div>
+                        {getPlaybackState(track.id).status === 'error' ? (
+                          <div className="playback-error">{getPlaybackState(track.id).error}</div>
+                        ) : null}
+                      </td>
+                    ) : null}
                     {visibleTrackColumns.id ? <td>{track.trackId || track.id}</td> : null}
                     {visibleTrackColumns.title ? <td>{track.title || '-'}</td> : null}
                     {visibleTrackColumns.bpm ? <td>{track.bpm ?? '-'}</td> : null}
                     {visibleTrackColumns.key ? <td>{track.key || '-'}</td> : null}
+                    {visibleTrackColumns.waveformPreview ? (
+                      <td>
+                        <MiniWaveform
+                          waveform={track.anlzWaveform}
+                          progress={getPlaybackState(track.id).duration
+                            ? getPlaybackState(track.id).currentTime / getPlaybackState(track.id).duration
+                            : 0}
+                          isActive={getPlaybackState(track.id).status === 'playing'
+                            || getPlaybackState(track.id).status === 'paused'}
+                          onSeek={(event) => seekFromWaveform(track, event)}
+                        />
+                        {getPlaybackState(track.id).status === 'error' ? (
+                          <div className="playback-error">{getPlaybackState(track.id).error}</div>
+                        ) : null}
+                      </td>
+                    ) : null}
                     {visibleTrackColumns.genre ? <td>{track.genre || '-'}</td> : null}
                     {visibleTrackColumns.durationSeconds ? <td>{formatDuration(track.durationSeconds)}</td> : null}
                     {visibleTrackColumns.artist ? <td>{track.artist || '-'}</td> : null}
@@ -823,31 +1169,161 @@ export function App() {
         {!selectedTrack ? <p>Select a track row to inspect metadata and source playlists.</p> : null}
         {selectedTrack ? (
           <div>
+            <div className="row" style={{ marginBottom: '8px' }}>
+              <button
+                type="button"
+                className={showTrackMeta ? '' : 'secondary'}
+                style={{ padding: '6px 10px' }}
+                onClick={() => setShowTrackMeta((value) => !value)}
+              >
+                {showTrackMeta ? 'Hide ID' : 'Show ID'}
+              </button>
+              <button
+                type="button"
+                className={showTrackLocation ? '' : 'secondary'}
+                style={{ padding: '6px 10px' }}
+                onClick={() => setShowTrackLocation((value) => !value)}
+              >
+                {showTrackLocation ? 'Hide Location' : 'Show Location'}
+              </button>
+              <button
+                type="button"
+                className={showTrackAnlzMeta ? '' : 'secondary'}
+                style={{ padding: '6px 10px' }}
+                onClick={() => setShowTrackAnlzMeta((value) => !value)}
+              >
+                {showTrackAnlzMeta ? 'Hide ANLZ Meta' : 'Show ANLZ Meta'}
+              </button>
+              <button
+                type="button"
+                className={showTrackPlaylists ? '' : 'secondary'}
+                style={{ padding: '6px 10px' }}
+                onClick={() => setShowTrackPlaylists((value) => !value)}
+              >
+                {showTrackPlaylists ? 'Hide Playlists' : 'Show Playlists'}
+              </button>
+            </div>
             <div className="meta">
-              <span>ID: {selectedTrack.trackId || selectedTrack.id}</span>
+              {showTrackMeta ? <span>ID: {selectedTrack.trackId || selectedTrack.id}</span> : null}
               <span>Artist: {selectedTrack.artist || '-'}</span>
               <span>Title: {selectedTrack.title || '-'}</span>
               <span>BPM: {selectedTrack.bpm ?? '-'}</span>
               <span>Key: {selectedTrack.key || '-'}</span>
             </div>
-            <p style={{ marginTop: '8px' }}>
-              Location: {selectedTrack.location || '-'}
-            </p>
-            <h4 style={{ margin: '12px 0 8px' }}>
-              Source Playlists ({trackPlaylistIndex[selectedTrack.id]?.length || 0})
-            </h4>
-            {(trackPlaylistIndex[selectedTrack.id] || []).length === 0 ? (
-              <p>No playlist references found for this track in the active filter scope.</p>
-            ) : (
-              <ul className="playlist-list">
-                {(trackPlaylistIndex[selectedTrack.id] || []).map((playlistPath) => (
-                  <li key={playlistPath}>{playlistPath}</li>
-                ))}
-              </ul>
-            )}
+            {showTrackLocation ? (
+              <p style={{ marginTop: '8px' }}>
+                Location: {selectedTrack.location || '-'}
+              </p>
+            ) : null}
+            <>
+              <>
+                <h4 style={{ margin: '12px 0 8px' }}>ANLZ Waveform Summary</h4>
+                {selectedTrack.anlzWaveform ? (
+                  <div>
+                    {showTrackAnlzMeta ? (
+                      <>
+                        <div className="meta">
+                          <span>Source: {selectedTrack.anlzWaveform.source || 'anlz-pwv5'}</span>
+                          <span>Samples: {selectedTrack.anlzWaveform.sampleCount || 0}</span>
+                          <span>Duration: {formatDuration(selectedTrack.anlzWaveform.durationSeconds)}</span>
+                          <span>
+                            Avg RGB: (
+                            {selectedTrack.anlzWaveform.avgColor?.red ?? 0},
+                            {selectedTrack.anlzWaveform.avgColor?.green ?? 0},
+                            {selectedTrack.anlzWaveform.avgColor?.blue ?? 0}
+                            )
+                          </span>
+                          <span>Height Avg: {Number(selectedTrack.anlzWaveform.height?.avg || 0).toFixed(2)}</span>
+                          <span>Height Max: {selectedTrack.anlzWaveform.height?.max ?? 0}</span>
+                        </div>
+                        <p style={{ marginTop: '8px' }}>
+                          EXT Path: {selectedTrack.anlzWaveform.extPath || '-'}
+                        </p>
+                      </>
+                    ) : null}
+                    <WaveformPreview waveform={selectedTrack.anlzWaveform} />
+                    {showTrackAnlzMeta ? (
+                      <p style={{ marginTop: '4px', color: '#334155' }}>
+                        Envelope bins (preview): {formatBinPreview(selectedTrack.anlzWaveform.bins)}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p style={{ marginTop: '4px' }}>
+                    No ANLZ waveform attached for this track. Set ANLZ map path and parse again.
+                  </p>
+                )}
+              </>
+            </>
+            {showTrackPlaylists ? (
+              <>
+                <h4 style={{ margin: '12px 0 8px' }}>
+                  Source Playlists ({trackPlaylistIndex[selectedTrack.id]?.length || 0})
+                </h4>
+                {(trackPlaylistIndex[selectedTrack.id] || []).length === 0 ? (
+                  <p>No playlist references found for this track in the active filter scope.</p>
+                ) : (
+                  <ul className="playlist-list">
+                    {(trackPlaylistIndex[selectedTrack.id] || []).map((playlistPath) => (
+                      <li key={playlistPath}>{playlistPath}</li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            ) : null}
           </div>
         ) : null}
       </div>
+
+      {validationIssues.length > 0 ? (
+        <div className="card">
+          <div className="row" style={{ justifyContent: 'space-between', marginBottom: showValidationIssues ? '8px' : '0' }}>
+            <h3 style={{ margin: 0 }}>Validation Issues ({filteredIssues.length}/{validationIssues.length})</h3>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => setShowValidationIssues((value) => !value)}
+            >
+              {showValidationIssues ? 'Hide Issues' : 'Show Issues'}
+            </button>
+          </div>
+          {showValidationIssues ? (
+            <>
+              <div className="row" style={{ marginBottom: '8px' }}>
+                <select value={issueSeverityFilter} onChange={(event) => setIssueSeverityFilter(event.target.value)}>
+                  <option value="all">All severities</option>
+                  <option value="error">Errors</option>
+                  <option value="warning">Warnings</option>
+                </select>
+              </div>
+              <table className="track-table">
+                <thead>
+                  <tr>
+                    <th>Severity</th>
+                    <th>Code</th>
+                    <th>Message</th>
+                    <th>Context</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredIssues.map((issue, index) => (
+                    <tr key={`${issue.code}-${index}`}>
+                      <td>{issue.severity}</td>
+                      <td>{issue.code}</td>
+                      <td>{issue.message}</td>
+                      <td>{Object.keys(issue.context || {}).length > 0 ? JSON.stringify(issue.context) : '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          ) : (
+            <p style={{ margin: '8px 0 0', color: '#475569' }}>
+              Hidden by default so library browsing stays in focus.
+            </p>
+          )}
+        </div>
+      ) : null}
 
       <div className="card">
         <h3>Recent Imports</h3>

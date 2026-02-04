@@ -2,7 +2,12 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('rbfa', {
   pickXmlFile: () => ipcRenderer.invoke('dialog:pickXml'),
-  parseLibrary: (xmlPath, selectedFolders) => ipcRenderer.invoke('library:parse', { xmlPath, selectedFolders }),
+  parseLibrary: (xmlPath, selectedFolders, options = {}) => ipcRenderer.invoke('library:parse', {
+    xmlPath,
+    selectedFolders,
+    anlzMapPath: options?.anlzMapPath || null,
+    anlzMaxTracks: options?.anlzMaxTracks
+  }),
   runBaselineAnalysis: (tracks, sourceXmlPath, selectedFolders) => ipcRenderer.invoke('analysis:baseline', {
     tracks,
     sourceXmlPath,

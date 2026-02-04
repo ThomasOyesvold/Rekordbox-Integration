@@ -22,6 +22,21 @@ Run tests:
 npm test
 ```
 
+Waveform POC extraction from Rekordbox `.EXT` files:
+
+```bash
+npm run extract:waveform -- --ext /path/to/ANLZ0000.EXT --limit 100 --out .planning/waveform-sample.json
+```
+
+Build TrackID -> ANLZ mapping (PPTH filename correlation):
+
+```bash
+npm run map:anlz -- --xml /path/to/rekordbox.xml --usbanlz /path/to/PIONEER/USBANLZ --out .planning/anlz-track-map.json
+```
+
+In Electron UI, paste the same mapping path into the optional `ANLZ map path` field before parsing to attach waveform summaries to track details.
+Track Details will then show ANLZ metadata plus a desktop waveform preview chart colored from ANLZ PWV5 bin colors.
+
 ## Project Guide
 
 For a full walkthrough (architecture, data flow, feature map, troubleshooting, roadmap), read:
@@ -45,6 +60,7 @@ For a full walkthrough (architecture, data flow, feature map, troubleshooting, r
   - sticky headers
   - pagination
   - virtualized row rendering in viewport
+  - per-track play/pause with mini waveform seek + playhead
 - Duration formatting in `m:ss`
 - Track detail panel with source playlists
 - Validation issue table (error/warning severity filtering)
@@ -61,6 +77,7 @@ npm run cli -- parse /path/to/library.xml
 npm run cli -- parse /path/to/library.xml "ROOT/Techno"
 npm run cli -- analyze /path/to/library.xml
 npm run cli -- analyze /path/to/library.xml "ROOT/Techno"
+npm run cli -- analyze /path/to/library.xml --anlz-map .planning/anlz-track-map.json --anlz-max-tracks 2000
 ```
 
 ## Build Renderer (Production)

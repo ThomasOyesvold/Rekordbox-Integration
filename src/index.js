@@ -5,11 +5,12 @@ import { runBaselineAnalysis } from './services/baselineAnalyzerService.js';
 import { startBackgroundParse } from './services/parseService.js';
 import { initDatabase } from './state/sqliteStore.js';
 import { saveState } from './state/stateStore.js';
+import { attachAnlzWaveformSummaries } from './services/anlzWaveformService.js';
 
 function printUsage() {
   console.log('Usage:');
   console.log('  node src/index.js parse <path-to-rekordbox.xml> [folder ...]');
-  console.log('  node src/index.js analyze <path-to-rekordbox.xml> [folder ...]');
+  console.log('  node src/index.js analyze <path-to-rekordbox.xml> [folder ...] [--anlz-map /path/to/anlz-track-map.json] [--anlz-max-tracks 2000]');
 }
 
 async function runParseCommand(args) {
@@ -53,7 +54,27 @@ async function runParseCommand(args) {
 
 async function runAnalyzeCommand(args) {
   const xmlPath = args[0];
-  const selectedFolders = args.slice(1);
+  const selectedFolders = [];
+  let anlzMapPath = null;
+  let anlzMaxTracks = Infinity;
+
+  for (let index = 1; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === '--anlz-map' && args[index + 1]) {
+      anlzMapPath = args[index + 1];
+      index += 1;
+      continue;
+    }
+    if (arg === '--anlz-max-tracks' && args[index + 1]) {
+      const limit = Number(args[index + 1]);
+      if (Number.isFinite(limit) && limit > 0) {
+        anlzMaxTracks = Math.floor(limit);
+      }
+      index += 1;
+      continue;
+    }
+    selectedFolders.push(arg);
+  }
 
   if (!xmlPath) {
     printUsage();
@@ -64,6 +85,19 @@ async function runAnalyzeCommand(args) {
   initDatabase(path.resolve('.planning/rbfa.db'));
   const library = await startBackgroundParse(xmlPath, () => {});
   const tracks = filterTracksByFolders(library, selectedFolders);
+
+  if (anlzMapPath) {
+    const waveformLoad = await attachAnlzWaveformSummaries(tracks, {
+      mappingPath: anlzMapPath,
+      maxTracks: anlzMaxTracks
+    });
+    console.log(
+      'ANLZ summaries attached: '
+      + `${waveformLoad.attached}/${tracks.length} `
+      + `(attempted=${waveformLoad.attempted}, missingMapping=${waveformLoad.missingMapping}, `
+      + `cacheHits=${waveformLoad.cacheHits}, parsedFromFile=${waveformLoad.parsedFromFile})`
+    );
+  }
 
   const summary = runBaselineAnalysis({
     tracks,

@@ -21,6 +21,14 @@ Windows desktop tool for Rekordbox XML parsing and flow-oriented playlist prep.
 - Folder pane shows quick library stats (BPM range, avg duration, genre count, key coverage).
 - Baseline analysis table now includes a human-readable "Why" column per match.
 - Parser warns when nested `TRACK` metadata exists (`NESTED_TRACK_DATA_UNSUPPORTED`) so gaps are explicit.
+- ANLZ pipeline now supports:
+  - PPTH-based TrackID -> `.EXT` mapping generation
+  - duration/token disambiguation for duplicate filenames
+  - waveform summary extraction from PWV5
+  - SQLite cache for waveform summaries (reuse on subsequent runs)
+  - desktop track details waveform preview rendered from ANLZ bins with per-bin ANLZ colors
+  - optional mini waveform preview column in track table (toggle via Columns -> Waveform)
+- Per-track audio playback in track table with play/pause, mini-waveform seek, and playhead progress indicator.
 
 ## Key Files
 - `electron/main.js`
@@ -57,10 +65,11 @@ VITE_DEV_SERVER_URL=http://localhost:5173 npm run start:electron:safe
 - `65aa21a` expanded Rekordbox schema validation coverage
 
 ## Next Tasks
-1. Parse selected nested `TRACK` metadata blocks (`TEMPO`, `POSITION_MARK`) into optional features.
-2. Add folder-level analysis summary cards per selected folder.
-3. Add integration test coverage for keyboard shortcuts and issue filtering.
-4. Add actionable remediation text for parser warnings in UI.
+1. Improve ANLZ mapping coverage above current `80.11%` using stronger secondary matcher for renamed files and duplicate stems.
+2. Add integration coverage for ANLZ-assisted analysis path.
+3. Add optional mapping confidence threshold/reporting to avoid low-confidence auto-links.
+4. Add renderer control for ANLZ attach limits instead of fixed parse-time max.
+5. Add optional keyboard shortcut to toggle playback on selected track.
 
 ## Notes
 - Keep commits small and push feature slices.

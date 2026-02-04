@@ -7,11 +7,13 @@ import {
   closeDatabase,
   completeAnalysisRun,
   createAnalysisRun,
+  getAnlzWaveformSummary,
   getAnalysisRun,
   getCachedSimilarity,
   getRecentImports,
   getTrackSignature,
   initDatabase,
+  saveAnlzWaveformSummary,
   saveImportHistory,
   saveSimilarityScore,
   upsertTrackSignature
@@ -100,6 +102,37 @@ test('sqlite store caches signatures and similarity scores with analysis runs', 
   const run = getAnalysisRun(runId);
   assert.equal(run.status, 'completed');
   assert.ok(run.completedAt);
+
+  closeDatabase();
+  await fs.rm(tempDir, { recursive: true, force: true });
+});
+
+test('sqlite store caches ANLZ waveform summaries by ext path', async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rbfa-sqlite-'));
+  const dbPath = path.join(tempDir, 'rbfa.db');
+
+  initDatabase(dbPath);
+
+  saveAnlzWaveformSummary({
+    extPath: '/tmp/USBANLZ/000/abc/ANLZ0000.EXT',
+    sampleCount: 12000,
+    durationSeconds: 80,
+    avgColor: { red: 12, green: 18, blue: 180 },
+    height: { avg: 11.3, max: 31 },
+    bins: [1, 2, 3, 4],
+    binColors: [
+      { red: 1, green: 2, blue: 3 },
+      { red: 4, green: 5, blue: 6 }
+    ]
+  });
+
+  const cached = getAnlzWaveformSummary('/tmp/USBANLZ/000/abc/ANLZ0000.EXT');
+  assert.ok(cached);
+  assert.equal(cached.sampleCount, 12000);
+  assert.equal(cached.avgColor.blue, 180);
+  assert.equal(cached.height.max, 31);
+  assert.deepEqual(cached.bins, [1, 2, 3, 4]);
+  assert.equal(cached.binColors[0].blue, 3);
 
   closeDatabase();
   await fs.rm(tempDir, { recursive: true, force: true });

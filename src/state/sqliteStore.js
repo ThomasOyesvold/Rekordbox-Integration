@@ -85,9 +85,25 @@ export function initDatabase(dbFilePath) {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS anlz_waveform_cache (
+      ext_path TEXT PRIMARY KEY,
+      sample_count INTEGER NOT NULL,
+      duration_seconds REAL NOT NULL,
+      avg_red INTEGER NOT NULL,
+      avg_green INTEGER NOT NULL,
+      avg_blue INTEGER NOT NULL,
+      height_avg REAL NOT NULL,
+      height_max INTEGER NOT NULL,
+      bins TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
+
   db.exec('CREATE INDEX IF NOT EXISTS idx_import_history_parsed_at ON import_history(parsed_at DESC);');
   db.exec('CREATE INDEX IF NOT EXISTS idx_analysis_runs_created_at ON analysis_runs(created_at DESC);');
   db.exec('CREATE INDEX IF NOT EXISTS idx_track_similarity_computed_at ON track_similarity(computed_at DESC);');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_anlz_waveform_cache_updated_at ON anlz_waveform_cache(updated_at DESC);');
 
   return db;
 }
@@ -334,4 +350,98 @@ export function closeDatabase() {
     db.close();
     db = null;
   }
+}
+
+export function saveAnlzWaveformSummary(entry) {
+  assertDb();
+
+  const statement = db.prepare(`
+    INSERT INTO anlz_waveform_cache (
+      ext_path,
+      sample_count,
+      duration_seconds,
+      avg_red,
+      avg_green,
+      avg_blue,
+      height_avg,
+      height_max,
+      bins,
+      updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(ext_path) DO UPDATE SET
+      sample_count = excluded.sample_count,
+      duration_seconds = excluded.duration_seconds,
+      avg_red = excluded.avg_red,
+      avg_green = excluded.avg_green,
+      avg_blue = excluded.avg_blue,
+      height_avg = excluded.height_avg,
+      height_max = excluded.height_max,
+      bins = excluded.bins,
+      updated_at = excluded.updated_at
+  `);
+
+  const heights = Array.isArray(entry.bins) ? entry.bins : [];
+  const colors = Array.isArray(entry.binColors) ? entry.binColors : [];
+  statement.run(
+    String(entry.extPath),
+    Number(entry.sampleCount) || 0,
+    Number(entry.durationSeconds) || 0,
+    Number(entry.avgColor?.red) || 0,
+    Number(entry.avgColor?.green) || 0,
+    Number(entry.avgColor?.blue) || 0,
+    Number(entry.height?.avg) || 0,
+    Number(entry.height?.max) || 0,
+    JSON.stringify({
+      heights,
+      colors
+    }),
+    new Date().toISOString()
+  );
+}
+
+export function getAnlzWaveformSummary(extPath) {
+  assertDb();
+
+  const statement = db.prepare(`
+    SELECT
+      ext_path,
+      sample_count,
+      duration_seconds,
+      avg_red,
+      avg_green,
+      avg_blue,
+      height_avg,
+      height_max,
+      bins,
+      updated_at
+    FROM anlz_waveform_cache
+    WHERE ext_path = ?
+  `);
+
+  const row = statement.get(String(extPath));
+  if (!row) {
+    return null;
+  }
+
+  const parsedBins = parseJson(row.bins, []);
+  const bins = Array.isArray(parsedBins) ? parsedBins : (Array.isArray(parsedBins?.heights) ? parsedBins.heights : []);
+  const binColors = Array.isArray(parsedBins?.colors) ? parsedBins.colors : [];
+
+  return {
+    extPath: row.ext_path,
+    sampleCount: row.sample_count,
+    durationSeconds: row.duration_seconds,
+    avgColor: {
+      red: row.avg_red,
+      green: row.avg_green,
+      blue: row.avg_blue
+    },
+    height: {
+      avg: row.height_avg,
+      max: row.height_max
+    },
+    bins,
+    binColors,
+    updatedAt: row.updated_at
+  };
 }

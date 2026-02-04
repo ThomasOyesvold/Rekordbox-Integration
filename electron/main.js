@@ -14,6 +14,7 @@ import { buildAnalysisCsv, buildAnalysisJson } from '../src/services/analysisExp
 import { startBackgroundParse } from '../src/services/parseService.js';
 import { getRecentImports, initDatabase, saveImportHistory } from '../src/state/sqliteStore.js';
 import { loadState, saveState } from '../src/state/stateStore.js';
+import { attachAnlzWaveformSummaries } from '../src/services/anlzWaveformService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,6 +65,11 @@ ipcMain.handle('dialog:pickXml', async () => {
 ipcMain.handle('library:parse', async (_event, payload) => {
   const xmlPath = payload?.xmlPath;
   const selectedFolders = Array.isArray(payload?.selectedFolders) ? payload.selectedFolders : [];
+  const anlzMapPath = typeof payload?.anlzMapPath === 'string' ? payload.anlzMapPath.trim() : '';
+  const anlzMaxTracksRaw = Number(payload?.anlzMaxTracks);
+  const anlzMaxTracks = Number.isFinite(anlzMaxTracksRaw) && anlzMaxTracksRaw > 0
+    ? Math.floor(anlzMaxTracksRaw)
+    : Infinity;
 
   if (!xmlPath) {
     throw new Error('Missing xmlPath.');
@@ -84,6 +90,19 @@ ipcMain.handle('library:parse', async (_event, payload) => {
   }
 
   const filteredTracks = filterTracksByFolders(library, selectedFolders);
+  let anlzAttach = null;
+  let anlzAttachError = null;
+  if (anlzMapPath) {
+    try {
+      anlzAttach = await attachAnlzWaveformSummaries(filteredTracks, {
+        mappingPath: anlzMapPath,
+        maxTracks: anlzMaxTracks
+      });
+    } catch (error) {
+      anlzAttachError = error.message || String(error);
+    }
+  }
+
   const scopedPlaylists = selectPlaylistsByFolders(library.playlists, selectedFolders);
   const trackPlaylistIndex = buildTrackPlaylistIndex(scopedPlaylists);
   const summary = summarizeLibrary(library);
@@ -103,6 +122,8 @@ ipcMain.handle('library:parse', async (_event, payload) => {
     playlists: scopedPlaylists,
     trackPlaylistIndex,
     filteredTracks,
+    anlzAttach,
+    anlzAttachError,
     parsedAt: library.parsedAt,
     validation: library.validation || { issues: [], warningCount: 0, errorCount: 0 }
   };

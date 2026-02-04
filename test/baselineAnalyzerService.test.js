@@ -141,3 +141,43 @@ test('baseline analyzer uses nested Rekordbox metadata in waveform and rhythm sc
   assert.ok(waveformClose > waveformFar);
   assert.ok(rhythmClose > rhythmFar);
 });
+
+test('baseline analyzer prefers ANLZ waveform summaries when present', () => {
+  const trackA = {
+    id: 'a',
+    bpm: 125,
+    key: '8A',
+    durationSeconds: 360,
+    anlzWaveform: {
+      bins: [2, 4, 8, 12, 8, 4, 2],
+      avgColor: { red: 20, green: 40, blue: 200 },
+      durationSeconds: 360
+    }
+  };
+
+  const trackB = {
+    id: 'b',
+    bpm: 125,
+    key: '8A',
+    durationSeconds: 361,
+    anlzWaveform: {
+      bins: [2, 5, 8, 11, 8, 4, 2],
+      avgColor: { red: 18, green: 41, blue: 198 },
+      durationSeconds: 361
+    }
+  };
+
+  const trackC = {
+    id: 'c',
+    bpm: 125,
+    key: '8A',
+    durationSeconds: 300,
+    anlzWaveform: {
+      bins: [25, 22, 20, 18, 16, 14, 12],
+      avgColor: { red: 220, green: 80, blue: 10 },
+      durationSeconds: 300
+    }
+  };
+
+  assert.ok(computeWaveformScore(trackA, trackB) > computeWaveformScore(trackA, trackC));
+});
