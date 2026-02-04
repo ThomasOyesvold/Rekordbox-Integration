@@ -3,14 +3,20 @@ import { parseXmlAttributes } from './xmlAttributes.js';
 const VALIDATION_CODES = {
   missingCollection: 'MISSING_COLLECTION',
   missingRoot: 'MISSING_ROOT',
+  invalidCollectionEntries: 'INVALID_COLLECTION_ENTRIES',
   unescapedAmpersand: 'UNESCAPED_AMPERSAND',
   missingTrackIdentity: 'MISSING_TRACK_IDENTITY',
+  missingTrackTitle: 'MISSING_TRACK_TITLE',
+  missingTrackArtist: 'MISSING_TRACK_ARTIST',
   duplicateTrackId: 'DUPLICATE_TRACK_ID',
   invalidBpm: 'INVALID_BPM',
   invalidDuration: 'INVALID_DURATION',
   invalidBitrate: 'INVALID_BITRATE',
   suspiciousLocationEncoding: 'SUSPICIOUS_LOCATION_ENCODING',
   missingWindowsPath: 'MISSING_WINDOWS_PATH',
+  missingNodeName: 'MISSING_NODE_NAME',
+  invalidNodeType: 'INVALID_NODE_TYPE',
+  playlistWithoutTracks: 'PLAYLIST_WITHOUT_TRACKS',
   danglingTrackReference: 'DANGLING_TRACK_REFERENCE'
 };
 
@@ -47,6 +53,24 @@ function validateTrackAttributes(rawAttributes, attributes, issues, index) {
         'Track contains a raw ampersand. XML may fail in strict parsers.',
         { trackIndex: index, trackId: attributes.TrackID || null }
       )
+    );
+  }
+
+  if (!attributes.Name) {
+    issues.push(
+      createIssue('warning', VALIDATION_CODES.missingTrackTitle, 'Track is missing title (Name).', {
+        trackIndex: index,
+        trackId: attributes.TrackID || null
+      })
+    );
+  }
+
+  if (!attributes.Artist) {
+    issues.push(
+      createIssue('warning', VALIDATION_CODES.missingTrackArtist, 'Track is missing artist.', {
+        trackIndex: index,
+        trackId: attributes.TrackID || null
+      })
     );
   }
 
@@ -93,13 +117,14 @@ function validateTrackAttributes(rawAttributes, attributes, issues, index) {
 }
 
 function parseCollection(xmlText, issues) {
-  const collectionMatch = /<COLLECTION\b[^>]*>([\s\S]*?)<\/COLLECTION>/i.exec(xmlText);
+  const collectionMatch = /<COLLECTION\b([^>]*)>([\s\S]*?)<\/COLLECTION>/i.exec(xmlText);
   if (!collectionMatch) {
     issues.push(createIssue('error', VALIDATION_CODES.missingCollection, 'Missing <COLLECTION> section.'));
     return [];
   }
 
-  const collectionBody = collectionMatch[1];
+  const collectionAttributes = parseXmlAttributes(collectionMatch[1] || '');
+  const collectionBody = collectionMatch[2];
   const trackRegex = /<TRACK\b([^>]*?)(?:\/?)>/gi;
   const tracks = [];
   const seenIds = new Set();
@@ -165,6 +190,23 @@ function parseCollection(xmlText, issues) {
     index += 1;
   }
 
+  if (collectionAttributes.Entries !== undefined) {
+    const declaredEntries = Number(collectionAttributes.Entries);
+    if (!Number.isFinite(declaredEntries) || declaredEntries !== tracks.length) {
+      issues.push(
+        createIssue(
+          'warning',
+          VALIDATION_CODES.invalidCollectionEntries,
+          'COLLECTION Entries attribute does not match parsed track count.',
+          {
+            declaredEntries: collectionAttributes.Entries,
+            parsedTracks: tracks.length
+          }
+        )
+      );
+    }
+  }
+
   return tracks;
 }
 
@@ -185,6 +227,17 @@ function parsePlaylists(xmlText, issues) {
       const node = stack.pop();
 
       if (node && node.kind === 'playlist') {
+        if (node.trackIds.length === 0) {
+          issues.push(
+            createIssue(
+              'warning',
+              VALIDATION_CODES.playlistWithoutTracks,
+              'Playlist node has no track references.',
+              { playlist: node.path || node.name || null }
+            )
+          );
+        }
+
         playlists.push({
           name: node.name,
           path: node.path,
@@ -201,6 +254,24 @@ function parsePlaylists(xmlText, issues) {
       const name = attributes.Name || '';
       const type = attributes.Type || '';
       const isSelfClosing = token[0].endsWith('/>');
+      const isKnownType = type === '0' || type === '1';
+
+      if (!isKnownType) {
+        issues.push(
+          createIssue('warning', VALIDATION_CODES.invalidNodeType, 'NODE has unexpected Type value.', {
+            type,
+            name: name || null
+          })
+        );
+      }
+
+      if (!name) {
+        issues.push(
+          createIssue('warning', VALIDATION_CODES.missingNodeName, 'NODE is missing Name attribute.', {
+            type: type || null
+          })
+        );
+      }
 
       const parentPath = stack.length > 0 ? stack[stack.length - 1].path : '';
       const currentPath = parentPath && name ? `${parentPath}/${name}` : name;
@@ -215,6 +286,16 @@ function parsePlaylists(xmlText, issues) {
       if (!isSelfClosing) {
         stack.push(node);
       } else if (node.kind === 'playlist') {
+        if (node.trackIds.length === 0) {
+          issues.push(
+            createIssue(
+              'warning',
+              VALIDATION_CODES.playlistWithoutTracks,
+              'Playlist node has no track references.',
+              { playlist: node.path || node.name || null }
+            )
+          );
+        }
         playlists.push(node);
       }
 

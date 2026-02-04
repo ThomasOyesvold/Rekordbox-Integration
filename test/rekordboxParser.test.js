@@ -28,7 +28,7 @@ test('parseRekordboxXml rejects non-Rekordbox XML', () => {
 test('parseRekordboxXml reports non-fatal warnings for malformed fields', () => {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <DJ_PLAYLISTS Version="1.0.0">
-  <COLLECTION Entries="1">
+  <COLLECTION Entries="2">
     <TRACK TrackID="1" Name="T" Artist="A" AverageBpm="fast" TotalTime="NaN" BitRate="x" Location="file://localhost/C:/Music/Track%2FOne.mp3" />
   </COLLECTION>
   <PLAYLISTS>
@@ -47,7 +47,31 @@ test('parseRekordboxXml reports non-fatal warnings for malformed fields', () => 
   assert.ok(codes.includes('INVALID_DURATION'));
   assert.ok(codes.includes('INVALID_BITRATE'));
   assert.ok(codes.includes('SUSPICIOUS_LOCATION_ENCODING'));
+  assert.ok(codes.includes('INVALID_COLLECTION_ENTRIES'));
   assert.ok(codes.includes('DANGLING_TRACK_REFERENCE'));
+});
+
+test('parseRekordboxXml reports playlist node structure warnings', () => {
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<DJ_PLAYLISTS Version="1.0.0">
+  <COLLECTION Entries="1">
+    <TRACK TrackID="1" Name="T" Artist="A" Location="file://localhost/C:/Music/Track.mp3" />
+  </COLLECTION>
+  <PLAYLISTS>
+    <NODE Type="1" Name="ROOT" Count="1">
+      <NODE Type="7" Name="" Count="1">
+        <NODE Type="0" Name="Empty Playlist" Entries="0"></NODE>
+      </NODE>
+    </NODE>
+  </PLAYLISTS>
+</DJ_PLAYLISTS>`;
+
+  const library = parseRekordboxXml(xml);
+  const codes = library.validation.issues.map((issue) => issue.code);
+
+  assert.ok(codes.includes('INVALID_NODE_TYPE'));
+  assert.ok(codes.includes('MISSING_NODE_NAME'));
+  assert.ok(codes.includes('PLAYLIST_WITHOUT_TRACKS'));
 });
 
 test('parseRekordboxXml throws structured validation error for missing collection', () => {

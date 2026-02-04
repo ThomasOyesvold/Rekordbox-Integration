@@ -17,6 +17,7 @@ Completed:
 - Nested folder tree filter UI
 - SQLite persistence for import history
 - Structured XML validation issues in UI
+- Expanded Rekordbox-specific validation rules (collection entries, node type/name, empty playlists, missing metadata)
 - Unit tests for parser/services/state
 
 Not started yet:

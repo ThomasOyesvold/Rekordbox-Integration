@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-04)
 ## Current Position
 
 Phase: 1 of 6 (Foundation & Data Layer)
-Plan: 4 completed implementation slices
+Plan: 5 completed implementation slices
 Status: In progress (working desktop foundation)
-Last activity: 2026-02-04 — Added structured XML validation and UI reporting
+Last activity: 2026-02-04 — Expanded Rekordbox-specific XML validation rules and tests
 
-Progress: [██░░░░░░░░] ~20%
+Progress: [███░░░░░░░] ~25%
 
 ## Completed work (code)
 
@@ -24,11 +24,12 @@ Progress: [██░░░░░░░░] ~20%
 - Nested folder tree filter UI
 - SQLite import history storage and UI table
 - Validation issue reporting with severity/code/context
+- Expanded schema-style validation checks (collection entries, node type/name, empty playlists, missing track fields)
 - Tests for parser, services, state, sqlite store
 
 ## Pending Todos
 
-1. Expand Rekordbox-specific validation rules and tighten fatal vs warning criteria
+1. Tighten fatal vs warning criteria for specific Rekordbox parsing failures
 2. Add source playlist references in track table/details
 3. Define Phase 2 schema for similarity cache in SQLite
 4. Add larger real-world XML fixtures and edge-case tests
@@ -41,5 +42,5 @@ Progress: [██░░░░░░░░] ~20%
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: XML validation + issue reporting done and pushed
+Stopped at: Rekordbox-specific validation rules expanded and parser tests updated
 Resume anchor: `HANDOFF.md` and latest commit history
