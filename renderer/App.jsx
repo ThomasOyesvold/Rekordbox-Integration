@@ -109,14 +109,25 @@ function formatBinPreview(bins, maxItems = 20) {
     .join(', ');
 }
 
-function normalizeAudioLocation(rawLocation) {
+function normalizeAudioLocation(rawLocation, options = {}) {
   if (!rawLocation) {
+    if (options.debug) {
+      console.log('[rbfa] normalizeAudioLocation: empty input');
+    }
     return '';
   }
 
   const bridge = getBridgeApi();
   const platform = bridge?.platform || '';
   const isWsl = Boolean(bridge?.isWsl);
+
+  if (options.debug) {
+    console.log('[rbfa] normalizeAudioLocation START', {
+      rawLocation,
+      platform,
+      isWsl
+    });
+  }
 
   let cleaned = String(rawLocation)
     .replace(/^file:\/\/localhost\//i, '/')
@@ -125,8 +136,15 @@ function normalizeAudioLocation(rawLocation) {
     .replace(/\\/g, '/')
     .trim();
 
+  if (options.debug) {
+    console.log('[rbfa] After initial cleaning', { cleaned });
+  }
+
   if (/^\/[A-Za-z]:\//.test(cleaned)) {
     cleaned = cleaned.slice(1);
+    if (options.debug) {
+      console.log('[rbfa] Removed leading slash before drive letter', { cleaned });
+    }
   }
 
   // Map Windows drive paths to WSL mounts when running on Linux/WSL.
@@ -134,15 +152,28 @@ function normalizeAudioLocation(rawLocation) {
     const driveLetter = cleaned[0].toLowerCase();
     const rest = cleaned.slice(2); // keep leading /
     cleaned = `/mnt/${driveLetter}${rest}`;
+    if (options.debug) {
+      console.log('[rbfa] Mapped to WSL mount path', { cleaned, driveLetter });
+    }
   }
 
   try {
-    cleaned = decodeURIComponent(cleaned);
+    const decoded = decodeURIComponent(cleaned);
+    if (options.debug && decoded !== cleaned) {
+      console.log('[rbfa] URI decoded', { before: cleaned, after: decoded });
+    }
+    cleaned = decoded;
   } catch {
     // Keep raw value if it is not valid URI encoding.
+    if (options.debug) {
+      console.log('[rbfa] URI decode failed, keeping raw value');
+    }
   }
 
   if (!cleaned) {
+    if (options.debug) {
+      console.log('[rbfa] normalizeAudioLocation: empty after processing');
+    }
     return '';
   }
 
@@ -150,25 +181,34 @@ function normalizeAudioLocation(rawLocation) {
     .replace(/#/g, '%23')
     .replace(/\?/g, '%3F');
 
+  let fileUrl = '';
   if (/^[A-Za-z]:\//.test(cleaned)) {
-    return `file:///${encoded}`;
-  }
-
-  if (cleaned.startsWith('/')) {
-    return `file://${encoded}`;
-  }
-
-  const hasScheme = /^[A-Za-z][A-Za-z0-9+.-]*:/.test(encoded);
-  if (!hasScheme) {
-    if (/^[A-Za-z]:\//.test(encoded)) {
-      return `file:///${encoded}`;
+    fileUrl = `file:///${encoded}`;
+  } else if (cleaned.startsWith('/')) {
+    fileUrl = `file://${encoded}`;
+  } else {
+    const hasScheme = /^[A-Za-z][A-Za-z0-9+.-]*:/.test(encoded);
+    if (!hasScheme) {
+      if (/^[A-Za-z]:\//.test(encoded)) {
+        fileUrl = `file:///${encoded}`;
+      } else if (encoded.startsWith('/')) {
+        fileUrl = `file://${encoded}`;
+      } else {
+        fileUrl = encoded;
+      }
+    } else {
+      fileUrl = encoded;
     }
-    if (encoded.startsWith('/')) {
-      return `file://${encoded}`;
-    }
   }
 
-  return encoded;
+  if (options.debug) {
+    console.log('[rbfa] normalizeAudioLocation RESULT', {
+      fsPath: cleaned,
+      fileUrl
+    });
+  }
+
+  return fileUrl;
 }
 
 function clamp(value, min, max) {
@@ -590,21 +630,36 @@ export function App() {
     });
   };
 
-  const ensureAudio = (track) => {
+  const ensureAudio = (track, srcOverride = '') => {
     const trackId = track.id;
     const existing = audioRegistryRef.current.get(trackId);
-    const src = normalizeAudioLocation(track.location);
+    const src = srcOverride || normalizeAudioLocation(track.location);
+
+    console.log('[rbfa] ensureAudio', {
+      trackId,
+      rawLocation: track.location,
+      normalizedSrc: src,
+      hasExisting: Boolean(existing)
+    });
+
     if (!src) {
       console.warn('[rbfa] empty audio src', { trackId, location: track.location });
     }
+
     if (existing?.audio) {
       if (src && existing.audio.src !== src) {
+        console.log('[rbfa] Updating audio src', {
+          trackId,
+          oldSrc: existing.audio.src,
+          newSrc: src
+        });
         existing.audio.src = src;
         existing.audio.load();
       }
       return existing.audio;
     }
 
+    console.log('[rbfa] Creating new Audio element', { trackId, src });
     const audio = new Audio();
     audio.preload = 'metadata';
     audio.src = src;
@@ -643,14 +698,36 @@ export function App() {
     };
     const onError = () => {
       const mediaError = audio.error;
-      const errorCode = mediaError?.code ? ` (code ${mediaError.code})` : '';
+      const errorCode = mediaError?.code;
+      let errorMsg = 'Audio unavailable or failed to load';
+
+      // Map MediaError codes to user-friendly messages
+      if (errorCode === 1) {
+        errorMsg = 'Audio loading aborted';
+      } else if (errorCode === 2) {
+        errorMsg = 'Network error loading audio';
+      } else if (errorCode === 3) {
+        errorMsg = 'Audio format not supported or file corrupted';
+      } else if (errorCode === 4) {
+        errorMsg = 'Audio source not found or not accessible';
+      } else if (errorCode) {
+        errorMsg = `${errorMsg} (code ${errorCode})`;
+      }
+
       updatePlaybackState(trackId, {
         status: 'error',
         loading: false,
-        error: `Audio unavailable or failed to load${errorCode}.`
+        error: errorMsg
       });
-      // Helpful during dev runs
-      console.error('[rbfa] audio error', { trackId, src: audio.src, mediaError });
+
+      console.error('[rbfa] audio error', {
+        trackId,
+        src: audio.src,
+        mediaError: {
+          code: errorCode,
+          message: mediaError?.message
+        }
+      });
     };
 
     audio.addEventListener('loadedmetadata', onLoadedMeta);
@@ -679,14 +756,84 @@ export function App() {
   const playTrack = async (track, seekSeconds = null) => {
     if (!track?.location) {
       updatePlaybackState(track.id, { status: 'error', error: 'Missing audio path.' });
+      console.error('[rbfa] playTrack: missing location', { trackId: track.id });
       return;
     }
 
+    console.log('[rbfa] playTrack START', {
+      trackId: track.id,
+      title: track.title,
+      rawLocation: track.location,
+      seekSeconds
+    });
+
     if (activeTrackId && activeTrackId !== track.id) {
+      console.log('[rbfa] stopping previous track', { activeTrackId });
       stopPlayback(activeTrackId);
     }
 
-    const audio = ensureAudio(track);
+    // Get normalized file URL and filesystem path
+    const bridgeApi = getBridgeApi();
+    let fileUrl = normalizeAudioLocation(track.location, { debug: true });
+
+    // Verify file exists and is readable using bridge API
+    if (bridgeApi?.resolveAudioPath) {
+      const pathInfo = await bridgeApi.resolveAudioPath(track.location);
+      console.log('[rbfa] File verification result', pathInfo);
+
+      if (pathInfo?.fileUrl) {
+        fileUrl = pathInfo.fileUrl;
+      }
+
+      if (!pathInfo.exists) {
+        let errorMsg = `File not found: ${pathInfo.fsPath || track.location}`;
+        if (pathInfo.parentExists) {
+          errorMsg += ' (Parent folder exists; filename or encoding may not match.)';
+        }
+        if (pathInfo.hadEncodedSegments) {
+          errorMsg += ' (Path contains encoded characters; verify Rekordbox XML matches actual folder names.)';
+        }
+        updatePlaybackState(track.id, {
+          status: 'error',
+          loading: false,
+          error: errorMsg
+        });
+        console.error('[rbfa] File does not exist', {
+          trackId: track.id,
+          rawLocation: track.location,
+          fsPath: pathInfo.fsPath,
+          fileUrl
+        });
+        return;
+      }
+
+      if (!pathInfo.readable) {
+        const errorMsg = `Permission denied: ${pathInfo.fsPath}`;
+        updatePlaybackState(track.id, {
+          status: 'error',
+          loading: false,
+          error: errorMsg
+        });
+        console.error('[rbfa] File not readable', {
+          trackId: track.id,
+          fsPath: pathInfo.fsPath,
+          fileUrl
+        });
+        return;
+      }
+
+      console.log('[rbfa] File verification passed', {
+        trackId: track.id,
+        fsPath: pathInfo.fsPath,
+        exists: pathInfo.exists,
+        readable: pathInfo.readable
+      });
+    } else {
+      console.warn('[rbfa] Bridge API not available for file verification');
+    }
+
+    console.log('[rbfa] Setting audio src', { trackId: track.id, fileUrl });
+    const audio = ensureAudio(track, fileUrl);
     const duration = Number.isFinite(audio.duration) && audio.duration > 0
       ? audio.duration
       : Number(track.durationSeconds) || 0;
@@ -695,11 +842,18 @@ export function App() {
       const target = clamp(seekSeconds, 0, duration || seekSeconds);
       audio.currentTime = target;
       updatePlaybackState(track.id, { currentTime: target });
+      console.log('[rbfa] Seeking to', { trackId: track.id, target });
     }
 
     updatePlaybackState(track.id, { loading: audio.readyState < 1, error: '' });
     try {
+      console.log('[rbfa] Attempting audio.play()', {
+        trackId: track.id,
+        readyState: audio.readyState,
+        src: audio.src
+      });
       await audio.play();
+      console.log('[rbfa] audio.play() succeeded', { trackId: track.id });
     } catch (error) {
       const name = error?.name ? ` (${error.name})` : '';
       const message = error?.message ? ` ${error.message}` : '';
@@ -708,7 +862,15 @@ export function App() {
         loading: false,
         error: `Unable to start playback${name}.${message}`
       });
-      console.error('[rbfa] audio play failed', { trackId: track.id, src: audio.src, error });
+      console.error('[rbfa] audio play failed', {
+        trackId: track.id,
+        src: audio.src,
+        error: {
+          name: error?.name,
+          message: error?.message,
+          code: error?.code
+        }
+      });
     }
   };
 
