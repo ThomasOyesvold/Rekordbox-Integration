@@ -738,6 +738,47 @@ export function App() {
     }
   };
 
+  const buildFolderGroups = () => {
+    const groups = new Map();
+
+    if (selectedFolders.length > 0) {
+      for (const folder of selectedFolders) {
+        groups.set(folder, new Set());
+      }
+
+      for (const track of tracks) {
+        const playlistPaths = trackPlaylistIndex[track.id] || [];
+        for (const folder of selectedFolders) {
+          if (playlistPaths.some((path) => path === folder || path.startsWith(`${folder}/`))) {
+            groups.get(folder)?.add(String(track.id));
+          }
+        }
+      }
+    } else {
+      for (const track of tracks) {
+        const playlistPaths = trackPlaylistIndex[track.id] || [];
+        if (!playlistPaths.length) {
+          const entry = groups.get('Unsorted') || new Set();
+          entry.add(String(track.id));
+          groups.set('Unsorted', entry);
+          continue;
+        }
+        for (const playlistPath of playlistPaths) {
+          const [root] = String(playlistPath).split('/').filter(Boolean);
+          const key = root || 'Unsorted';
+          const entry = groups.get(key) || new Set();
+          entry.add(String(track.id));
+          groups.set(key, entry);
+        }
+      }
+    }
+
+    return Array.from(groups.entries()).map(([name, trackIds]) => ({
+      name,
+      trackIds: Array.from(trackIds)
+    }));
+  };
+
   const runPlaylistClustering = async () => {
     const bridgeApi = getBridgeApi();
     if (!bridgeApi?.generatePlaylists) {
@@ -753,13 +794,15 @@ export function App() {
     setIsClustering(true);
     setError('');
     try {
+      const folderGroups = buildFolderGroups();
       const result = await bridgeApi.generatePlaylists({
         tracks,
         sourceXmlPath: xmlPath.trim(),
         selectedFolders,
         similarityThreshold: Number(clusterThreshold),
         minClusterSize: Number(clusterMinSize),
-        maxPairs: Number(clusterMaxPairs)
+        maxPairs: Number(clusterMaxPairs),
+        folderGroups
       });
       setPlaylistSuggestions(result);
     } catch (clusterError) {
@@ -2081,45 +2124,107 @@ export function App() {
         </div>
         {playlistSuggestions ? (
           <>
-            <div className="meta">
-              <span>Clusters: {playlistSuggestions.clusters?.length || 0}</span>
-              <span>Pairs: {playlistSuggestions.pairCount}</span>
-              <span>Computed: {playlistSuggestions.computed}</span>
-              <span>Cache Hits: {playlistSuggestions.cacheHits}</span>
-            </div>
-            {playlistSuggestions.clusters?.length ? (
-              <table className="track-table" style={{ marginTop: '10px' }}>
-                <thead>
-                  <tr>
-                    <th>Cluster</th>
-                    <th>Tracks</th>
-                    <th>Avg Score</th>
-                    <th>Confidence</th>
-                    <th>Ordered</th>
-                    <th>Top Tracks</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {playlistSuggestions.clusters.map((cluster, index) => {
-                    const preview = cluster.trackIds.slice(0, 5).map((trackId) => {
-                      const track = trackIndexById.get(String(trackId));
-                      return track ? `${track.artist || ''} ${track.title || ''}`.trim() : trackId;
-                    }).filter(Boolean);
+            {playlistSuggestions.mode === 'grouped' ? (
+              <>
+                <div className="meta">
+                  <span>Groups: {playlistSuggestions.groups?.length || 0}</span>
+                </div>
+                {playlistSuggestions.groups?.length ? (
+                  playlistSuggestions.groups.map((group, groupIndex) => {
+                    const clusters = group.result?.clusters || [];
                     return (
-                      <tr key={cluster.id || String(index)}>
-                        <td>#{index + 1}</td>
-                        <td>{cluster.size}</td>
-                        <td>{cluster.avgScore.toFixed(3)}</td>
-                        <td>{(cluster.confidence ?? 0).toFixed(3)}</td>
-                        <td>{cluster.ordered ? 'Yes' : 'No'}</td>
-                        <td>{preview.join(', ') || '-'}</td>
-                      </tr>
+                      <div key={`${group.name}-${groupIndex}`} style={{ marginTop: '14px' }}>
+                        <h4 style={{ marginBottom: '6px' }}>{group.name} ({group.trackCount} tracks)</h4>
+                        <div className="meta">
+                          <span>Clusters: {clusters.length}</span>
+                          <span>Pairs: {group.result?.pairCount ?? 0}</span>
+                          <span>Computed: {group.result?.computed ?? 0}</span>
+                          <span>Cache Hits: {group.result?.cacheHits ?? 0}</span>
+                        </div>
+                        {clusters.length ? (
+                          <table className="track-table" style={{ marginTop: '10px' }}>
+                            <thead>
+                              <tr>
+                                <th>Cluster</th>
+                                <th>Tracks</th>
+                                <th>Avg Score</th>
+                                <th>Confidence</th>
+                                <th>Ordered</th>
+                                <th>Top Tracks</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {clusters.map((cluster, index) => {
+                                const preview = cluster.trackIds.slice(0, 5).map((trackId) => {
+                                  const track = trackIndexById.get(String(trackId));
+                                  return track ? `${track.artist || ''} ${track.title || ''}`.trim() : trackId;
+                                }).filter(Boolean);
+                                return (
+                                  <tr key={cluster.id || `${group.name}-${index}`}>
+                                    <td>#{index + 1}</td>
+                                    <td>{cluster.size}</td>
+                                    <td>{cluster.avgScore.toFixed(3)}</td>
+                                    <td>{(cluster.confidence ?? 0).toFixed(3)}</td>
+                                    <td>{cluster.ordered ? 'Yes' : 'No'}</td>
+                                    <td>{preview.join(', ') || '-'}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <p>No clusters met the threshold in this folder.</p>
+                        )}
+                      </div>
                     );
-                  })}
-                </tbody>
-              </table>
+                  })
+                ) : (
+                  <p>No clusters met the threshold. Try lowering it a bit.</p>
+                )}
+              </>
             ) : (
-              <p>No clusters met the threshold. Try lowering it a bit.</p>
+              <>
+                <div className="meta">
+                  <span>Clusters: {playlistSuggestions.result?.clusters?.length || 0}</span>
+                  <span>Pairs: {playlistSuggestions.result?.pairCount ?? 0}</span>
+                  <span>Computed: {playlistSuggestions.result?.computed ?? 0}</span>
+                  <span>Cache Hits: {playlistSuggestions.result?.cacheHits ?? 0}</span>
+                </div>
+                {playlistSuggestions.result?.clusters?.length ? (
+                  <table className="track-table" style={{ marginTop: '10px' }}>
+                    <thead>
+                      <tr>
+                        <th>Cluster</th>
+                        <th>Tracks</th>
+                        <th>Avg Score</th>
+                        <th>Confidence</th>
+                        <th>Ordered</th>
+                        <th>Top Tracks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {playlistSuggestions.result.clusters.map((cluster, index) => {
+                        const preview = cluster.trackIds.slice(0, 5).map((trackId) => {
+                          const track = trackIndexById.get(String(trackId));
+                          return track ? `${track.artist || ''} ${track.title || ''}`.trim() : trackId;
+                        }).filter(Boolean);
+                        return (
+                          <tr key={cluster.id || String(index)}>
+                            <td>#{index + 1}</td>
+                            <td>{cluster.size}</td>
+                            <td>{cluster.avgScore.toFixed(3)}</td>
+                            <td>{(cluster.confidence ?? 0).toFixed(3)}</td>
+                            <td>{cluster.ordered ? 'Yes' : 'No'}</td>
+                            <td>{preview.join(', ') || '-'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p>No clusters met the threshold. Try lowering it a bit.</p>
+                )}
+              </>
             )}
           </>
         ) : (

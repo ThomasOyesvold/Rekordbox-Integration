@@ -240,7 +240,40 @@ ipcMain.handle('analysis:export', async (_event, payload) => {
 
 ipcMain.handle('playlists:cluster', async (_event, payload) => {
   const tracks = Array.isArray(payload?.tracks) ? payload.tracks : [];
-  return generatePlaylistClusters({
+  const folderGroups = Array.isArray(payload?.folderGroups) ? payload.folderGroups : null;
+
+  if (folderGroups && folderGroups.length > 0) {
+    const trackIndex = new Map(tracks.map((track) => [String(track.id), track]));
+    const grouped = folderGroups.map((group) => {
+      const groupTrackIds = Array.isArray(group.trackIds) ? group.trackIds : [];
+      const groupTracks = groupTrackIds
+        .map((trackId) => trackIndex.get(String(trackId)))
+        .filter(Boolean);
+
+      const result = generatePlaylistClusters({
+        tracks: groupTracks,
+        sourceXmlPath: payload?.sourceXmlPath || null,
+        selectedFolders: [group.name].filter(Boolean),
+        similarityThreshold: payload?.similarityThreshold,
+        maxPairs: payload?.maxPairs,
+        minClusterSize: payload?.minClusterSize,
+        maxClusters: payload?.maxClusters
+      });
+
+      return {
+        name: group.name || 'Unknown',
+        trackCount: groupTracks.length,
+        result
+      };
+    });
+
+    return {
+      mode: 'grouped',
+      groups: grouped
+    };
+  }
+
+  const result = generatePlaylistClusters({
     tracks,
     sourceXmlPath: payload?.sourceXmlPath || null,
     selectedFolders: Array.isArray(payload?.selectedFolders) ? payload.selectedFolders : [],
@@ -249,6 +282,11 @@ ipcMain.handle('playlists:cluster', async (_event, payload) => {
     minClusterSize: payload?.minClusterSize,
     maxClusters: payload?.maxClusters
   });
+
+  return {
+    mode: 'single',
+    result
+  };
 });
 
 const isWsl = Boolean(process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP);
