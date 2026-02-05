@@ -220,6 +220,27 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function waitForEvent(target, eventName, timeoutMs = 3000) {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Timeout waiting for ${eventName}`));
+    }, timeoutMs);
+
+    const onEvent = () => {
+      cleanup();
+      resolve();
+    };
+
+    const cleanup = () => {
+      clearTimeout(timeout);
+      target.removeEventListener(eventName, onEvent);
+    };
+
+    target.addEventListener(eventName, onEvent, { once: true });
+  });
+}
+
 function formatClock(seconds) {
   const numericValue = Number(seconds);
   if (!Number.isFinite(numericValue)) {
@@ -669,6 +690,7 @@ export function App() {
     const audio = new Audio();
     audio.preload = 'metadata';
     audio.src = src;
+    audio.load();
     audio.volume = playbackVolume;
 
     const onLoadedMeta = () => {
@@ -877,6 +899,17 @@ export function App() {
     }
 
     updatePlaybackState(track.id, { loading: audio.readyState < 1, error: '' });
+    if (audio.readyState < 1) {
+      try {
+        await waitForEvent(audio, 'loadedmetadata', 3000);
+      } catch (error) {
+        console.warn('[rbfa] audio metadata not loaded', {
+          trackId: track.id,
+          src: audio.src,
+          error: error?.message || error
+        });
+      }
+    }
     try {
       console.log('[rbfa] Attempting audio.play()', {
         trackId: track.id,
