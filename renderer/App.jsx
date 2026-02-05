@@ -366,6 +366,7 @@ export function App() {
   const audioRegistryRef = useRef(new Map());
   const [playbackStates, setPlaybackStates] = useState({});
   const [activeTrackId, setActiveTrackId] = useState(null);
+  const [playbackVolume, setPlaybackVolume] = useState(1);
 
   useEffect(() => {
     const bridgeApi = getBridgeApi();
@@ -668,6 +669,7 @@ export function App() {
     const audio = new Audio();
     audio.preload = 'metadata';
     audio.src = src;
+    audio.volume = playbackVolume;
 
     const onLoadedMeta = () => {
       updatePlaybackState(trackId, {
@@ -773,6 +775,14 @@ export function App() {
     updatePlaybackState(trackId, { loading: true });
     return audio;
   };
+
+  useEffect(() => {
+    audioRegistryRef.current.forEach((entry) => {
+      if (entry?.audio) {
+        entry.audio.volume = playbackVolume;
+      }
+    });
+  }, [playbackVolume]);
 
   const playTrack = async (track, seekSeconds = null) => {
     if (!track?.location) {
@@ -1181,7 +1191,24 @@ export function App() {
         </div>
 
         <div className="card">
-          <h3>Track Table ({sortedTracks.length}/{tracks.length})</h3>
+          <div className="row" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
+            <h3 style={{ margin: 0 }}>Track Table ({sortedTracks.length}/{tracks.length})</h3>
+            <div className="row" style={{ gap: '8px' }}>
+              <span style={{ fontSize: '0.9rem', color: '#334155' }}>Volume</span>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={playbackVolume}
+                onChange={(event) => setPlaybackVolume(Number(event.target.value))}
+                style={{ width: '140px' }}
+              />
+              <span style={{ fontSize: '0.8rem', color: '#64748b', minWidth: '36px', textAlign: 'right' }}>
+                {Math.round(playbackVolume * 100)}%
+              </span>
+            </div>
+          </div>
           <div className="row" style={{ marginBottom: '8px' }}>
             <input
               ref={trackFilterInputRef}
