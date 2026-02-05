@@ -9,25 +9,25 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Foundation & Data Management
 
-- [ ] **FOUND-01**: Parse Rekordbox XML library files and extract track metadata
-- [ ] **FOUND-02**: Validate XML structure and handle Rekordbox import bugs (special characters, malformed fields)
-- [ ] **FOUND-03**: User can select specific folders from library to analyze (not forced to process all 12K tracks)
-- [ ] **FOUND-04**: Display parsed track list with basic metadata (artist, title, BPM, key)
+- [x] **FOUND-01**: Parse Rekordbox XML library files and extract track metadata
+- [x] **FOUND-02**: Validate XML structure and handle Rekordbox import bugs (special characters, malformed fields)
+- [x] **FOUND-03**: User can select specific folders from library to analyze (not forced to process all 12K tracks)
+- [x] **FOUND-04**: Display parsed track list with basic metadata (artist, title, BPM, key)
 - [ ] **FOUND-05**: Persist application state in SQLite database across sessions
-- [ ] **FOUND-06**: Background processing architecture prevents UI blocking during long operations
+- [x] **FOUND-06**: Background processing architecture prevents UI blocking during long operations
 
 ### Analysis Engine
 
-- [ ] **ANLY-01**: Read BPM values from Rekordbox XML (use pre-analyzed data)
-- [ ] **ANLY-02**: Read musical key values from Rekordbox XML (use pre-analyzed data)
-- [ ] **ANLY-03**: Read waveform RGB data from Rekordbox XML
-- [ ] **ANLY-04**: Implement BPM similarity analyzer (compatible BPM ranges for mixing)
-- [ ] **ANLY-05**: Implement key compatibility analyzer (Camelot Wheel harmonic mixing)
-- [ ] **ANLY-06**: Implement waveform pattern analyzer (energy curves, structure similarity)
+- [x] **ANLY-01**: Read BPM values from Rekordbox XML (use pre-analyzed data)
+- [x] **ANLY-02**: Read musical key values from Rekordbox XML (use pre-analyzed data)
+- [x] **ANLY-03**: Read waveform RGB data from Rekordbox XML
+- [x] **ANLY-04**: Implement BPM similarity analyzer (compatible BPM ranges for mixing)
+- [x] **ANLY-05**: Implement key compatibility analyzer (Camelot Wheel harmonic mixing)
+- [x] **ANLY-06**: Implement waveform pattern analyzer (energy curves, structure similarity)
 - [ ] **ANLY-07**: Implement rhythm pattern analyzer (kick patterns, rhythmic structure)
 - [ ] **ANLY-08**: Multi-factor flow analysis combines all analyzers with equal weighting
-- [ ] **ANLY-09**: Cache similarity scores in SQLite to avoid reprocessing
-- [ ] **ANLY-10**: Cache-first strategy: check cache before computing new similarities
+- [x] **ANLY-09**: Cache similarity scores in SQLite to avoid reprocessing
+- [x] **ANLY-10**: Cache-first strategy: check cache before computing new similarities
 - [ ] **ANLY-11**: Batch processing with memory management for 12K+ track libraries
 
 ### Playlist Generation
@@ -44,7 +44,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **WORK-01**: Display suggested playlists with track lists and metadata
 - [ ] **WORK-02**: Visualize waveforms for tracks in suggested playlist
 - [ ] **WORK-03**: Random sampling playback (play 10-20 random tracks from suggestion)
-- [ ] **WORK-04**: Audio playback supports MP3, FLAC, WAV, AAC formats
+- [x] **WORK-04**: Audio playback supports MP3, FLAC, WAV, AAC formats
 - [ ] **WORK-05**: Approve/reject workflow for each playlist suggestion
 - [ ] **WORK-06**: User can name approved playlists based on perceived vibe
 - [ ] **WORK-07**: Transparent explanations show why tracks were grouped together
@@ -116,7 +116,42 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (To be filled by roadmapper) | | |
+| FOUND-01 | Phase 1 | Done |
+| FOUND-02 | Phase 1 | Done |
+| FOUND-03 | Phase 1 | Done |
+| FOUND-04 | Phase 1 | Done |
+| FOUND-05 | Phase 1 | Not started (state currently stored in JSON + SQLite for history) |
+| FOUND-06 | Phase 1 | Done |
+| ANLY-01 | Phase 2 | Done |
+| ANLY-02 | Phase 2 | Done |
+| ANLY-03 | Phase 2 | Done (implemented via ANLZ EXT waveform extraction) |
+| ANLY-04 | Phase 2 | Done |
+| ANLY-05 | Phase 2 | Done |
+| ANLY-06 | Phase 2 | Done (ANLZ waveform summaries) |
+| ANLY-07 | Phase 2 | Not started (kick-pattern-specific rhythm analysis pending) |
+| ANLY-08 | Phase 2 | Not started (weights not equal yet) |
+| ANLY-09 | Phase 2 | Done |
+| ANLY-10 | Phase 2 | Done |
+| ANLY-11 | Phase 2 | Deferred |
+| PLAY-01 | Phase 3 | Not started |
+| PLAY-02 | Phase 3 | Not started |
+| PLAY-03 | Phase 3 | Not started |
+| PLAY-04 | Phase 3 | Not started |
+| PLAY-05 | Phase 3 | Not started |
+| PLAY-06 | Phase 3 | Not started |
+| WORK-01 | Phase 4 | Not started |
+| WORK-02 | Phase 4 | Not started |
+| WORK-03 | Phase 4 | Not started |
+| WORK-04 | Phase 4 | Done (file playback + formats via Electron/audio tag) |
+| WORK-05 | Phase 5 | Not started |
+| WORK-06 | Phase 5 | Not started |
+| WORK-07 | Phase 5 | Not started |
+| WORK-08 | Phase 5 | Not started |
+| EXPO-01 | Phase 6 | Not started |
+| EXPO-02 | Phase 6 | Not started |
+| EXPO-03 | Phase 6 | Not started |
+| EXPO-04 | Phase 6 | Not started |
+| EXPO-05 | Phase 6 | Not started |
 
 **Coverage:**
 - v1 requirements: 33 total
