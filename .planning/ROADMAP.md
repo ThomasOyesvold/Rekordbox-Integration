@@ -97,6 +97,10 @@ Plans:
   - Implemented case-insensitive drive letter fallback for WSL
   - Added MediaError code mapping for user-friendly error messages
   - Documented in: AUDIO_FIX_IMPLEMENTATION.md, IMPLEMENTATION_COMPLETE.md
+- [x] Stabilize playback when rapidly switching tracks (2026-02-05)
+  - Added play request guards to prevent stale async play attempts
+  - Stopped overlapping playback when switching tracks quickly
+  - Added volume control + test tone for verifying audio output
 - [ ] TBD (remaining verification workflow features planned during phase planning)
 
 ### Phase 5: Approval & User Control
@@ -138,7 +142,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Foundation & Data Layer | 6/6 | Completed | Background parse, folder filter, persistence, validation UI, table UX |
 | 2. Analysis Engine & Caching | 4/6 | In progress | Baseline analyzer, SQLite cache, export, analysis UI |
 | 3. Playlist Generation | 0/TBD | Not started | - |
-| 4. Verification Workflow & Playback | 1/TBD | Partial | WSL audio playback fixed |
+| 4. Verification Workflow & Playback | 2/TBD | Partial | WSL audio playback fixed + rapid switching guard |
 | 5. Approval & User Control | 0/TBD | Not started | - |
 | 6. Export & Integration | 0/TBD | Not started | - |
 
