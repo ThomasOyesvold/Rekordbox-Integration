@@ -2094,6 +2094,7 @@ export function App() {
                     <th>Cluster</th>
                     <th>Tracks</th>
                     <th>Avg Score</th>
+                    <th>Confidence</th>
                     <th>Ordered</th>
                     <th>Top Tracks</th>
                   </tr>
@@ -2109,6 +2110,7 @@ export function App() {
                         <td>#{index + 1}</td>
                         <td>{cluster.size}</td>
                         <td>{cluster.avgScore.toFixed(3)}</td>
+                        <td>{(cluster.confidence ?? 0).toFixed(3)}</td>
                         <td>{cluster.ordered ? 'Yes' : 'No'}</td>
                         <td>{preview.join(', ') || '-'}</td>
                       </tr>

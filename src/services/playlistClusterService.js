@@ -51,6 +51,21 @@ function toNumber(value, fallback) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+function clamp(value, min = 0, max = 1) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function computeClusterConfidence(cluster) {
+  const sizeScore = 1 - Math.exp(-((cluster.size || 0) / 6));
+  const density = cluster.size > 1
+    ? cluster.edgeCount / ((cluster.size * (cluster.size - 1)) / 2)
+    : 0;
+  const densityScore = clamp(density);
+  const avgScore = clamp(cluster.avgScore || 0);
+
+  return clamp((avgScore * 0.55) + (densityScore * 0.25) + (sizeScore * 0.2));
+}
+
 function getSimilarityScore(trackA, trackB, algorithmVersion, runId, cacheStats) {
   const cached = getSimilarityFromCache({
     trackAId: trackA.id,
@@ -240,21 +255,25 @@ export function generatePlaylistClusters({
         continue;
       }
       const stats = clusterStats.get(root) || { sum: 0, count: 0, max: 0 };
-      clusters.push({
-        id: `cluster-${root}`,
-        trackIds,
-        size: trackIds.length,
-        edgeCount: stats.count,
-        avgScore: stats.count ? stats.sum / stats.count : 0,
-        maxScore: stats.max
-      });
+    clusters.push({
+      id: `cluster-${root}`,
+      trackIds,
+      size: trackIds.length,
+      edgeCount: stats.count,
+      avgScore: stats.count ? stats.sum / stats.count : 0,
+      maxScore: stats.max
+    });
+  }
+
+    for (const cluster of clusters) {
+      cluster.confidence = computeClusterConfidence(cluster);
     }
 
     clusters.sort((a, b) => {
       if (b.size !== a.size) {
         return b.size - a.size;
       }
-      return b.avgScore - a.avgScore;
+      return b.confidence - a.confidence;
     });
 
     const limitedClusters = clusters.slice(0, clusterLimit).map((cluster) => {

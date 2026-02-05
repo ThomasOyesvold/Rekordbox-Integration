@@ -30,6 +30,7 @@ test('playlist clustering groups similar tracks', async () => {
   assert.ok(first.size >= 3);
   assert.ok(first.trackIds.includes('t1'));
   assert.ok(first.ordered);
+  assert.ok(first.confidence >= 0 && first.confidence <= 1);
 
   closeDatabase();
   await fs.rm(tempDir, { recursive: true, force: true });
