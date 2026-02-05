@@ -109,6 +109,11 @@ function formatBinPreview(bins, maxItems = 20) {
     .join(', ');
 }
 
+function getBuildTag() {
+  const bridge = getBridgeApi();
+  return bridge?.buildInfo?.buildTag || '';
+}
+
 function normalizeAudioLocation(rawLocation, options = {}) {
   if (!rawLocation) {
     if (options.debug) {
@@ -676,6 +681,13 @@ export function App() {
         currentTime: audio.currentTime,
         duration: Number.isFinite(audio.duration) ? audio.duration : getPlaybackState(trackId).duration
       });
+      if (audio.muted || audio.volume === 0) {
+        console.warn('[rbfa] audio muted or zero volume', {
+          trackId,
+          muted: audio.muted,
+          volume: audio.volume
+        });
+      }
     };
     const onPlay = () => {
       updatePlaybackState(trackId, {
@@ -684,6 +696,15 @@ export function App() {
         error: ''
       });
       setActiveTrackId(trackId);
+      console.log('[rbfa] audio state', {
+        trackId,
+        src: audio.src,
+        muted: audio.muted,
+        volume: audio.volume,
+        readyState: audio.readyState,
+        currentTime: audio.currentTime,
+        duration: audio.duration
+      });
     };
     const onPause = () => {
       updatePlaybackState(trackId, {
@@ -1074,6 +1095,7 @@ export function App() {
       <div className="header">
         <h1>Rekordbox Flow Analyzer</h1>
         <p>Phase 1 shell: import XML, choose folders, inspect parsed tracks.</p>
+        {getBuildTag() ? <p style={{ fontSize: '12px', marginTop: '4px', opacity: 0.7 }}>Build: {getBuildTag()}</p> : null}
       </div>
 
       <div className="card">
