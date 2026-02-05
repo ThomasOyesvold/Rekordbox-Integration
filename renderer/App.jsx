@@ -389,6 +389,32 @@ export function App() {
   const [activeTrackId, setActiveTrackId] = useState(null);
   const [playbackVolume, setPlaybackVolume] = useState(1);
 
+  const playTestTone = () => {
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) {
+        console.warn('[rbfa] Web Audio API not available');
+        return;
+      }
+      const context = new AudioContextClass();
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.value = 440;
+      gain.gain.value = Math.max(0.05, Math.min(1, playbackVolume));
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start();
+      oscillator.stop(context.currentTime + 0.25);
+      oscillator.onended = () => {
+        context.close();
+      };
+      console.log('[rbfa] test tone played', { volume: playbackVolume });
+    } catch (error) {
+      console.error('[rbfa] test tone failed', { error });
+    }
+  };
+
   useEffect(() => {
     const bridgeApi = getBridgeApi();
     if (!bridgeApi?.loadState) {
@@ -1240,6 +1266,9 @@ export function App() {
               <span style={{ fontSize: '0.8rem', color: '#64748b', minWidth: '36px', textAlign: 'right' }}>
                 {Math.round(playbackVolume * 100)}%
               </span>
+              <button type="button" className="secondary" onClick={playTestTone}>
+                Test Tone
+              </button>
             </div>
           </div>
           <div className="row" style={{ marginBottom: '8px' }}>
