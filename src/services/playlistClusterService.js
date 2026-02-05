@@ -51,6 +51,80 @@ function toNumber(value, fallback) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+function getSimilarityScore(trackA, trackB, algorithmVersion, runId, cacheStats) {
+  const cached = getSimilarityFromCache({
+    trackAId: trackA.id,
+    trackBId: trackB.id,
+    algorithmVersion
+  });
+
+  if (cached) {
+    cacheStats.cacheHits += 1;
+    return cached.score;
+  }
+
+  const result = computeBaselineSimilarity(trackA, trackB);
+  saveSimilarityToCache({
+    trackAId: trackA.id,
+    trackBId: trackB.id,
+    algorithmVersion,
+    score: result.score,
+    components: result.components,
+    analysisRunId: runId
+  });
+  cacheStats.computed += 1;
+  return result.score;
+}
+
+function orderClusterTracks({ trackIds, trackIndexById, algorithmVersion, runId }) {
+  const cacheStats = { cacheHits: 0, computed: 0 };
+  const tracks = trackIds.map((trackId) => trackIndexById.get(String(trackId))).filter(Boolean);
+  if (tracks.length <= 2) {
+    return tracks.map((track) => String(track.id));
+  }
+
+  let bestStart = tracks[0];
+  let bestStartScore = -Infinity;
+
+  for (const candidate of tracks) {
+    let total = 0;
+    for (const other of tracks) {
+      if (candidate === other) {
+        continue;
+      }
+      total += getSimilarityScore(candidate, other, algorithmVersion, runId, cacheStats);
+    }
+    if (total > bestStartScore) {
+      bestStartScore = total;
+      bestStart = candidate;
+    }
+  }
+
+  const remaining = new Set(tracks);
+  remaining.delete(bestStart);
+  const ordered = [bestStart];
+
+  while (remaining.size > 0) {
+    const last = ordered[ordered.length - 1];
+    let bestNext = null;
+    let bestScore = -Infinity;
+    for (const candidate of remaining) {
+      const score = getSimilarityScore(last, candidate, algorithmVersion, runId, cacheStats);
+      if (score > bestScore) {
+        bestScore = score;
+        bestNext = candidate;
+      }
+    }
+    if (!bestNext) {
+      break;
+    }
+    ordered.push(bestNext);
+    remaining.delete(bestNext);
+  }
+
+  return ordered.map((track) => String(track.id));
+}
+
 export function generatePlaylistClusters({
   tracks,
   sourceXmlPath = null,
@@ -59,7 +133,8 @@ export function generatePlaylistClusters({
   similarityThreshold = 0.78,
   maxPairs = 15000,
   minClusterSize = 3,
-  maxClusters = 25
+  maxClusters = 25,
+  optimizeFlow = true
 } = {}) {
   const safeTracks = Array.isArray(tracks) ? tracks : [];
   const trackIndexById = new Map(safeTracks.map((track, index) => [String(track.id), index]));
@@ -182,7 +257,24 @@ export function generatePlaylistClusters({
       return b.avgScore - a.avgScore;
     });
 
-    const limitedClusters = clusters.slice(0, clusterLimit);
+    const limitedClusters = clusters.slice(0, clusterLimit).map((cluster) => {
+      if (!optimizeFlow || cluster.trackIds.length < 2) {
+        return cluster;
+      }
+
+      const ordered = orderClusterTracks({
+        trackIds: cluster.trackIds,
+        trackIndexById,
+        algorithmVersion,
+        runId
+      });
+
+      return {
+        ...cluster,
+        trackIds: ordered,
+        ordered: true
+      };
+    });
     finishAnalysisRun(runId, 'completed', `pairs=${pairCount}, clusters=${limitedClusters.length}`);
 
     return {
