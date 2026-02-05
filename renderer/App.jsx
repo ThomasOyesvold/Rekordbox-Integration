@@ -406,6 +406,7 @@ export function App() {
   const [playbackStates, setPlaybackStates] = useState({});
   const [activeTrackId, setActiveTrackId] = useState(null);
   const [playbackVolume, setPlaybackVolume] = useState(1);
+  const playbackVolumeRef = useRef(1);
   const [audioStatus, setAudioStatus] = useState({ level: 'idle', message: '' });
   const audioDebugEnabled = useMemo(() => isAudioDebugEnabled(), []);
   const playRequestIdRef = useRef(0);
@@ -422,6 +423,21 @@ export function App() {
     }
   };
 
+  const applyVolumeToAll = (value) => {
+    audioRegistryRef.current.forEach((entry) => {
+      if (entry?.audio) {
+        entry.audio.volume = value;
+      }
+    });
+  };
+
+  const handleVolumeChange = (value) => {
+    const next = clamp(Number(value), 0, 1);
+    playbackVolumeRef.current = next;
+    setPlaybackVolume(next);
+    applyVolumeToAll(next);
+  };
+
   const playTestTone = () => {
     try {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
@@ -435,7 +451,7 @@ export function App() {
       const gain = context.createGain();
       oscillator.type = 'sine';
       oscillator.frequency.value = 440;
-      gain.gain.value = Math.max(0.05, Math.min(1, playbackVolume));
+      gain.gain.value = Math.max(0.05, Math.min(1, playbackVolumeRef.current));
       oscillator.connect(gain);
       gain.connect(context.destination);
       oscillator.start();
@@ -820,8 +836,14 @@ export function App() {
 
   const ensureAudio = (track, srcOverride = '') => {
     const trackId = track.id;
-    const existing = audioRegistryRef.current.get(trackId);
+    let existing = audioRegistryRef.current.get(trackId);
     const src = srcOverride || normalizeAudioLocation(track.location);
+
+    if (existing?.audio && src && existing.audio.src !== src) {
+      existing.cleanup?.();
+      audioRegistryRef.current.delete(trackId);
+      existing = null;
+    }
 
     logAudio('[rbfa] ensureAudio', {
       trackId,
@@ -852,7 +874,7 @@ export function App() {
     audio.preload = 'metadata';
     audio.src = src;
     audio.load();
-    audio.volume = playbackVolume;
+    audio.volume = playbackVolumeRef.current;
 
     const onLoadedMeta = () => {
       updatePlaybackState(trackId, {
@@ -969,11 +991,7 @@ export function App() {
   };
 
   useEffect(() => {
-    audioRegistryRef.current.forEach((entry) => {
-      if (entry?.audio) {
-        entry.audio.volume = playbackVolume;
-      }
-    });
+    playbackVolumeRef.current = playbackVolume;
     if (playbackVolume === 0) {
       setAudioStatus({ level: 'muted', message: 'Muted (volume 0)' });
     }
@@ -1461,7 +1479,7 @@ export function App() {
                 max="1"
                 step="0.01"
                 value={playbackVolume}
-                onChange={(event) => setPlaybackVolume(Number(event.target.value))}
+                onChange={(event) => handleVolumeChange(event.target.value)}
                 style={{ width: '140px' }}
               />
               <span style={{ fontSize: '0.8rem', color: '#64748b', minWidth: '36px', textAlign: 'right' }}>
