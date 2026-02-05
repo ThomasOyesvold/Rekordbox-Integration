@@ -38,8 +38,18 @@ export async function saveState(stateFilePath, patch) {
   await fs.mkdir(directoryPath, { recursive: true });
 
   const tempPath = `${stateFilePath}.tmp`;
-  await fs.writeFile(tempPath, JSON.stringify(nextState, null, 2), 'utf8');
-  await fs.rename(tempPath, stateFilePath);
+  try {
+    await fs.writeFile(tempPath, JSON.stringify(nextState, null, 2), 'utf8');
+    await fs.rename(tempPath, stateFilePath);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      await fs.mkdir(directoryPath, { recursive: true });
+      await fs.writeFile(stateFilePath, JSON.stringify(nextState, null, 2), 'utf8');
+      return nextState;
+    }
+
+    throw error;
+  }
 
   return nextState;
 }
