@@ -500,6 +500,27 @@ export function rankSimilarityRows(rows, limit = 20) {
     .slice(0, limit);
 }
 
+function updateTopMatches(topMatches, row, limit) {
+  if (limit <= 0) {
+    return;
+  }
+
+  if (topMatches.length < limit) {
+    topMatches.push(row);
+    topMatches.sort((a, b) => b.score - a.score);
+    return;
+  }
+
+  const last = topMatches[topMatches.length - 1];
+  if (row.score <= last.score) {
+    return;
+  }
+
+  topMatches.push(row);
+  topMatches.sort((a, b) => b.score - a.score);
+  topMatches.length = limit;
+}
+
 export function createAnalyzerVersion(tag = 'baseline-v4') {
   return `flow-${tag}`;
 }
@@ -526,71 +547,86 @@ export function runBaselineAnalysis({
 
   let cacheHits = 0;
   let computed = 0;
+  let pairCount = 0;
+  const topMatches = [];
 
   try {
-    const pairs = buildTrackPairs(safeTracks, maxPairs);
-    const rows = [];
+    const pairLimit = Number.isFinite(maxPairs) ? Math.max(0, maxPairs) : Infinity;
 
-    for (const [trackA, trackB] of pairs) {
-      const cached = getSimilarityFromCache({
-        trackAId: trackA.id,
-        trackBId: trackB.id,
-        algorithmVersion
-      });
-
-      if (cached) {
-        cacheHits += 1;
-        const reason = cached.components?.reason
-          || summarizeSimilarityComponents(cached.components);
-        rows.push({
-          trackAId: cached.trackAId,
-          trackBId: cached.trackBId,
-          score: cached.score,
-          components: cached.components,
-          weights: cached.components?.weights || normalizedWeights,
-          reason,
-          fromCache: true
+    for (let i = 0; i < safeTracks.length; i += 1) {
+      const trackA = safeTracks[i];
+      for (let j = i + 1; j < safeTracks.length; j += 1) {
+        if (pairCount >= pairLimit) {
+          break;
+        }
+        const trackB = safeTracks[j];
+        pairCount += 1;
+        const cached = getSimilarityFromCache({
+          trackAId: trackA.id,
+          trackBId: trackB.id,
+          algorithmVersion
         });
-        continue;
+
+        if (cached) {
+          cacheHits += 1;
+          const reason = cached.components?.reason
+            || summarizeSimilarityComponents(cached.components);
+          const row = {
+            trackAId: cached.trackAId,
+            trackBId: cached.trackBId,
+            score: cached.score,
+            components: cached.components,
+            weights: cached.components?.weights || normalizedWeights,
+            reason,
+            fromCache: true
+          };
+          updateTopMatches(topMatches, row, topLimit);
+          continue;
+        }
+
+        const result = computeBaselineSimilarity(trackA, trackB, normalizedWeights);
+        const reason = summarizeSimilarityComponents(result.components);
+        saveSimilarityToCache({
+          trackAId: trackA.id,
+          trackBId: trackB.id,
+          algorithmVersion,
+          score: result.score,
+          components: {
+            ...result.components,
+            reason,
+            weights: result.weights
+          },
+          analysisRunId: runId
+        });
+
+        computed += 1;
+        const row = {
+          trackAId: String(trackA.id),
+          trackBId: String(trackB.id),
+          score: result.score,
+          components: result.components,
+          weights: result.weights,
+          reason,
+          fromCache: false
+        };
+        updateTopMatches(topMatches, row, topLimit);
       }
 
-      const result = computeBaselineSimilarity(trackA, trackB, normalizedWeights);
-      const reason = summarizeSimilarityComponents(result.components);
-      saveSimilarityToCache({
-        trackAId: trackA.id,
-        trackBId: trackB.id,
-        algorithmVersion,
-        score: result.score,
-        components: {
-          ...result.components,
-          reason,
-          weights: result.weights
-        },
-        analysisRunId: runId
-      });
-
-      computed += 1;
-      rows.push({
-        trackAId: String(trackA.id),
-        trackBId: String(trackB.id),
-        score: result.score,
-        components: result.components,
-        weights: result.weights,
-        reason,
-        fromCache: false
-      });
+      if (pairCount >= pairLimit) {
+        break;
+      }
     }
 
-    finishAnalysisRun(runId, 'completed', `pairs=${rows.length}, cacheHits=${cacheHits}, computed=${computed}`);
+    finishAnalysisRun(runId, 'completed', `pairs=${pairCount}, cacheHits=${cacheHits}, computed=${computed}`);
 
     return {
       runId,
       algorithmVersion,
-      pairCount: rows.length,
+      pairCount,
       cacheHits,
       computed,
       weights: normalizedWeights,
-      topMatches: rankSimilarityRows(rows, topLimit)
+      topMatches
     };
   } catch (error) {
     finishAnalysisRun(runId, 'failed', error.message || 'Baseline analysis failed.');
