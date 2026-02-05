@@ -17,6 +17,7 @@ const TRACK_COLUMN_WIDTHS = {
 const PAGE_SIZE_OPTIONS = [50, 100, 250, 500];
 const TABLE_VIEWPORT_HEIGHT = 620;
 const VIRTUAL_OVERSCAN_ROWS = 8;
+const AUDIO_DEBUG_STORAGE_KEY = 'rbfa.debug.audio';
 const TRACK_COLUMN_LABELS = {
   play: 'Play',
   id: 'ID',
@@ -44,6 +45,19 @@ const DEFAULT_VISIBLE_TRACK_COLUMNS = {
 
 function getBridgeApi() {
   return window.rbfa || window.electron?.rbfa || null;
+}
+
+function isAudioDebugEnabled() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  if (window.RBFA_DEBUG_AUDIO === true) {
+    return true;
+  }
+
+  const stored = window.localStorage?.getItem(AUDIO_DEBUG_STORAGE_KEY);
+  return stored === '1' || stored === 'true';
 }
 
 function useParseProgress() {
@@ -388,13 +402,28 @@ export function App() {
   const [playbackStates, setPlaybackStates] = useState({});
   const [activeTrackId, setActiveTrackId] = useState(null);
   const [playbackVolume, setPlaybackVolume] = useState(1);
+  const [audioStatus, setAudioStatus] = useState({ level: 'idle', message: '' });
+  const audioDebugEnabled = useMemo(() => isAudioDebugEnabled(), []);
   const playRequestIdRef = useRef(0);
+
+  const logAudio = (...args) => {
+    if (audioDebugEnabled) {
+      console.log(...args);
+    }
+  };
+
+  const warnAudio = (...args) => {
+    if (audioDebugEnabled) {
+      console.warn(...args);
+    }
+  };
 
   const playTestTone = () => {
     try {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextClass) {
-        console.warn('[rbfa] Web Audio API not available');
+        warnAudio('[rbfa] Web Audio API not available');
+        setAudioStatus({ level: 'blocked', message: 'Web Audio unavailable' });
         return;
       }
       const context = new AudioContextClass();
@@ -410,9 +439,11 @@ export function App() {
       oscillator.onended = () => {
         context.close();
       };
-      console.log('[rbfa] test tone played', { volume: playbackVolume });
+      logAudio('[rbfa] test tone played', { volume: playbackVolume });
+      setAudioStatus({ level: 'playing', message: 'Test tone played' });
     } catch (error) {
       console.error('[rbfa] test tone failed', { error });
+      setAudioStatus({ level: 'error', message: 'Test tone failed' });
     }
   };
 
@@ -698,7 +729,7 @@ export function App() {
     const existing = audioRegistryRef.current.get(trackId);
     const src = srcOverride || normalizeAudioLocation(track.location);
 
-    console.log('[rbfa] ensureAudio', {
+    logAudio('[rbfa] ensureAudio', {
       trackId,
       rawLocation: track.location,
       normalizedSrc: src,
@@ -706,12 +737,12 @@ export function App() {
     });
 
     if (!src) {
-      console.warn('[rbfa] empty audio src', { trackId, location: track.location });
+      warnAudio('[rbfa] empty audio src', { trackId, location: track.location });
     }
 
     if (existing?.audio) {
       if (src && existing.audio.src !== src) {
-        console.log('[rbfa] Updating audio src', {
+        logAudio('[rbfa] Updating audio src', {
           trackId,
           oldSrc: existing.audio.src,
           newSrc: src
@@ -722,7 +753,7 @@ export function App() {
       return existing.audio;
     }
 
-    console.log('[rbfa] Creating new Audio element', { trackId, src });
+    logAudio('[rbfa] Creating new Audio element', { trackId, src });
     const audio = new Audio();
     audio.preload = 'metadata';
     audio.src = src;
@@ -742,11 +773,12 @@ export function App() {
         duration: Number.isFinite(audio.duration) ? audio.duration : getPlaybackState(trackId).duration
       });
       if (audio.muted || audio.volume === 0) {
-        console.warn('[rbfa] audio muted or zero volume', {
+        warnAudio('[rbfa] audio muted or zero volume', {
           trackId,
           muted: audio.muted,
           volume: audio.volume
         });
+        setAudioStatus({ level: 'muted', message: 'Muted or volume 0' });
       }
     };
     const onPlay = () => {
@@ -756,7 +788,7 @@ export function App() {
         error: ''
       });
       setActiveTrackId(trackId);
-      console.log('[rbfa] audio state', {
+      logAudio('[rbfa] audio state', {
         trackId,
         src: audio.src,
         muted: audio.muted,
@@ -765,17 +797,24 @@ export function App() {
         currentTime: audio.currentTime,
         duration: audio.duration
       });
+      if (audio.muted || audio.volume === 0) {
+        setAudioStatus({ level: 'muted', message: 'Muted or volume 0' });
+      } else {
+        setAudioStatus({ level: 'playing', message: 'Playing' });
+      }
     };
     const onPause = () => {
       updatePlaybackState(trackId, {
         status: 'paused'
       });
+      setAudioStatus({ level: 'paused', message: 'Paused' });
     };
     const onEnded = () => {
       updatePlaybackState(trackId, {
         status: 'idle',
         currentTime: 0
       });
+      setAudioStatus({ level: 'idle', message: 'Ended' });
     };
     const onError = () => {
       const mediaError = audio.error;
@@ -800,6 +839,7 @@ export function App() {
         loading: false,
         error: errorMsg
       });
+      setAudioStatus({ level: 'error', message: errorMsg });
 
       console.error('[rbfa] audio error', {
         trackId,
@@ -840,6 +880,9 @@ export function App() {
         entry.audio.volume = playbackVolume;
       }
     });
+    if (playbackVolume === 0) {
+      setAudioStatus({ level: 'muted', message: 'Muted (volume 0)' });
+    }
   }, [playbackVolume]);
 
   const playTrack = async (track, seekSeconds = null) => {
@@ -848,11 +891,12 @@ export function App() {
 
     if (!track?.location) {
       updatePlaybackState(track.id, { status: 'error', error: 'Missing audio path.' });
+      setAudioStatus({ level: 'error', message: 'Missing audio path' });
       console.error('[rbfa] playTrack: missing location', { trackId: track.id });
       return;
     }
 
-    console.log('[rbfa] playTrack START', {
+    logAudio('[rbfa] playTrack START', {
       trackId: track.id,
       title: track.title,
       rawLocation: track.location,
@@ -863,7 +907,8 @@ export function App() {
 
     // Get normalized file URL and filesystem path
     const bridgeApi = getBridgeApi();
-    let fileUrl = normalizeAudioLocation(track.location, { debug: true });
+    setAudioStatus({ level: 'loading', message: 'Loading audio…' });
+    let fileUrl = normalizeAudioLocation(track.location, { debug: audioDebugEnabled });
 
     // Verify file exists and is readable using bridge API
     let pathInfo = null;
@@ -872,7 +917,7 @@ export function App() {
       if (requestId !== playRequestIdRef.current) {
         return;
       }
-      console.log('[rbfa] File verification result', pathInfo);
+      logAudio('[rbfa] File verification result', pathInfo);
 
       if (pathInfo?.fileUrl) {
         fileUrl = pathInfo.fileUrl;
@@ -891,6 +936,7 @@ export function App() {
           loading: false,
           error: errorMsg
         });
+        setAudioStatus({ level: 'error', message: 'File not found' });
         console.error('[rbfa] File does not exist', {
           trackId: track.id,
           rawLocation: track.location,
@@ -907,6 +953,7 @@ export function App() {
           loading: false,
           error: errorMsg
         });
+        setAudioStatus({ level: 'error', message: 'File not readable' });
         console.error('[rbfa] File not readable', {
           trackId: track.id,
           fsPath: pathInfo.fsPath,
@@ -915,17 +962,17 @@ export function App() {
         return;
       }
 
-      console.log('[rbfa] File verification passed', {
+      logAudio('[rbfa] File verification passed', {
         trackId: track.id,
         fsPath: pathInfo.fsPath,
         exists: pathInfo.exists,
         readable: pathInfo.readable
       });
     } else {
-      console.warn('[rbfa] Bridge API not available for file verification');
+      warnAudio('[rbfa] Bridge API not available for file verification');
     }
 
-    console.log('[rbfa] Setting audio src', { trackId: track.id, fileUrl });
+    logAudio('[rbfa] Setting audio src', { trackId: track.id, fileUrl });
     const audio = ensureAudio(track, fileUrl);
     const duration = Number.isFinite(audio.duration) && audio.duration > 0
       ? audio.duration
@@ -935,7 +982,7 @@ export function App() {
       const target = clamp(seekSeconds, 0, duration || seekSeconds);
       audio.currentTime = target;
       updatePlaybackState(track.id, { currentTime: target });
-      console.log('[rbfa] Seeking to', { trackId: track.id, target });
+      logAudio('[rbfa] Seeking to', { trackId: track.id, target });
     }
 
     updatePlaybackState(track.id, { loading: audio.readyState < 1, error: '' });
@@ -943,7 +990,7 @@ export function App() {
       try {
         await waitForEvent(audio, 'loadedmetadata', 3000);
       } catch (error) {
-        console.warn('[rbfa] audio metadata not loaded', {
+        warnAudio('[rbfa] audio metadata not loaded', {
           trackId: track.id,
           src: audio.src,
           error: error?.message || error
@@ -954,13 +1001,13 @@ export function App() {
       return;
     }
     try {
-      console.log('[rbfa] Attempting audio.play()', {
+      logAudio('[rbfa] Attempting audio.play()', {
         trackId: track.id,
         readyState: audio.readyState,
         src: audio.src
       });
       await audio.play();
-      console.log('[rbfa] audio.play() succeeded', { trackId: track.id });
+      logAudio('[rbfa] audio.play() succeeded', { trackId: track.id });
     } catch (error) {
       const name = error?.name ? ` (${error.name})` : '';
       const message = error?.message ? ` ${error.message}` : '';
@@ -969,6 +1016,11 @@ export function App() {
         loading: false,
         error: `Unable to start playback${name}.${message}`
       });
+      if (error?.name === 'NotAllowedError') {
+        setAudioStatus({ level: 'blocked', message: 'Playback blocked by OS or policy' });
+      } else {
+        setAudioStatus({ level: 'error', message: 'Playback failed' });
+      }
       console.error('[rbfa] audio play failed', {
         trackId: track.id,
         src: audio.src,
@@ -1269,7 +1321,7 @@ export function App() {
         <div className="card">
           <div className="row" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
             <h3 style={{ margin: 0 }}>Track Table ({sortedTracks.length}/{tracks.length})</h3>
-            <div className="row" style={{ gap: '8px' }}>
+            <div className="row" style={{ gap: '8px', alignItems: 'center' }}>
               <span style={{ fontSize: '0.9rem', color: '#334155' }}>Volume</span>
               <input
                 type="range"
@@ -1283,6 +1335,33 @@ export function App() {
               <span style={{ fontSize: '0.8rem', color: '#64748b', minWidth: '36px', textAlign: 'right' }}>
                 {Math.round(playbackVolume * 100)}%
               </span>
+              {audioStatus.message ? (
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '4px 8px',
+                    borderRadius: '999px',
+                    border: '1px solid',
+                    borderColor: audioStatus.level === 'error' || audioStatus.level === 'blocked'
+                      ? '#fecaca'
+                      : audioStatus.level === 'muted'
+                        ? '#fed7aa'
+                        : '#cbd5f5',
+                    color: audioStatus.level === 'error' || audioStatus.level === 'blocked'
+                      ? '#b91c1c'
+                      : audioStatus.level === 'muted'
+                        ? '#9a3412'
+                        : '#1e3a8a',
+                    backgroundColor: audioStatus.level === 'error' || audioStatus.level === 'blocked'
+                      ? '#fef2f2'
+                      : audioStatus.level === 'muted'
+                        ? '#fff7ed'
+                        : '#eef2ff'
+                  }}
+                >
+                  {audioStatus.message}
+                </span>
+              ) : null}
               <button type="button" className="secondary" onClick={playTestTone}>
                 Test Tone
               </button>
