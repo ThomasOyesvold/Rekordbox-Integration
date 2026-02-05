@@ -16,6 +16,7 @@ import { startBackgroundParse } from '../src/services/parseService.js';
 import { getRecentImports, initDatabase, saveImportHistory } from '../src/state/sqliteStore.js';
 import { loadState, saveState } from '../src/state/stateStore.js';
 import { attachAnlzWaveformSummaries } from '../src/services/anlzWaveformService.js';
+import { buildAnlzMapping } from '../src/services/anlzMappingService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,6 +58,19 @@ ipcMain.handle('dialog:pickXml', async () => {
     title: 'Select Rekordbox XML export',
     properties: ['openFile'],
     filters: [{ name: 'XML Files', extensions: ['xml'] }]
+  });
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return '';
+  }
+
+  return result.filePaths[0];
+});
+
+ipcMain.handle('dialog:pickFolder', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Select folder',
+    properties: ['openDirectory']
   });
 
   if (result.canceled || result.filePaths.length === 0) {
@@ -131,6 +145,22 @@ ipcMain.handle('library:parse', async (_event, payload) => {
     parsedAt: library.parsedAt,
     validation: library.validation || { issues: [], warningCount: 0, errorCount: 0 }
   };
+});
+
+ipcMain.handle('anlz:buildMapping', async (_event, payload) => {
+  const tracks = Array.isArray(payload?.tracks) ? payload.tracks : [];
+  const usbAnlzPath = typeof payload?.usbAnlzPath === 'string' ? payload.usbAnlzPath.trim() : '';
+  const outPath = typeof payload?.outPath === 'string' ? payload.outPath.trim() : '';
+
+  if (!usbAnlzPath) {
+    throw new Error('Missing USBANLZ folder path.');
+  }
+
+  return buildAnlzMapping({
+    tracks,
+    usbAnlzPath,
+    outPath: outPath || '.planning/anlz-track-map.json'
+  });
 });
 
 ipcMain.handle('state:load', async () => loadState(statePath));

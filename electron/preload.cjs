@@ -9,11 +9,17 @@ contextBridge.exposeInMainWorld('rbfa', {
     buildTag: 'rbfa-file-url-2026-02-05-1.1'
   },
   pickXmlFile: () => ipcRenderer.invoke('dialog:pickXml'),
+  pickFolder: () => ipcRenderer.invoke('dialog:pickFolder'),
   parseLibrary: (xmlPath, selectedFolders, options = {}) => ipcRenderer.invoke('library:parse', {
     xmlPath,
     selectedFolders,
     anlzMapPath: options?.anlzMapPath || null,
     anlzMaxTracks: options?.anlzMaxTracks
+  }),
+  buildAnlzMapping: (tracks, usbAnlzPath, outPath) => ipcRenderer.invoke('anlz:buildMapping', {
+    tracks,
+    usbAnlzPath,
+    outPath
   }),
   runBaselineAnalysis: (tracks, sourceXmlPath, selectedFolders) => ipcRenderer.invoke('analysis:baseline', {
     tracks,
