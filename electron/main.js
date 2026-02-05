@@ -25,6 +25,7 @@ const dbPath = path.resolve(app.getPath('userData'), 'rbfa.db');
 const isSmokeMode = process.env.RBFA_SMOKE === '1';
 
 let mainWindow = null;
+let anlzBuildController = null;
 
 function createWindow() {
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
@@ -156,11 +157,31 @@ ipcMain.handle('anlz:buildMapping', async (_event, payload) => {
     throw new Error('Missing USBANLZ folder path.');
   }
 
+  if (anlzBuildController) {
+    anlzBuildController.abort();
+  }
+  anlzBuildController = new AbortController();
+
   return buildAnlzMapping({
     tracks,
     usbAnlzPath,
-    outPath: outPath || '.planning/anlz-track-map.json'
+    outPath: outPath || '.planning/anlz-track-map.json',
+    signal: anlzBuildController.signal,
+    onProgress: (progress) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('anlz:progress', progress);
+      }
+    }
   });
+});
+
+ipcMain.handle('anlz:cancelBuild', async () => {
+  if (anlzBuildController) {
+    anlzBuildController.abort();
+    anlzBuildController = null;
+    return { canceled: true };
+  }
+  return { canceled: false };
 });
 
 ipcMain.handle('state:load', async () => loadState(statePath));

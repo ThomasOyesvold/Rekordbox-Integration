@@ -390,6 +390,7 @@ export function App() {
   const [isParsing, setIsParsing] = useState(false);
   const [usbAnlzPath, setUsbAnlzPath] = useState('');
   const [anlzBuildSummary, setAnlzBuildSummary] = useState(null);
+  const [anlzBuildProgress, setAnlzBuildProgress] = useState(null);
   const [isBuildingAnlzMap, setIsBuildingAnlzMap] = useState(false);
   const [issueSeverityFilter, setIssueSeverityFilter] = useState('all');
   const [showValidationIssues, setShowValidationIssues] = useState(false);
@@ -502,6 +503,19 @@ export function App() {
     });
   }, []);
 
+  useEffect(() => {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.onAnlzProgress) {
+      return undefined;
+    }
+
+    const dispose = bridgeApi.onAnlzProgress((progress) => {
+      setAnlzBuildProgress(progress || null);
+    });
+
+    return () => dispose();
+  }, []);
+
   const selectedSet = useMemo(() => new Set(selectedFolders), [selectedFolders]);
 
   const toggleFolder = (folderPath) => {
@@ -580,6 +594,7 @@ export function App() {
     setIsBuildingAnlzMap(true);
     setError('');
     setAnlzBuildSummary(null);
+    setAnlzBuildProgress({ stage: 'parse-ext', scanned: 0, total: 0 });
 
     try {
       const result = await bridgeApi.buildAnlzMapping(tracks, usbAnlzPath.trim(), anlzMapPath.trim());
@@ -595,10 +610,26 @@ export function App() {
         anlzMapPath: result?.outPath || anlzMapPath.trim()
       });
     } catch (buildError) {
-      setError(buildError?.message || String(buildError));
+      const message = buildError?.message || String(buildError);
+      if (message.toLowerCase().includes('canceled')) {
+        setError('ANLZ mapping canceled.');
+      } else {
+        setError(message);
+      }
     } finally {
       setIsBuildingAnlzMap(false);
+      setAnlzBuildProgress(null);
     }
+  };
+
+  const cancelAnlzMapBuild = async () => {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.cancelAnlzMapping) {
+      return;
+    }
+    await bridgeApi.cancelAnlzMapping();
+    setAnlzBuildProgress(null);
+    setIsBuildingAnlzMap(false);
   };
 
   const parse = async () => {
@@ -1346,7 +1377,22 @@ export function App() {
           >
             {isBuildingAnlzMap ? 'Building...' : 'Build ANLZ Map'}
           </button>
+          {isBuildingAnlzMap ? (
+            <button type="button" className="secondary" onClick={cancelAnlzMapBuild}>
+              Cancel
+            </button>
+          ) : null}
         </div>
+        {anlzBuildProgress ? (
+          <div className="meta" style={{ marginTop: '6px' }}>
+            <span>
+              ANLZ Progress: {anlzBuildProgress.scanned || 0}/{anlzBuildProgress.total || 0} EXT files
+            </span>
+            <span>Parsed: {anlzBuildProgress.parsedCount || 0}</span>
+            <span>Errors: {anlzBuildProgress.parseErrors || 0}</span>
+            <span>Missing PPTH: {anlzBuildProgress.missingPpth || 0}</span>
+          </div>
+        ) : null}
         {progress !== null && isParsing ? <p className="progress">Parsing in background: {progress}%</p> : null}
         {error ? <p style={{ color: '#be123c', margin: '8px 0 0' }}>{error}</p> : null}
         {summary ? (

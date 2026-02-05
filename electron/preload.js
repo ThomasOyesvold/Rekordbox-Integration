@@ -14,6 +14,15 @@ contextBridge.exposeInMainWorld('rbfa', {
     usbAnlzPath,
     outPath
   }),
+  cancelAnlzMapping: () => ipcRenderer.invoke('anlz:cancelBuild'),
+  onAnlzProgress: (listener) => {
+    const wrapped = (_event, value) => listener(value);
+    ipcRenderer.on('anlz:progress', wrapped);
+
+    return () => {
+      ipcRenderer.removeListener('anlz:progress', wrapped);
+    };
+  },
   runBaselineAnalysis: (tracks, sourceXmlPath, selectedFolders) => ipcRenderer.invoke('analysis:baseline', {
     tracks,
     sourceXmlPath,

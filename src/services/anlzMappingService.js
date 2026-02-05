@@ -158,7 +158,9 @@ function relativeOrAbsolute(filePath, basePath) {
 export async function buildAnlzMapping({
   tracks,
   usbAnlzPath,
-  outPath
+  outPath,
+  onProgress,
+  signal
 }) {
   const safeTracks = Array.isArray(tracks) ? tracks : [];
   if (!usbAnlzPath) {
@@ -190,13 +192,21 @@ export async function buildAnlzMapping({
   }
 
   const extFiles = await walkForExtFiles(usbPath);
+  if (signal?.aborted) {
+    throw new Error('ANLZ mapping canceled.');
+  }
 
   const anlzByFilename = new Map();
   let parsedCount = 0;
   let parseErrors = 0;
   let missingPpth = 0;
+  let scanned = 0;
+  const total = extFiles.length;
 
   for (const extPath of extFiles) {
+    if (signal?.aborted) {
+      throw new Error('ANLZ mapping canceled.');
+    }
     try {
       const data = await fs.readFile(extPath);
       const parsed = RekordboxAnlz.parseAnlz(data);
@@ -231,6 +241,18 @@ export async function buildAnlzMapping({
       parsedCount += 1;
     } catch {
       parseErrors += 1;
+    } finally {
+      scanned += 1;
+      if (typeof onProgress === 'function') {
+        onProgress({
+          stage: 'parse-ext',
+          scanned,
+          total,
+          parsedCount,
+          parseErrors,
+          missingPpth
+        });
+      }
     }
   }
 
