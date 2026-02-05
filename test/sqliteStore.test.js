@@ -13,7 +13,9 @@ import {
   getRecentImports,
   getTrackSignature,
   initDatabase,
+  loadAppState,
   saveAnlzWaveformSummary,
+  saveAppState,
   saveImportHistory,
   saveSimilarityScore,
   upsertTrackSignature
@@ -102,6 +104,29 @@ test('sqlite store caches signatures and similarity scores with analysis runs', 
   const run = getAnalysisRun(runId);
   assert.equal(run.status, 'completed');
   assert.ok(run.completedAt);
+
+  closeDatabase();
+  await fs.rm(tempDir, { recursive: true, force: true });
+});
+
+test('sqlite store persists app state', async () => {
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'rbfa-sqlite-'));
+  const dbPath = path.join(tempDir, 'rbfa.db');
+
+  initDatabase(dbPath);
+
+  const state = {
+    lastLibraryPath: 'C:/Exports/library.xml',
+    selectedFolders: ['ROOT/Techno'],
+    updatedAt: '2026-02-05T00:00:00.000Z'
+  };
+
+  saveAppState(state);
+  const loaded = loadAppState();
+
+  assert.ok(loaded);
+  assert.equal(loaded.lastLibraryPath, 'C:/Exports/library.xml');
+  assert.deepEqual(loaded.selectedFolders, ['ROOT/Techno']);
 
   closeDatabase();
   await fs.rm(tempDir, { recursive: true, force: true });

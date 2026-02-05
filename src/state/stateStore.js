@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { isDatabaseReady, loadAppState, saveAppState } from './sqliteStore.js';
 
 const DEFAULT_STATE = {
   lastLibraryPath: '',
@@ -7,16 +8,32 @@ const DEFAULT_STATE = {
   updatedAt: null
 };
 
+function normalizeState(state) {
+  const safe = state && typeof state === 'object' ? state : {};
+  return {
+    ...DEFAULT_STATE,
+    ...safe,
+    selectedFolders: Array.isArray(safe.selectedFolders) ? safe.selectedFolders : []
+  };
+}
+
 export async function loadState(stateFilePath) {
+  if (isDatabaseReady()) {
+    try {
+      const dbState = loadAppState();
+      if (dbState) {
+        return normalizeState(dbState);
+      }
+    } catch (error) {
+      console.warn('[state] Failed to load app state from SQLite:', error.message || error);
+    }
+  }
+
   try {
     const raw = await fs.readFile(stateFilePath, 'utf8');
     const parsed = JSON.parse(raw);
 
-    return {
-      ...DEFAULT_STATE,
-      ...parsed,
-      selectedFolders: Array.isArray(parsed.selectedFolders) ? parsed.selectedFolders : []
-    };
+    return normalizeState(parsed);
   } catch (error) {
     if (error.code === 'ENOENT') {
       return { ...DEFAULT_STATE };
@@ -33,6 +50,14 @@ export async function saveState(stateFilePath, patch) {
     ...patch,
     updatedAt: new Date().toISOString()
   };
+
+  if (isDatabaseReady()) {
+    try {
+      saveAppState(nextState);
+    } catch (error) {
+      console.warn('[state] Failed to save app state to SQLite:', error.message || error);
+    }
+  }
 
   const directoryPath = path.dirname(stateFilePath);
   await fs.mkdir(directoryPath, { recursive: true });

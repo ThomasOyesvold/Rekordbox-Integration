@@ -3,6 +3,7 @@ import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 
 let db = null;
+const APP_STATE_KEY = 'app_state';
 
 function normalizeTrackPair(trackAId, trackBId) {
   if (!trackAId || !trackBId) {
@@ -100,10 +101,19 @@ export function initDatabase(dbFilePath) {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_state (
+      state_key TEXT PRIMARY KEY,
+      state_json TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  `);
+
   db.exec('CREATE INDEX IF NOT EXISTS idx_import_history_parsed_at ON import_history(parsed_at DESC);');
   db.exec('CREATE INDEX IF NOT EXISTS idx_analysis_runs_created_at ON analysis_runs(created_at DESC);');
   db.exec('CREATE INDEX IF NOT EXISTS idx_track_similarity_computed_at ON track_similarity(computed_at DESC);');
   db.exec('CREATE INDEX IF NOT EXISTS idx_anlz_waveform_cache_updated_at ON anlz_waveform_cache(updated_at DESC);');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_app_state_updated_at ON app_state(updated_at DESC);');
 
   return db;
 }
@@ -112,6 +122,10 @@ function assertDb() {
   if (!db) {
     throw new Error('Database not initialized. Call initDatabase first.');
   }
+}
+
+export function isDatabaseReady() {
+  return Boolean(db);
 }
 
 export function saveImportHistory(entry) {
@@ -443,5 +457,51 @@ export function getAnlzWaveformSummary(extPath) {
     bins,
     binColors,
     updatedAt: row.updated_at
+  };
+}
+
+export function saveAppState(state) {
+  assertDb();
+
+  const statement = db.prepare(`
+    INSERT INTO app_state (
+      state_key,
+      state_json,
+      updated_at
+    ) VALUES (?, ?, ?)
+    ON CONFLICT(state_key) DO UPDATE SET
+      state_json = excluded.state_json,
+      updated_at = excluded.updated_at
+  `);
+
+  statement.run(
+    APP_STATE_KEY,
+    JSON.stringify(state || {}),
+    new Date().toISOString()
+  );
+}
+
+export function loadAppState() {
+  assertDb();
+
+  const statement = db.prepare(`
+    SELECT state_json, updated_at
+    FROM app_state
+    WHERE state_key = ?
+  `);
+
+  const row = statement.get(APP_STATE_KEY);
+  if (!row) {
+    return null;
+  }
+
+  const parsed = parseJson(row.state_json, null);
+  if (!parsed || typeof parsed !== 'object') {
+    return null;
+  }
+
+  return {
+    ...parsed,
+    updatedAt: parsed.updatedAt ?? row.updated_at ?? null
   };
 }
