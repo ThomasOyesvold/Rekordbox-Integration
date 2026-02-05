@@ -387,6 +387,11 @@ export function App() {
   const [validationIssues, setValidationIssues] = useState([]);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [playlistSuggestions, setPlaylistSuggestions] = useState(null);
+  const [isClustering, setIsClustering] = useState(false);
+  const [clusterThreshold, setClusterThreshold] = useState(0.78);
+  const [clusterMinSize, setClusterMinSize] = useState(3);
+  const [clusterMaxPairs, setClusterMaxPairs] = useState(15000);
   const [isParsing, setIsParsing] = useState(false);
   const [usbAnlzPath, setUsbAnlzPath] = useState('');
   const [anlzBuildSummary, setAnlzBuildSummary] = useState(null);
@@ -686,6 +691,7 @@ export function App() {
       setAnlzAttachSummary(result.anlzAttach || null);
       setValidationIssues(Array.isArray(result.validation?.issues) ? result.validation.issues : []);
       setAnalysisResult(null);
+      setPlaylistSuggestions(null);
 
       if (result.anlzAttachError) {
         setError(`Parsed XML, but ANLZ attach failed: ${result.anlzAttachError}`);
@@ -729,6 +735,37 @@ export function App() {
       setError(analysisError.message || String(analysisError));
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const runPlaylistClustering = async () => {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.generatePlaylists) {
+      setError(DESKTOP_BRIDGE_ERROR);
+      return;
+    }
+
+    if (tracks.length < 2) {
+      setError('Need at least 2 tracks to generate playlist suggestions.');
+      return;
+    }
+
+    setIsClustering(true);
+    setError('');
+    try {
+      const result = await bridgeApi.generatePlaylists({
+        tracks,
+        sourceXmlPath: xmlPath.trim(),
+        selectedFolders,
+        similarityThreshold: Number(clusterThreshold),
+        minClusterSize: Number(clusterMinSize),
+        maxPairs: Number(clusterMaxPairs)
+      });
+      setPlaylistSuggestions(result);
+    } catch (clusterError) {
+      setError(clusterError.message || String(clusterError));
+    } finally {
+      setIsClustering(false);
     }
   };
 
@@ -1993,6 +2030,98 @@ export function App() {
           </table>
         </div>
       ) : null}
+
+      <div className="card">
+        <div className="row" style={{ justifyContent: 'space-between' }}>
+          <h3 style={{ margin: 0 }}>Playlist Suggestions</h3>
+          <button
+            type="button"
+            className="secondary"
+            onClick={runPlaylistClustering}
+            disabled={isParsing || isAnalyzing || isClustering || tracks.length < 2}
+          >
+            {isClustering ? 'Building...' : 'Generate Suggestions'}
+          </button>
+        </div>
+        <div className="meta">
+          <label>
+            Threshold
+            <input
+              type="number"
+              min="0"
+              max="1"
+              step="0.01"
+              value={clusterThreshold}
+              onChange={(event) => setClusterThreshold(event.target.value)}
+              style={{ width: '90px', marginLeft: '6px' }}
+            />
+          </label>
+          <label>
+            Min Size
+            <input
+              type="number"
+              min="2"
+              step="1"
+              value={clusterMinSize}
+              onChange={(event) => setClusterMinSize(event.target.value)}
+              style={{ width: '70px', marginLeft: '6px' }}
+            />
+          </label>
+          <label>
+            Max Pairs
+            <input
+              type="number"
+              min="0"
+              step="1000"
+              value={clusterMaxPairs}
+              onChange={(event) => setClusterMaxPairs(event.target.value)}
+              style={{ width: '110px', marginLeft: '6px' }}
+            />
+          </label>
+        </div>
+        {playlistSuggestions ? (
+          <>
+            <div className="meta">
+              <span>Clusters: {playlistSuggestions.clusters?.length || 0}</span>
+              <span>Pairs: {playlistSuggestions.pairCount}</span>
+              <span>Computed: {playlistSuggestions.computed}</span>
+              <span>Cache Hits: {playlistSuggestions.cacheHits}</span>
+            </div>
+            {playlistSuggestions.clusters?.length ? (
+              <table className="track-table" style={{ marginTop: '10px' }}>
+                <thead>
+                  <tr>
+                    <th>Cluster</th>
+                    <th>Tracks</th>
+                    <th>Avg Score</th>
+                    <th>Top Tracks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {playlistSuggestions.clusters.map((cluster, index) => {
+                    const preview = cluster.trackIds.slice(0, 5).map((trackId) => {
+                      const track = trackIndexById.get(String(trackId));
+                      return track ? `${track.artist || ''} ${track.title || ''}`.trim() : trackId;
+                    }).filter(Boolean);
+                    return (
+                      <tr key={cluster.id || String(index)}>
+                        <td>#{index + 1}</td>
+                        <td>{cluster.size}</td>
+                        <td>{cluster.avgScore.toFixed(3)}</td>
+                        <td>{preview.join(', ') || '-'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <p>No clusters met the threshold. Try lowering it a bit.</p>
+            )}
+          </>
+        ) : (
+          <p>Generate suggestions to see clustered playlists.</p>
+        )}
+      </div>
     </div>
   );
 }

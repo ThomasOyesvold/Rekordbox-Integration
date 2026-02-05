@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('rbfa', {
     selectedFolders
   }),
   exportAnalysis: (payload) => ipcRenderer.invoke('analysis:export', payload),
+  generatePlaylists: (payload) => ipcRenderer.invoke('playlists:cluster', payload),
   loadState: () => ipcRenderer.invoke('state:load'),
   saveState: (patch) => ipcRenderer.invoke('state:save', patch),
   getRecentImports: () => ipcRenderer.invoke('imports:recent'),

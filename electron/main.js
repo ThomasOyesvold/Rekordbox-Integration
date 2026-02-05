@@ -17,6 +17,7 @@ import { getRecentImports, initDatabase, saveImportHistory } from '../src/state/
 import { loadState, saveState } from '../src/state/stateStore.js';
 import { attachAnlzWaveformSummaries } from '../src/services/anlzWaveformService.js';
 import { buildAnlzMapping } from '../src/services/anlzMappingService.js';
+import { generatePlaylistClusters } from '../src/services/playlistClusterService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -235,6 +236,19 @@ ipcMain.handle('analysis:export', async (_event, payload) => {
     filePath: selection.filePath,
     format
   };
+});
+
+ipcMain.handle('playlists:cluster', async (_event, payload) => {
+  const tracks = Array.isArray(payload?.tracks) ? payload.tracks : [];
+  return generatePlaylistClusters({
+    tracks,
+    sourceXmlPath: payload?.sourceXmlPath || null,
+    selectedFolders: Array.isArray(payload?.selectedFolders) ? payload.selectedFolders : [],
+    similarityThreshold: payload?.similarityThreshold,
+    maxPairs: payload?.maxPairs,
+    minClusterSize: payload?.minClusterSize,
+    maxClusters: payload?.maxClusters
+  });
 });
 
 const isWsl = Boolean(process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP);
