@@ -142,6 +142,49 @@ test('baseline analyzer uses nested Rekordbox metadata in waveform and rhythm sc
   assert.ok(rhythmClose > rhythmFar);
 });
 
+test('baseline analyzer uses ANLZ waveform rhythm signature when available', () => {
+  const trackA = {
+    id: 'r1',
+    bpm: 128,
+    key: '8A',
+    durationSeconds: 360,
+    anlzWaveform: {
+      bins: [0, 2, 6, 12, 6, 2, 0, 2, 7, 13, 7, 2, 0, 1, 5, 11],
+      avgColor: { red: 20, green: 40, blue: 200 },
+      durationSeconds: 360
+    }
+  };
+
+  const trackB = {
+    id: 'r2',
+    bpm: 128,
+    key: '8A',
+    durationSeconds: 362,
+    anlzWaveform: {
+      bins: [0, 2, 7, 11, 6, 2, 0, 2, 6, 12, 7, 2, 0, 1, 4, 10],
+      avgColor: { red: 19, green: 41, blue: 198 },
+      durationSeconds: 362
+    }
+  };
+
+  const trackC = {
+    id: 'r3',
+    bpm: 128,
+    key: '8A',
+    durationSeconds: 300,
+    anlzWaveform: {
+      bins: [12, 11, 9, 7, 5, 4, 3, 2, 3, 4, 6, 8, 9, 10, 11, 12],
+      avgColor: { red: 220, green: 80, blue: 10 },
+      durationSeconds: 300
+    }
+  };
+
+  const rhythmClose = computeRhythmScore(trackA, trackB);
+  const rhythmFar = computeRhythmScore(trackA, trackC);
+
+  assert.ok(rhythmClose > rhythmFar);
+});
+
 test('baseline analyzer prefers ANLZ waveform summaries when present', () => {
   const trackA = {
     id: 'a',

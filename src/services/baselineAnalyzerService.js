@@ -198,6 +198,67 @@ function compareAnlzWaveformSummaries(trackA, trackB) {
   return clamp((heightScore * 0.65) + (colorScore * 0.2) + (durationScore * 0.15));
 }
 
+function buildRhythmSignatureFromWaveform(track, segmentCount = 32) {
+  const waveform = track?.anlzWaveform;
+  const bins = Array.isArray(waveform?.bins) ? waveform.bins : [];
+  if (bins.length < 16) {
+    return null;
+  }
+
+  const cleaned = bins.map((value) => (Number.isFinite(Number(value)) ? Number(value) : 0));
+  const maxValue = Math.max(...cleaned);
+  if (!Number.isFinite(maxValue) || maxValue <= 0) {
+    return null;
+  }
+
+  const normalized = cleaned.map((value) => value / maxValue);
+  const onset = normalized.map((value, index) => {
+    if (index === 0) {
+      return 0;
+    }
+    return Math.max(0, value - normalized[index - 1]);
+  });
+
+  const smoothed = onset.map((value, index) => {
+    const prev = onset[index - 1] ?? value;
+    const next = onset[index + 1] ?? value;
+    return (prev + value + next) / 3;
+  });
+
+  const segments = new Array(segmentCount).fill(0);
+  const counters = new Array(segmentCount).fill(0);
+  const length = smoothed.length;
+  for (let index = 0; index < length; index += 1) {
+    const bucket = Math.min(segmentCount - 1, Math.floor((index / length) * segmentCount));
+    segments[bucket] += smoothed[index];
+    counters[bucket] += 1;
+  }
+
+  const averaged = segments.map((value, index) => (counters[index] ? value / counters[index] : 0));
+  const magnitude = Math.sqrt(averaged.reduce((sum, value) => sum + (value * value), 0));
+  if (!Number.isFinite(magnitude) || magnitude === 0) {
+    return null;
+  }
+
+  return averaged.map((value) => value / magnitude);
+}
+
+function compareRhythmSignatures(trackA, trackB) {
+  const signatureA = buildRhythmSignatureFromWaveform(trackA);
+  const signatureB = buildRhythmSignatureFromWaveform(trackB);
+
+  if (!signatureA || !signatureB || signatureA.length !== signatureB.length) {
+    return null;
+  }
+
+  let dot = 0;
+  for (let index = 0; index < signatureA.length; index += 1) {
+    dot += signatureA[index] * signatureB[index];
+  }
+
+  return clamp(dot, 0, 1);
+}
+
 function parseCamelot(raw) {
   if (typeof raw !== 'string') {
     return null;
@@ -348,11 +409,21 @@ export function computeRhythmScore(trackA, trackB) {
   const tokenScore = jaccardScore(toTokenSet(trackA), toTokenSet(trackB));
   const baseScore = clamp((bpmScore * 0.55) + (phraseScore * 0.3) + (tokenScore * 0.15));
   const nestedTempoScore = compareNestedTempoMaps(trackA, trackB);
-  if (nestedTempoScore === null) {
-    return baseScore;
+  const rhythmSignatureScore = compareRhythmSignatures(trackA, trackB);
+
+  if (nestedTempoScore !== null && rhythmSignatureScore !== null) {
+    return clamp((baseScore * 0.25) + (nestedTempoScore * 0.35) + (rhythmSignatureScore * 0.4));
   }
 
-  return clamp((baseScore * 0.6) + (nestedTempoScore * 0.4));
+  if (rhythmSignatureScore !== null) {
+    return clamp((baseScore * 0.35) + (rhythmSignatureScore * 0.65));
+  }
+
+  if (nestedTempoScore !== null) {
+    return clamp((baseScore * 0.6) + (nestedTempoScore * 0.4));
+  }
+
+  return baseScore;
 }
 
 export function computeWaveformPlaceholderScore(trackA, trackB) {
