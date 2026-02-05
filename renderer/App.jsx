@@ -388,6 +388,7 @@ export function App() {
   const [playbackStates, setPlaybackStates] = useState({});
   const [activeTrackId, setActiveTrackId] = useState(null);
   const [playbackVolume, setPlaybackVolume] = useState(1);
+  const playRequestIdRef = useRef(0);
 
   const playTestTone = () => {
     try {
@@ -683,6 +684,15 @@ export function App() {
     });
   };
 
+  const stopAllPlayback = (keepTrackId = null) => {
+    audioRegistryRef.current.forEach((_entry, trackId) => {
+      if (keepTrackId && String(trackId) === String(keepTrackId)) {
+        return;
+      }
+      stopPlayback(trackId);
+    });
+  };
+
   const ensureAudio = (track, srcOverride = '') => {
     const trackId = track.id;
     const existing = audioRegistryRef.current.get(trackId);
@@ -833,6 +843,9 @@ export function App() {
   }, [playbackVolume]);
 
   const playTrack = async (track, seekSeconds = null) => {
+    const requestId = playRequestIdRef.current + 1;
+    playRequestIdRef.current = requestId;
+
     if (!track?.location) {
       updatePlaybackState(track.id, { status: 'error', error: 'Missing audio path.' });
       console.error('[rbfa] playTrack: missing location', { trackId: track.id });
@@ -846,18 +859,19 @@ export function App() {
       seekSeconds
     });
 
-    if (activeTrackId && activeTrackId !== track.id) {
-      console.log('[rbfa] stopping previous track', { activeTrackId });
-      stopPlayback(activeTrackId);
-    }
+    stopAllPlayback(track.id);
 
     // Get normalized file URL and filesystem path
     const bridgeApi = getBridgeApi();
     let fileUrl = normalizeAudioLocation(track.location, { debug: true });
 
     // Verify file exists and is readable using bridge API
+    let pathInfo = null;
     if (bridgeApi?.resolveAudioPath) {
-      const pathInfo = await bridgeApi.resolveAudioPath(track.location);
+      pathInfo = await bridgeApi.resolveAudioPath(track.location);
+      if (requestId !== playRequestIdRef.current) {
+        return;
+      }
       console.log('[rbfa] File verification result', pathInfo);
 
       if (pathInfo?.fileUrl) {
@@ -935,6 +949,9 @@ export function App() {
           error: error?.message || error
         });
       }
+    }
+    if (requestId !== playRequestIdRef.current) {
+      return;
     }
     try {
       console.log('[rbfa] Attempting audio.play()', {
