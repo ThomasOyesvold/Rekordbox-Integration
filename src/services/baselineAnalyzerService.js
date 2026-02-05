@@ -7,10 +7,10 @@ import {
 } from './similarityCacheService.js';
 
 export const DEFAULT_COMPONENT_WEIGHTS = {
-  bpm: 0.35,
-  key: 0.35,
-  waveform: 0.15,
-  rhythm: 0.15
+  bpm: 0.25,
+  key: 0.25,
+  waveform: 0.25,
+  rhythm: 0.25
 };
 
 function clamp(value, min = 0, max = 1) {
@@ -500,7 +500,7 @@ export function rankSimilarityRows(rows, limit = 20) {
     .slice(0, limit);
 }
 
-export function createAnalyzerVersion(tag = 'baseline-v3') {
+export function createAnalyzerVersion(tag = 'baseline-v4') {
   return `flow-${tag}`;
 }
 

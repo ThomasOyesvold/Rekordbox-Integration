@@ -110,7 +110,7 @@ test('baseline analyzer computes then reuses cache entries', async () => {
   assert.equal(first.cacheHits, 0);
   assert.equal(first.computed, 3);
   assert.equal(first.topMatches.length, 3);
-  assert.equal(first.algorithmVersion, 'flow-baseline-v3');
+  assert.equal(first.algorithmVersion, 'flow-baseline-v4');
   assert.ok(first.topMatches[0].components.waveform >= 0);
   assert.ok(first.topMatches[0].components.rhythm >= 0);
   assert.equal(typeof first.topMatches[0].reason, 'string');
