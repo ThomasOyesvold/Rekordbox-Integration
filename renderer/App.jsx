@@ -591,6 +591,8 @@ export function App() {
   const samplingStateRef = useRef(samplingState);
   const samplingTimerRef = useRef(null);
   const [clusterDecisions, setClusterDecisions] = useState({});
+  const [playlistDecisionsByContext, setPlaylistDecisionsByContext] = useState({});
+  const [decisionContextKey, setDecisionContextKey] = useState('');
   const [expandedClusterKey, setExpandedClusterKey] = useState(null);
   const [isClustering, setIsClustering] = useState(false);
   const [clusterThreshold, setClusterThreshold] = useState(0.82);
@@ -700,8 +702,10 @@ export function App() {
         setSelectedFolders(state.selectedFolders);
       }
 
-      if (state?.playlistDecisions && typeof state.playlistDecisions === 'object') {
-        setClusterDecisions(state.playlistDecisions);
+      if (state?.playlistDecisionsByContext && typeof state.playlistDecisionsByContext === 'object') {
+        setPlaylistDecisionsByContext(state.playlistDecisionsByContext);
+      } else if (state?.playlistDecisions && typeof state.playlistDecisions === 'object') {
+        setPlaylistDecisionsByContext({ legacy: state.playlistDecisions });
       }
 
       if (typeof state?.tableSortBy === 'string') {
@@ -989,6 +993,19 @@ export function App() {
     }));
   };
 
+  const buildDecisionContextKey = () => {
+    const payload = {
+      xmlPath: xmlPath.trim(),
+      selectedFolders: [...selectedFolders].sort(),
+      threshold: Number(clusterThreshold),
+      minSize: Number(clusterMinSize),
+      maxPairs: Number(clusterMaxPairs),
+      strictMode: Boolean(clusterStrictMode),
+      mode: playlistSuggestions?.mode || 'default'
+    };
+    return JSON.stringify(payload);
+  };
+
   const runPlaylistClustering = async () => {
     const bridgeApi = getBridgeApi();
     if (!bridgeApi?.generatePlaylists) {
@@ -1016,7 +1033,9 @@ export function App() {
         folderGroups
       });
       setPlaylistSuggestions(result);
-      setClusterDecisions({});
+      const contextKey = buildDecisionContextKey();
+      setDecisionContextKey(contextKey);
+      setClusterDecisions(playlistDecisionsByContext[contextKey] || {});
     } catch (clusterError) {
       setError(clusterError.message || String(clusterError));
     } finally {
@@ -1227,16 +1246,36 @@ export function App() {
     return clusterDecisions[clusterKey] || { status: 'pending', name: '' };
   };
 
+  const persistClusterDecisions = (nextDecisions) => {
+    if (!decisionContextKey) {
+      return;
+    }
+    const nextMap = {
+      ...playlistDecisionsByContext,
+      [decisionContextKey]: nextDecisions
+    };
+    setPlaylistDecisionsByContext(nextMap);
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.saveState) {
+      return;
+    }
+    bridgeApi.saveState({ playlistDecisionsByContext: nextMap }).catch(() => {
+      // best-effort decision save
+    });
+  };
+
   const updateClusterDecision = (clusterKey, patch) => {
     setClusterDecisions((current) => {
       const existing = current[clusterKey] || { status: 'pending', name: '' };
-      return {
+      const next = {
         ...current,
         [clusterKey]: {
           ...existing,
           ...patch
         }
       };
+      persistClusterDecisions(next);
+      return next;
     });
   };
 
@@ -1783,19 +1822,6 @@ export function App() {
       // best-effort UI preference save
     });
   }, [sortBy, sortDirection, visibleTrackColumns, tableDensity, pageSize]);
-
-  useEffect(() => {
-    const bridgeApi = getBridgeApi();
-    if (!bridgeApi?.saveState) {
-      return;
-    }
-
-    bridgeApi.saveState({
-      playlistDecisions: clusterDecisions
-    }).catch(() => {
-      // best-effort decision save
-    });
-  }, [clusterDecisions]);
 
   useEffect(() => {
     setCurrentPage(1);
