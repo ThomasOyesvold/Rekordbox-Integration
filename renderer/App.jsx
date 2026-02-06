@@ -1159,6 +1159,17 @@ export function App() {
     });
   };
 
+  const disposeAudio = (trackId) => {
+    if (!trackId) {
+      return;
+    }
+    const entry = audioRegistryRef.current.get(trackId);
+    if (entry?.cleanup) {
+      entry.cleanup();
+    }
+    audioRegistryRef.current.delete(trackId);
+  };
+
   const clearSamplingTimer = () => {
     if (samplingTimerRef.current) {
       clearTimeout(samplingTimerRef.current);
@@ -1168,6 +1179,11 @@ export function App() {
 
   const stopSampling = () => {
     clearSamplingTimer();
+    const active = samplingStateRef.current;
+    const currentTrackId = active?.trackIds?.[active?.currentIndex];
+    if (active?.active && currentTrackId) {
+      disposeAudio(currentTrackId);
+    }
     setSamplingState({
       active: false,
       clusterKey: null,
@@ -1190,15 +1206,6 @@ export function App() {
     const maxStart = Math.max(minStart, duration - outroCut);
     const start = minStart + (Math.random() * Math.max(0, maxStart - minStart));
     return Math.max(0, Math.min(duration - 1, start));
-  };
-
-  const shuffle = (items) => {
-    const copy = [...items];
-    for (let i = copy.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-    }
-    return copy;
   };
 
   const handleSampleSizeChange = (value) => {
@@ -1226,7 +1233,10 @@ export function App() {
     if (!candidates.length) {
       return;
     }
-    const queue = shuffle(candidates).slice(0, Math.min(limit, candidates.length));
+    if (samplingStateRef.current.active) {
+      stopSampling();
+    }
+    const queue = candidates.slice(0, Math.min(limit, candidates.length));
     stopAllPlayback();
     setSamplingState({
       active: true,
@@ -1255,6 +1265,7 @@ export function App() {
     }
     const nextIndex = state.currentIndex + 1;
     if (nextIndex >= state.total) {
+      disposeAudio(expected);
       stopSampling();
       return;
     }
@@ -1265,6 +1276,7 @@ export function App() {
       currentIndex: nextIndex
     }));
     if (nextTrack) {
+      disposeAudio(expected);
       await playTrack(nextTrack, pickSampleStartSeconds(nextTrack));
       scheduleSamplingAdvance(nextTrack.id);
     }
@@ -1558,6 +1570,17 @@ export function App() {
       await audio.play();
       logAudio('[rbfa] audio.play() succeeded', { trackId: track.id });
     } catch (error) {
+      if (error?.name === 'AbortError' || error?.code === 20) {
+        warnAudio('[rbfa] audio play aborted', {
+          trackId: track.id,
+          src: audio.src
+        });
+        updatePlaybackState(track.id, {
+          status: 'paused',
+          loading: false
+        });
+        return;
+      }
       const name = error?.name ? ` (${error.name})` : '';
       const message = error?.message ? ` ${error.message}` : '';
       updatePlaybackState(track.id, {
