@@ -91,9 +91,9 @@ function getSimilarityScore(trackA, trackB, algorithmVersion, runId, cacheStats)
   return result.score;
 }
 
-function orderClusterTracks({ trackIds, trackIndexById, algorithmVersion, runId }) {
+function orderClusterTracks({ trackIds, trackById, algorithmVersion, runId }) {
   const cacheStats = { cacheHits: 0, computed: 0 };
-  const tracks = trackIds.map((trackId) => trackIndexById.get(String(trackId))).filter(Boolean);
+  const tracks = trackIds.map((trackId) => trackById.get(String(trackId))).filter(Boolean);
   if (tracks.length <= 2) {
     return tracks.map((track) => String(track.id));
   }
@@ -154,6 +154,7 @@ export function generatePlaylistClusters({
 } = {}) {
   const safeTracks = Array.isArray(tracks) ? tracks : [];
   const trackIndexById = new Map(safeTracks.map((track, index) => [String(track.id), index]));
+  const trackById = new Map(safeTracks.map((track) => [String(track.id), track]));
   const baseThreshold = Math.max(0, Math.min(1, toNumber(similarityThreshold, 0.82)));
   const threshold = strictMode ? clamp(baseThreshold + 0.03, 0, 0.98) : baseThreshold;
   const pairLimit = Number.isFinite(maxPairs) ? Math.max(0, Math.floor(maxPairs)) : Infinity;
@@ -285,7 +286,7 @@ export function generatePlaylistClusters({
 
       const ordered = orderClusterTracks({
         trackIds: cluster.trackIds,
-        trackIndexById,
+        trackById,
         algorithmVersion,
         runId
       });

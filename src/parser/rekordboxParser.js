@@ -43,7 +43,11 @@ function parseLocation(rawLocation) {
 
   if (/^file:/i.test(trimmed)) {
     try {
-      return fileURLToPath(new URL(trimmed));
+      let pathValue = fileURLToPath(new URL(trimmed));
+      if (/^\/[A-Za-z]:\//.test(pathValue)) {
+        pathValue = pathValue.slice(1);
+      }
+      return pathValue;
     } catch {
       // Fall through to manual normalization.
     }
