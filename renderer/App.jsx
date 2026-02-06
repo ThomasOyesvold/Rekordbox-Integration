@@ -589,6 +589,7 @@ export function App() {
     total: 0
   });
   const samplingStateRef = useRef(samplingState);
+  const samplingTimerRef = useRef(null);
   const [expandedClusterKey, setExpandedClusterKey] = useState(null);
   const [isClustering, setIsClustering] = useState(false);
   const [clusterThreshold, setClusterThreshold] = useState(0.82);
@@ -1158,7 +1159,15 @@ export function App() {
     });
   };
 
+  const clearSamplingTimer = () => {
+    if (samplingTimerRef.current) {
+      clearTimeout(samplingTimerRef.current);
+      samplingTimerRef.current = null;
+    }
+  };
+
   const stopSampling = () => {
+    clearSamplingTimer();
     setSamplingState({
       active: false,
       clusterKey: null,
@@ -1201,6 +1210,14 @@ export function App() {
     setSampleSize(Math.max(10, Math.min(20, Math.floor(parsed))));
   };
 
+  const scheduleSamplingAdvance = (trackId) => {
+    clearSamplingTimer();
+    const seconds = 30 + Math.random() * 15;
+    samplingTimerRef.current = setTimeout(() => {
+      handleSamplingEnded(trackId);
+    }, seconds * 1000);
+  };
+
   const startSampling = async (cluster, clusterKey) => {
     const limit = Math.max(10, Math.min(20, Number(sampleSize) || 12));
     const candidates = cluster.trackIds
@@ -1222,10 +1239,12 @@ export function App() {
     const firstTrack = trackIndexById.get(queue[0]);
     if (firstTrack) {
       await playTrack(firstTrack, pickSampleStartSeconds(firstTrack));
+      scheduleSamplingAdvance(firstTrack.id);
     }
   };
 
   const handleSamplingEnded = async (trackId) => {
+    clearSamplingTimer();
     const state = samplingStateRef.current;
     if (!state.active) {
       return;
@@ -1247,6 +1266,7 @@ export function App() {
     }));
     if (nextTrack) {
       await playTrack(nextTrack, pickSampleStartSeconds(nextTrack));
+      scheduleSamplingAdvance(nextTrack.id);
     }
   };
 
