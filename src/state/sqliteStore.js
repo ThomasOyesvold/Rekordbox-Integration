@@ -27,6 +27,22 @@ function parseJson(value, fallback) {
   }
 }
 
+function ensureColumns(tableName, columns) {
+  const statement = db.prepare(`PRAGMA table_info(${tableName})`);
+  const existing = new Set(statement.all().map((row) => row.name));
+
+  for (const column of columns) {
+    if (existing.has(column.name)) {
+      continue;
+    }
+
+    const defaultValue = column.defaultValue !== undefined
+      ? ` DEFAULT ${column.defaultValue}`
+      : '';
+    db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${column.name} ${column.type}${defaultValue};`);
+  }
+}
+
 export function initDatabase(dbFilePath) {
   if (db) {
     return db;
@@ -97,6 +113,8 @@ export function initDatabase(dbFilePath) {
       height_avg REAL NOT NULL,
       height_max INTEGER NOT NULL,
       bins TEXT NOT NULL,
+      rhythm_signature TEXT,
+      signature_version TEXT,
       updated_at TEXT NOT NULL
     );
   `);
@@ -114,6 +132,11 @@ export function initDatabase(dbFilePath) {
   db.exec('CREATE INDEX IF NOT EXISTS idx_track_similarity_computed_at ON track_similarity(computed_at DESC);');
   db.exec('CREATE INDEX IF NOT EXISTS idx_anlz_waveform_cache_updated_at ON anlz_waveform_cache(updated_at DESC);');
   db.exec('CREATE INDEX IF NOT EXISTS idx_app_state_updated_at ON app_state(updated_at DESC);');
+
+  ensureColumns('anlz_waveform_cache', [
+    { name: 'rhythm_signature', type: 'TEXT' },
+    { name: 'signature_version', type: 'TEXT' }
+  ]);
 
   return db;
 }
@@ -380,8 +403,10 @@ export function saveAnlzWaveformSummary(entry) {
       height_avg,
       height_max,
       bins,
+      rhythm_signature,
+      signature_version,
       updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(ext_path) DO UPDATE SET
       sample_count = excluded.sample_count,
       duration_seconds = excluded.duration_seconds,
@@ -391,11 +416,14 @@ export function saveAnlzWaveformSummary(entry) {
       height_avg = excluded.height_avg,
       height_max = excluded.height_max,
       bins = excluded.bins,
+      rhythm_signature = excluded.rhythm_signature,
+      signature_version = excluded.signature_version,
       updated_at = excluded.updated_at
   `);
 
   const heights = Array.isArray(entry.bins) ? entry.bins : [];
   const colors = Array.isArray(entry.binColors) ? entry.binColors : [];
+  const rhythmSignature = Array.isArray(entry.rhythmSignature) ? entry.rhythmSignature : null;
   statement.run(
     String(entry.extPath),
     Number(entry.sampleCount) || 0,
@@ -409,6 +437,8 @@ export function saveAnlzWaveformSummary(entry) {
       heights,
       colors
     }),
+    rhythmSignature ? JSON.stringify(rhythmSignature) : null,
+    entry.signatureVersion ? String(entry.signatureVersion) : null,
     new Date().toISOString()
   );
 }
@@ -427,6 +457,8 @@ export function getAnlzWaveformSummary(extPath) {
       height_avg,
       height_max,
       bins,
+      rhythm_signature,
+      signature_version,
       updated_at
     FROM anlz_waveform_cache
     WHERE ext_path = ?
@@ -440,6 +472,7 @@ export function getAnlzWaveformSummary(extPath) {
   const parsedBins = parseJson(row.bins, []);
   const bins = Array.isArray(parsedBins) ? parsedBins : (Array.isArray(parsedBins?.heights) ? parsedBins.heights : []);
   const binColors = Array.isArray(parsedBins?.colors) ? parsedBins.colors : [];
+  const rhythmSignature = parseJson(row.rhythm_signature, null);
 
   return {
     extPath: row.ext_path,
@@ -456,6 +489,8 @@ export function getAnlzWaveformSummary(extPath) {
     },
     bins,
     binColors,
+    rhythmSignature: Array.isArray(rhythmSignature) ? rhythmSignature : null,
+    signatureVersion: row.signature_version || null,
     updatedAt: row.updated_at
   };
 }

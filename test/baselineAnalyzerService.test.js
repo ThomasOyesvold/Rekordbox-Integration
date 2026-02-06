@@ -150,6 +150,7 @@ test('baseline analyzer uses ANLZ waveform rhythm signature when available', () 
     durationSeconds: 360,
     anlzWaveform: {
       bins: [0, 2, 6, 12, 6, 2, 0, 2, 7, 13, 7, 2, 0, 1, 5, 11],
+      rhythmSignature: [0.1, 0.2, 0.4, 0.2, 0.1],
       avgColor: { red: 20, green: 40, blue: 200 },
       durationSeconds: 360
     }
@@ -162,6 +163,7 @@ test('baseline analyzer uses ANLZ waveform rhythm signature when available', () 
     durationSeconds: 362,
     anlzWaveform: {
       bins: [0, 2, 7, 11, 6, 2, 0, 2, 6, 12, 7, 2, 0, 1, 4, 10],
+      rhythmSignature: [0.1, 0.21, 0.39, 0.2, 0.1],
       avgColor: { red: 19, green: 41, blue: 198 },
       durationSeconds: 362
     }
@@ -174,6 +176,7 @@ test('baseline analyzer uses ANLZ waveform rhythm signature when available', () 
     durationSeconds: 300,
     anlzWaveform: {
       bins: [12, 11, 9, 7, 5, 4, 3, 2, 3, 4, 6, 8, 9, 10, 11, 12],
+      rhythmSignature: [0.5, 0.1, 0.1, 0.1, 0.2],
       avgColor: { red: 220, green: 80, blue: 10 },
       durationSeconds: 300
     }

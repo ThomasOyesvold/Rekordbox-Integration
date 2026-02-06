@@ -154,12 +154,18 @@ function summarizePwv5Payload(payload, options = {}) {
   const sampleRate = Number.isFinite(Number(options.sampleRate)) ? Number(options.sampleRate) : 150;
   const binCountRaw = Number.isFinite(Number(options.binCount)) ? Number(options.binCount) : 96;
   const binCount = Math.max(16, Math.min(512, Math.floor(binCountRaw)));
+  const rhythmSegmentsRaw = Number.isFinite(Number(options.rhythmSegmentCount))
+    ? Number(options.rhythmSegmentCount)
+    : 64;
+  const rhythmSegmentCount = Math.max(16, Math.min(128, Math.floor(rhythmSegmentsRaw)));
   const totalSamples = Math.floor(buffer.length / 2);
   const bins = new Array(binCount).fill(0);
   const binCounters = new Array(binCount).fill(0);
   const binRed = new Array(binCount).fill(0);
   const binGreen = new Array(binCount).fill(0);
   const binBlue = new Array(binCount).fill(0);
+  const rhythmSegments = new Array(rhythmSegmentCount).fill(0);
+  const rhythmCounters = new Array(rhythmSegmentCount).fill(0);
 
   if (totalSamples === 0) {
     return {
@@ -169,7 +175,9 @@ function summarizePwv5Payload(payload, options = {}) {
       bins,
       binColors: new Array(binCount).fill(null).map(() => ({ red: 0, green: 0, blue: 0 })),
       avgColor: { red: 0, green: 0, blue: 0 },
-      height: { avg: 0, max: 0 }
+      height: { avg: 0, max: 0 },
+      rhythmSignature: new Array(rhythmSegmentCount).fill(0),
+      rhythmSegmentCount
     };
   }
 
@@ -178,6 +186,7 @@ function summarizePwv5Payload(payload, options = {}) {
   let sumBlue = 0;
   let sumHeight = 0;
   let maxHeight = 0;
+  let prevHeight = 0;
 
   for (let index = 0; index < totalSamples; index += 1) {
     const word = buffer.readUInt16BE(index * 2);
@@ -194,6 +203,15 @@ function summarizePwv5Payload(payload, options = {}) {
     sumBlue += blue;
     sumHeight += height;
     maxHeight = Math.max(maxHeight, height);
+
+    const onset = Math.max(0, height - prevHeight);
+    prevHeight = height;
+    const rhythmIndex = Math.min(
+      rhythmSegmentCount - 1,
+      Math.floor((index / totalSamples) * rhythmSegmentCount)
+    );
+    rhythmSegments[rhythmIndex] += onset;
+    rhythmCounters[rhythmIndex] += 1;
 
     const binIndex = Math.min(
       binCount - 1,
@@ -223,6 +241,14 @@ function summarizePwv5Payload(payload, options = {}) {
     };
   });
 
+  const averagedRhythm = rhythmSegments.map((value, index) => (
+    rhythmCounters[index] ? value / rhythmCounters[index] : 0
+  ));
+  const magnitude = Math.sqrt(averagedRhythm.reduce((sum, value) => sum + (value * value), 0));
+  const rhythmSignature = magnitude
+    ? averagedRhythm.map((value) => Number((value / magnitude).toFixed(6)))
+    : new Array(rhythmSegmentCount).fill(0);
+
   return {
     sampleRate,
     sampleCount: totalSamples,
@@ -237,7 +263,9 @@ function summarizePwv5Payload(payload, options = {}) {
     height: {
       avg: Number((sumHeight / totalSamples).toFixed(4)),
       max: maxHeight
-    }
+    },
+    rhythmSignature,
+    rhythmSegmentCount
   };
 }
 

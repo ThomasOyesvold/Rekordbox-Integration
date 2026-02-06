@@ -145,6 +145,8 @@ test('sqlite store caches ANLZ waveform summaries by ext path', async () => {
     avgColor: { red: 12, green: 18, blue: 180 },
     height: { avg: 11.3, max: 31 },
     bins: [1, 2, 3, 4],
+    rhythmSignature: [0.1, 0.2, 0.3],
+    signatureVersion: 'pwv5-rhythm-v1',
     binColors: [
       { red: 1, green: 2, blue: 3 },
       { red: 4, green: 5, blue: 6 }
@@ -157,6 +159,8 @@ test('sqlite store caches ANLZ waveform summaries by ext path', async () => {
   assert.equal(cached.avgColor.blue, 180);
   assert.equal(cached.height.max, 31);
   assert.deepEqual(cached.bins, [1, 2, 3, 4]);
+  assert.deepEqual(cached.rhythmSignature, [0.1, 0.2, 0.3]);
+  assert.equal(cached.signatureVersion, 'pwv5-rhythm-v1');
   assert.equal(cached.binColors[0].blue, 3);
 
   closeDatabase();

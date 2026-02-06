@@ -13,7 +13,9 @@ export async function loadAnlzMapping(mappingPath) {
 export async function attachAnlzWaveformSummaries(tracks, {
   mappingPath,
   maxTracks = Infinity,
-  binCount = 96
+  binCount = 96,
+  rhythmSegmentCount = 64,
+  signatureVersion = 'pwv5-rhythm-v1'
 } = {}) {
   if (!mappingPath) {
     return { attached: 0, attempted: 0, missingMapping: 0 };
@@ -57,7 +59,11 @@ export async function attachAnlzWaveformSummaries(tracks, {
       } else {
         try {
           const data = await fs.readFile(mapEntry.extPath);
-          summary = extractPwv5SummaryFromAnlz(data, { binCount, sampleRate: 150 });
+          summary = extractPwv5SummaryFromAnlz(data, {
+            binCount,
+            sampleRate: 150,
+            rhythmSegmentCount
+          });
           parsedFromFile += 1;
 
           if (summary) {
@@ -69,7 +75,9 @@ export async function attachAnlzWaveformSummaries(tracks, {
                 avgColor: summary.avgColor,
                 height: summary.height,
                 bins: summary.bins,
-                binColors: summary.binColors
+                binColors: summary.binColors,
+                rhythmSignature: summary.rhythmSignature,
+                signatureVersion
               });
             } catch {
               cacheWriteErrors += 1;
@@ -93,7 +101,9 @@ export async function attachAnlzWaveformSummaries(tracks, {
         avgColor: summary.avgColor,
         height: summary.height,
         bins: summary.bins,
-        binColors: summary.binColors
+        binColors: summary.binColors,
+        rhythmSignature: summary.rhythmSignature,
+        signatureVersion: summary.signatureVersion || signatureVersion
       };
       attached += 1;
     }

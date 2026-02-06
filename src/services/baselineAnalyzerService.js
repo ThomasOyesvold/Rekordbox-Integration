@@ -199,6 +199,17 @@ function compareAnlzWaveformSummaries(trackA, trackB) {
 }
 
 function buildRhythmSignatureFromWaveform(track, segmentCount = 32) {
+  const cachedSignature = track?.anlzWaveform?.rhythmSignature;
+  if (Array.isArray(cachedSignature) && cachedSignature.length) {
+    const cleaned = cachedSignature.map((value) => (
+      Number.isFinite(Number(value)) ? Number(value) : 0
+    ));
+    const magnitude = Math.sqrt(cleaned.reduce((sum, value) => sum + (value * value), 0));
+    if (Number.isFinite(magnitude) && magnitude > 0) {
+      return cleaned.map((value) => value / magnitude);
+    }
+  }
+
   const waveform = track?.anlzWaveform;
   const bins = Array.isArray(waveform?.bins) ? waveform.bins : [];
   if (bins.length < 16) {
