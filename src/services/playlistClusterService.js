@@ -145,7 +145,8 @@ export function generatePlaylistClusters({
   sourceXmlPath = null,
   selectedFolders = [],
   algorithmVersion = createAnalyzerVersion(),
-  similarityThreshold = 0.78,
+  similarityThreshold = 0.82,
+  strictMode = true,
   maxPairs = 15000,
   minClusterSize = 3,
   maxClusters = 25,
@@ -153,7 +154,8 @@ export function generatePlaylistClusters({
 } = {}) {
   const safeTracks = Array.isArray(tracks) ? tracks : [];
   const trackIndexById = new Map(safeTracks.map((track, index) => [String(track.id), index]));
-  const threshold = Math.max(0, Math.min(1, toNumber(similarityThreshold, 0.78)));
+  const baseThreshold = Math.max(0, Math.min(1, toNumber(similarityThreshold, 0.82)));
+  const threshold = strictMode ? clamp(baseThreshold + 0.03, 0, 0.98) : baseThreshold;
   const pairLimit = Number.isFinite(maxPairs) ? Math.max(0, Math.floor(maxPairs)) : Infinity;
   const minSize = Math.max(2, Math.floor(toNumber(minClusterSize, 3)));
   const clusterLimit = Number.isFinite(maxClusters) ? Math.max(1, Math.floor(maxClusters)) : Infinity;

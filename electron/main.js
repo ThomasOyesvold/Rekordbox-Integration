@@ -255,6 +255,7 @@ ipcMain.handle('playlists:cluster', async (_event, payload) => {
         sourceXmlPath: payload?.sourceXmlPath || null,
         selectedFolders: [group.name].filter(Boolean),
         similarityThreshold: payload?.similarityThreshold,
+        strictMode: payload?.strictMode,
         maxPairs: payload?.maxPairs,
         minClusterSize: payload?.minClusterSize,
         maxClusters: payload?.maxClusters
@@ -278,6 +279,7 @@ ipcMain.handle('playlists:cluster', async (_event, payload) => {
     sourceXmlPath: payload?.sourceXmlPath || null,
     selectedFolders: Array.isArray(payload?.selectedFolders) ? payload.selectedFolders : [],
     similarityThreshold: payload?.similarityThreshold,
+    strictMode: payload?.strictMode,
     maxPairs: payload?.maxPairs,
     minClusterSize: payload?.minClusterSize,
     maxClusters: payload?.maxClusters

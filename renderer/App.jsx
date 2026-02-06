@@ -389,9 +389,10 @@ export function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [playlistSuggestions, setPlaylistSuggestions] = useState(null);
   const [isClustering, setIsClustering] = useState(false);
-  const [clusterThreshold, setClusterThreshold] = useState(0.78);
+  const [clusterThreshold, setClusterThreshold] = useState(0.82);
   const [clusterMinSize, setClusterMinSize] = useState(3);
   const [clusterMaxPairs, setClusterMaxPairs] = useState(15000);
+  const [clusterStrictMode, setClusterStrictMode] = useState(true);
   const [isParsing, setIsParsing] = useState(false);
   const [usbAnlzPath, setUsbAnlzPath] = useState('');
   const [anlzBuildSummary, setAnlzBuildSummary] = useState(null);
@@ -802,6 +803,7 @@ export function App() {
         similarityThreshold: Number(clusterThreshold),
         minClusterSize: Number(clusterMinSize),
         maxPairs: Number(clusterMaxPairs),
+        strictMode: clusterStrictMode,
         folderGroups
       });
       setPlaylistSuggestions(result);
@@ -2119,6 +2121,15 @@ export function App() {
               value={clusterMaxPairs}
               onChange={(event) => setClusterMaxPairs(event.target.value)}
               style={{ width: '110px', marginLeft: '6px' }}
+            />
+          </label>
+          <label>
+            Strict
+            <input
+              type="checkbox"
+              checked={clusterStrictMode}
+              onChange={(event) => setClusterStrictMode(event.target.checked)}
+              style={{ marginLeft: '6px' }}
             />
           </label>
         </div>

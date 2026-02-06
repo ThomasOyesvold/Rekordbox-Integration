@@ -20,7 +20,8 @@ test('playlist clustering groups similar tracks', async () => {
 
   const result = generatePlaylistClusters({
     tracks,
-    similarityThreshold: 0.7,
+    similarityThreshold: 0.75,
+    strictMode: false,
     minClusterSize: 3,
     maxPairs: 100
   });
