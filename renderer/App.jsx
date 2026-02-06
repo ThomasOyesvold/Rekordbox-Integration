@@ -369,7 +369,13 @@ function ClusterDetails({
   onSelectTrack,
   onTogglePlay,
   onSeek,
-  getPlaybackState
+  getPlaybackState,
+  clusterKey,
+  onStartSample,
+  onStopSample,
+  samplingState,
+  sampleSize,
+  onSampleSizeChange
 }) {
   const trackRows = cluster.trackIds.map((trackId) => {
     const track = trackIndexById.get(String(trackId));
@@ -405,6 +411,43 @@ function ClusterDetails({
         <span>Avg Score: {cluster.avgScore.toFixed(3)}</span>
         <span>Confidence: {(cluster.confidence ?? 0).toFixed(3)}</span>
         <span>Ordered: {cluster.ordered ? 'Yes' : 'No'}</span>
+        <span>
+          Sample
+          <input
+            type="number"
+            min="10"
+            max="20"
+            step="1"
+            value={sampleSize}
+            onChange={(event) => onSampleSizeChange?.(event.target.value)}
+            style={{ width: '70px', marginLeft: '6px' }}
+          />
+        </span>
+        <span>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => onStartSample?.(cluster, clusterKey)}
+            disabled={!cluster.trackIds.length || samplingState?.active}
+          >
+            {samplingState?.active ? 'Sampling…' : 'Sample Playlist'}
+          </button>
+        </span>
+        <span>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => onStopSample?.()}
+            disabled={!samplingState?.active}
+          >
+            Stop Sample
+          </button>
+        </span>
+        {samplingState?.active ? (
+          <span>
+            Sampling {samplingState.currentIndex + 1}/{samplingState.total}
+          </span>
+        ) : null}
       </div>
       <table className="track-table">
         <thead>
@@ -509,6 +552,15 @@ export function App() {
   const [similarMinScore, setSimilarMinScore] = useState(0.6);
   const [similarLimit, setSimilarLimit] = useState(12);
   const [playlistSuggestions, setPlaylistSuggestions] = useState(null);
+  const [sampleSize, setSampleSize] = useState(12);
+  const [samplingState, setSamplingState] = useState({
+    active: false,
+    clusterKey: null,
+    trackIds: [],
+    currentIndex: 0,
+    total: 0
+  });
+  const samplingStateRef = useRef(samplingState);
   const [expandedClusterKey, setExpandedClusterKey] = useState(null);
   const [isClustering, setIsClustering] = useState(false);
   const [clusterThreshold, setClusterThreshold] = useState(0.82);
@@ -1016,6 +1068,10 @@ export function App() {
     setSimilarResults(null);
   }, [selectedTrackId]);
 
+  useEffect(() => {
+    samplingStateRef.current = samplingState;
+  }, [samplingState]);
+
   const visibleTracks = useMemo(() => {
     const query = trackQuery.trim().toLowerCase();
     if (!query) {
@@ -1072,6 +1128,98 @@ export function App() {
       }
       stopPlayback(trackId);
     });
+  };
+
+  const stopSampling = () => {
+    setSamplingState({
+      active: false,
+      clusterKey: null,
+      trackIds: [],
+      currentIndex: 0,
+      total: 0
+    });
+  };
+
+  const pickSampleStartSeconds = (track) => {
+    const duration = Number(track?.durationSeconds)
+      || Number(track?.anlzWaveform?.durationSeconds)
+      || 0;
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return 0;
+    }
+    const introCut = Math.min(30, duration * 0.2);
+    const outroCut = Math.min(30, duration * 0.2);
+    const minStart = Math.min(introCut, Math.max(0, duration - 5));
+    const maxStart = Math.max(minStart, duration - outroCut);
+    const start = minStart + (Math.random() * Math.max(0, maxStart - minStart));
+    return Math.max(0, Math.min(duration - 1, start));
+  };
+
+  const shuffle = (items) => {
+    const copy = [...items];
+    for (let i = copy.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
+  const handleSampleSizeChange = (value) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      setSampleSize(12);
+      return;
+    }
+    setSampleSize(Math.max(10, Math.min(20, Math.floor(parsed))));
+  };
+
+  const startSampling = async (cluster, clusterKey) => {
+    const limit = Math.max(10, Math.min(20, Number(sampleSize) || 12));
+    const candidates = cluster.trackIds
+      .map((trackId) => String(trackId))
+      .filter((trackId) => trackIndexById.has(trackId));
+    if (!candidates.length) {
+      return;
+    }
+    const queue = shuffle(candidates).slice(0, Math.min(limit, candidates.length));
+    stopAllPlayback();
+    setSamplingState({
+      active: true,
+      clusterKey,
+      trackIds: queue,
+      currentIndex: 0,
+      total: queue.length
+    });
+
+    const firstTrack = trackIndexById.get(queue[0]);
+    if (firstTrack) {
+      await playTrack(firstTrack, pickSampleStartSeconds(firstTrack));
+    }
+  };
+
+  const handleSamplingEnded = async (trackId) => {
+    const state = samplingStateRef.current;
+    if (!state.active) {
+      return;
+    }
+    const expected = state.trackIds[state.currentIndex];
+    if (String(trackId) !== String(expected)) {
+      return;
+    }
+    const nextIndex = state.currentIndex + 1;
+    if (nextIndex >= state.total) {
+      stopSampling();
+      return;
+    }
+    const nextTrackId = state.trackIds[nextIndex];
+    const nextTrack = trackIndexById.get(String(nextTrackId));
+    setSamplingState((current) => ({
+      ...current,
+      currentIndex: nextIndex
+    }));
+    if (nextTrack) {
+      await playTrack(nextTrack, pickSampleStartSeconds(nextTrack));
+    }
   };
 
   const ensureAudio = (track, srcOverride = '') => {
@@ -1171,6 +1319,7 @@ export function App() {
         currentTime: 0
       });
       setAudioStatus({ level: 'idle', message: 'Ended' });
+      handleSamplingEnded(trackId);
     };
     const onError = () => {
       const mediaError = audio.error;
@@ -1393,6 +1542,9 @@ export function App() {
       return;
     }
 
+    if (samplingStateRef.current.active) {
+      stopSampling();
+    }
     await playTrack(track, state.currentTime || 0);
   };
 
@@ -2403,15 +2555,18 @@ export function App() {
                               </tr>
                             </thead>
                             <tbody>
-                              {clusters.map((cluster, index) => {
-                                const preview = cluster.trackIds.slice(0, 5).map((trackId) => {
-                                  const track = trackIndexById.get(String(trackId));
-                                  return track ? `${track.artist || ''} ${track.title || ''}`.trim() : trackId;
-                                }).filter(Boolean);
-                                const clusterKey = `${group.name}-${cluster.id || index}`;
-                                const isExpanded = expandedClusterKey === clusterKey;
-                                return (
-                                  <React.Fragment key={cluster.id || `${group.name}-${index}`}>
+                                {clusters.map((cluster, index) => {
+                                  const preview = cluster.trackIds.slice(0, 5).map((trackId) => {
+                                    const track = trackIndexById.get(String(trackId));
+                                    return track ? `${track.artist || ''} ${track.title || ''}`.trim() : trackId;
+                                  }).filter(Boolean);
+                                  const clusterKey = `${group.name}-${cluster.id || index}`;
+                                  const isExpanded = expandedClusterKey === clusterKey;
+                                  const clusterSamplingState = samplingState.active && samplingState.clusterKey === clusterKey
+                                    ? samplingState
+                                    : { active: false, currentIndex: 0, total: 0 };
+                                  return (
+                                    <React.Fragment key={cluster.id || `${group.name}-${index}`}>
                                     <tr>
                                       <td>#{index + 1}</td>
                                       <td>{cluster.size}</td>
@@ -2440,6 +2595,12 @@ export function App() {
                                               onTogglePlay={togglePlayPause}
                                               onSeek={seekFromWaveform}
                                               getPlaybackState={getPlaybackState}
+                                              clusterKey={clusterKey}
+                                              onStartSample={startSampling}
+                                              onStopSample={stopSampling}
+                                              samplingState={clusterSamplingState}
+                                              sampleSize={sampleSize}
+                                              onSampleSizeChange={handleSampleSizeChange}
                                             />
                                           </td>
                                         </tr>
@@ -2487,6 +2648,9 @@ export function App() {
                       }).filter(Boolean);
                       const clusterKey = `all-${cluster.id || index}`;
                       const isExpanded = expandedClusterKey === clusterKey;
+                      const clusterSamplingState = samplingState.active && samplingState.clusterKey === clusterKey
+                        ? samplingState
+                        : { active: false, currentIndex: 0, total: 0 };
                       return (
                         <React.Fragment key={cluster.id || String(index)}>
                           <tr>
@@ -2517,6 +2681,12 @@ export function App() {
                                   onTogglePlay={togglePlayPause}
                                   onSeek={seekFromWaveform}
                                   getPlaybackState={getPlaybackState}
+                                  clusterKey={clusterKey}
+                                  onStartSample={startSampling}
+                                  onStopSample={stopSampling}
+                                  samplingState={clusterSamplingState}
+                                  sampleSize={sampleSize}
+                                  onSampleSizeChange={handleSampleSizeChange}
                                 />
                               </td>
                             </tr>
