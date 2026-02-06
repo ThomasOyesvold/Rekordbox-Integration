@@ -281,6 +281,39 @@ button:disabled {
   color: #b91c1c;
 }
 
+.status-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.status-pill.status-approved {
+  background: #bbf7d0;
+  color: #14532d;
+}
+
+.status-pill.status-rejected {
+  background: #fecaca;
+  color: #7f1d1d;
+}
+
+.status-pill.status-pending {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.cluster-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 980px) {
   .grid {
     grid-template-columns: 1fr;

@@ -590,6 +590,7 @@ export function App() {
   });
   const samplingStateRef = useRef(samplingState);
   const samplingTimerRef = useRef(null);
+  const [clusterDecisions, setClusterDecisions] = useState({});
   const [expandedClusterKey, setExpandedClusterKey] = useState(null);
   const [isClustering, setIsClustering] = useState(false);
   const [clusterThreshold, setClusterThreshold] = useState(0.82);
@@ -1011,6 +1012,7 @@ export function App() {
         folderGroups
       });
       setPlaylistSuggestions(result);
+      setClusterDecisions({});
     } catch (clusterError) {
       setError(clusterError.message || String(clusterError));
     } finally {
@@ -1215,6 +1217,23 @@ export function App() {
       return;
     }
     setSampleSize(Math.max(10, Math.min(20, Math.floor(parsed))));
+  };
+
+  const getClusterDecision = (clusterKey) => {
+    return clusterDecisions[clusterKey] || { status: 'pending', name: '' };
+  };
+
+  const updateClusterDecision = (clusterKey, patch) => {
+    setClusterDecisions((current) => {
+      const existing = current[clusterKey] || { status: 'pending', name: '' };
+      return {
+        ...current,
+        [clusterKey]: {
+          ...existing,
+          ...patch
+        }
+      };
+    });
   };
 
   const scheduleSamplingAdvance = (trackId) => {
@@ -2622,6 +2641,7 @@ export function App() {
                                 <th>Avg Score</th>
                                 <th>Confidence</th>
                                 <th>Ordered</th>
+                                <th>Status</th>
                                 <th>Top Tracks</th>
                               </tr>
                             </thead>
@@ -2633,6 +2653,7 @@ export function App() {
                                   }).filter(Boolean);
                                   const clusterKey = `${group.name}-${cluster.id || index}`;
                                   const isExpanded = expandedClusterKey === clusterKey;
+                                  const decision = getClusterDecision(clusterKey);
                                   const clusterSamplingState = samplingState.active && samplingState.clusterKey === clusterKey
                                     ? samplingState
                                     : { active: false, currentIndex: 0, total: 0 };
@@ -2644,6 +2665,42 @@ export function App() {
                                       <td>{cluster.avgScore.toFixed(3)}</td>
                                       <td>{(cluster.confidence ?? 0).toFixed(3)}</td>
                                       <td>{cluster.ordered ? 'Yes' : 'No'}</td>
+                                      <td>
+                                        <div className={`status-pill status-${decision.status}`}>
+                                          {decision.status}
+                                        </div>
+                                        <div className="cluster-actions">
+                                          <button
+                                            type="button"
+                                            className="secondary"
+                                            onClick={() => updateClusterDecision(clusterKey, { status: 'approved' })}
+                                          >
+                                            Approve
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="secondary"
+                                            onClick={() => updateClusterDecision(clusterKey, { status: 'rejected' })}
+                                          >
+                                            Reject
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="secondary"
+                                            onClick={() => updateClusterDecision(clusterKey, { status: 'pending', name: '' })}
+                                          >
+                                            Reset
+                                          </button>
+                                        </div>
+                                        <input
+                                          type="text"
+                                          placeholder="Name playlist"
+                                          value={decision.name}
+                                          disabled={decision.status !== 'approved'}
+                                          onChange={(event) => updateClusterDecision(clusterKey, { name: event.target.value })}
+                                          style={{ width: '100%', marginTop: '6px' }}
+                                        />
+                                      </td>
                                       <td>
                                         <button
                                           type="button"
@@ -2658,7 +2715,7 @@ export function App() {
                                     </tr>
                                     {isExpanded ? (
                                       <tr>
-                                        <td colSpan={6}>
+                                        <td colSpan={7}>
                                             <ClusterDetails
                                               cluster={cluster}
                                               trackIndexById={trackIndexById}
@@ -2708,6 +2765,7 @@ export function App() {
                         <th>Avg Score</th>
                         <th>Confidence</th>
                         <th>Ordered</th>
+                        <th>Status</th>
                         <th>Top Tracks</th>
                       </tr>
                     </thead>
@@ -2719,6 +2777,7 @@ export function App() {
                       }).filter(Boolean);
                       const clusterKey = `all-${cluster.id || index}`;
                       const isExpanded = expandedClusterKey === clusterKey;
+                      const decision = getClusterDecision(clusterKey);
                       const clusterSamplingState = samplingState.active && samplingState.clusterKey === clusterKey
                         ? samplingState
                         : { active: false, currentIndex: 0, total: 0 };
@@ -2730,6 +2789,42 @@ export function App() {
                             <td>{cluster.avgScore.toFixed(3)}</td>
                             <td>{(cluster.confidence ?? 0).toFixed(3)}</td>
                             <td>{cluster.ordered ? 'Yes' : 'No'}</td>
+                            <td>
+                              <div className={`status-pill status-${decision.status}`}>
+                                {decision.status}
+                              </div>
+                              <div className="cluster-actions">
+                                <button
+                                  type="button"
+                                  className="secondary"
+                                  onClick={() => updateClusterDecision(clusterKey, { status: 'approved' })}
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  type="button"
+                                  className="secondary"
+                                  onClick={() => updateClusterDecision(clusterKey, { status: 'rejected' })}
+                                >
+                                  Reject
+                                </button>
+                                <button
+                                  type="button"
+                                  className="secondary"
+                                  onClick={() => updateClusterDecision(clusterKey, { status: 'pending', name: '' })}
+                                >
+                                  Reset
+                                </button>
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Name playlist"
+                                value={decision.name}
+                                disabled={decision.status !== 'approved'}
+                                onChange={(event) => updateClusterDecision(clusterKey, { name: event.target.value })}
+                                style={{ width: '100%', marginTop: '6px' }}
+                              />
+                            </td>
                             <td>
                               <button
                                 type="button"
@@ -2744,7 +2839,7 @@ export function App() {
                           </tr>
                           {isExpanded ? (
                             <tr>
-                              <td colSpan={6}>
+                              <td colSpan={7}>
                                 <ClusterDetails
                                   cluster={cluster}
                                   trackIndexById={trackIndexById}
