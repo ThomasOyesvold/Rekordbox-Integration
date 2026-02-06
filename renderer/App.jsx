@@ -363,6 +363,72 @@ function normalizeVisibleTrackColumns(value) {
   return next;
 }
 
+function ClusterDetails({ cluster, trackIndexById, onSelectTrack }) {
+  const trackRows = cluster.trackIds.map((trackId) => {
+    const track = trackIndexById.get(String(trackId));
+    if (!track) {
+      return {
+        id: String(trackId),
+        artist: '',
+        title: '',
+        bpm: null,
+        key: ''
+      };
+    }
+
+    return {
+      id: String(track.id),
+      artist: track.artist || '',
+      title: track.title || '',
+      bpm: track.bpm,
+      key: track.key || ''
+    };
+  });
+
+  return (
+    <div>
+      <div className="meta" style={{ marginBottom: '8px' }}>
+        <span>Tracks: {cluster.size}</span>
+        <span>Avg Score: {cluster.avgScore.toFixed(3)}</span>
+        <span>Confidence: {(cluster.confidence ?? 0).toFixed(3)}</span>
+        <span>Ordered: {cluster.ordered ? 'Yes' : 'No'}</span>
+      </div>
+      <table className="track-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Artist</th>
+            <th>Title</th>
+            <th>BPM</th>
+            <th>Key</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {trackRows.map((row, index) => (
+            <tr key={row.id}>
+              <td>{index + 1}</td>
+              <td>{row.artist || '-'}</td>
+              <td>{row.title || '-'}</td>
+              <td>{row.bpm ?? '-'}</td>
+              <td>{row.key || '-'}</td>
+              <td>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => onSelectTrack?.(row.id)}
+                >
+                  Focus
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function App() {
   const [xmlPath, setXmlPath] = useState('');
   const [anlzMapPath, setAnlzMapPath] = useState('');
@@ -392,6 +458,7 @@ export function App() {
   const [similarMinScore, setSimilarMinScore] = useState(0.6);
   const [similarLimit, setSimilarLimit] = useState(12);
   const [playlistSuggestions, setPlaylistSuggestions] = useState(null);
+  const [expandedClusterKey, setExpandedClusterKey] = useState(null);
   const [isClustering, setIsClustering] = useState(false);
   const [clusterThreshold, setClusterThreshold] = useState(0.82);
   const [clusterMinSize, setClusterMinSize] = useState(3);
@@ -697,6 +764,7 @@ export function App() {
       setValidationIssues(Array.isArray(result.validation?.issues) ? result.validation.issues : []);
       setAnalysisResult(null);
       setPlaylistSuggestions(null);
+      setExpandedClusterKey(null);
 
       if (result.anlzAttachError) {
         setError(`Parsed XML, but ANLZ attach failed: ${result.anlzAttachError}`);
@@ -2289,15 +2357,40 @@ export function App() {
                                   const track = trackIndexById.get(String(trackId));
                                   return track ? `${track.artist || ''} ${track.title || ''}`.trim() : trackId;
                                 }).filter(Boolean);
+                                const clusterKey = `${group.name}-${cluster.id || index}`;
+                                const isExpanded = expandedClusterKey === clusterKey;
                                 return (
-                                  <tr key={cluster.id || `${group.name}-${index}`}>
-                                    <td>#{index + 1}</td>
-                                    <td>{cluster.size}</td>
-                                    <td>{cluster.avgScore.toFixed(3)}</td>
-                                    <td>{(cluster.confidence ?? 0).toFixed(3)}</td>
-                                    <td>{cluster.ordered ? 'Yes' : 'No'}</td>
-                                    <td>{preview.join(', ') || '-'}</td>
-                                  </tr>
+                                  <React.Fragment key={cluster.id || `${group.name}-${index}`}>
+                                    <tr>
+                                      <td>#{index + 1}</td>
+                                      <td>{cluster.size}</td>
+                                      <td>{cluster.avgScore.toFixed(3)}</td>
+                                      <td>{(cluster.confidence ?? 0).toFixed(3)}</td>
+                                      <td>{cluster.ordered ? 'Yes' : 'No'}</td>
+                                      <td>
+                                        <button
+                                          type="button"
+                                          className="secondary"
+                                          onClick={() => setExpandedClusterKey(isExpanded ? null : clusterKey)}
+                                          style={{ marginRight: '8px' }}
+                                        >
+                                          {isExpanded ? 'Hide' : 'View'}
+                                        </button>
+                                        {preview.join(', ') || '-'}
+                                      </td>
+                                    </tr>
+                                    {isExpanded ? (
+                                      <tr>
+                                        <td colSpan={6}>
+                                          <ClusterDetails
+                                            cluster={cluster}
+                                            trackIndexById={trackIndexById}
+                                            onSelectTrack={(trackId) => setSelectedTrackId(trackId)}
+                                          />
+                                        </td>
+                                      </tr>
+                                    ) : null}
+                                  </React.Fragment>
                                 );
                               })}
                             </tbody>
@@ -2333,25 +2426,50 @@ export function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {playlistSuggestions.result.clusters.map((cluster, index) => {
-                        const preview = cluster.trackIds.slice(0, 5).map((trackId) => {
-                          const track = trackIndexById.get(String(trackId));
-                          return track ? `${track.artist || ''} ${track.title || ''}`.trim() : trackId;
-                        }).filter(Boolean);
-                        return (
-                          <tr key={cluster.id || String(index)}>
+                    {playlistSuggestions.result.clusters.map((cluster, index) => {
+                      const preview = cluster.trackIds.slice(0, 5).map((trackId) => {
+                        const track = trackIndexById.get(String(trackId));
+                        return track ? `${track.artist || ''} ${track.title || ''}`.trim() : trackId;
+                      }).filter(Boolean);
+                      const clusterKey = `all-${cluster.id || index}`;
+                      const isExpanded = expandedClusterKey === clusterKey;
+                      return (
+                        <React.Fragment key={cluster.id || String(index)}>
+                          <tr>
                             <td>#{index + 1}</td>
                             <td>{cluster.size}</td>
                             <td>{cluster.avgScore.toFixed(3)}</td>
                             <td>{(cluster.confidence ?? 0).toFixed(3)}</td>
                             <td>{cluster.ordered ? 'Yes' : 'No'}</td>
-                            <td>{preview.join(', ') || '-'}</td>
+                            <td>
+                              <button
+                                type="button"
+                                className="secondary"
+                                onClick={() => setExpandedClusterKey(isExpanded ? null : clusterKey)}
+                                style={{ marginRight: '8px' }}
+                              >
+                                {isExpanded ? 'Hide' : 'View'}
+                              </button>
+                              {preview.join(', ') || '-'}
+                            </td>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                ) : (
+                          {isExpanded ? (
+                            <tr>
+                              <td colSpan={6}>
+                                <ClusterDetails
+                                  cluster={cluster}
+                                  trackIndexById={trackIndexById}
+                                  onSelectTrack={(trackId) => setSelectedTrackId(trackId)}
+                                />
+                              </td>
+                            </tr>
+                          ) : null}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              ) : (
                   <p>No clusters met the threshold. Try lowering it a bit.</p>
                 )}
               </>
