@@ -363,25 +363,38 @@ function normalizeVisibleTrackColumns(value) {
   return next;
 }
 
-function ClusterDetails({ cluster, trackIndexById, onSelectTrack }) {
+function ClusterDetails({
+  cluster,
+  trackIndexById,
+  onSelectTrack,
+  onTogglePlay,
+  onSeek,
+  getPlaybackState
+}) {
   const trackRows = cluster.trackIds.map((trackId) => {
     const track = trackIndexById.get(String(trackId));
     if (!track) {
       return {
         id: String(trackId),
+        track: null,
         artist: '',
         title: '',
         bpm: null,
-        key: ''
+        key: '',
+        waveform: null,
+        durationSeconds: null
       };
     }
 
     return {
       id: String(track.id),
+      track,
       artist: track.artist || '',
       title: track.title || '',
       bpm: track.bpm,
-      key: track.key || ''
+      key: track.key || '',
+      waveform: track.anlzWaveform,
+      durationSeconds: track.durationSeconds
     };
   });
 
@@ -397,6 +410,8 @@ function ClusterDetails({ cluster, trackIndexById, onSelectTrack }) {
         <thead>
           <tr>
             <th>#</th>
+            <th>Play</th>
+            <th>Waveform</th>
             <th>Artist</th>
             <th>Title</th>
             <th>BPM</th>
@@ -408,6 +423,42 @@ function ClusterDetails({ cluster, trackIndexById, onSelectTrack }) {
           {trackRows.map((row, index) => (
             <tr key={row.id}>
               <td>{index + 1}</td>
+              <td>
+                <div className="playback-cell">
+                  <button
+                    type="button"
+                    className="playback-button"
+                    onClick={() => row.track && onTogglePlay?.(row.track)}
+                    disabled={!row.track || getPlaybackState?.(row.id).loading}
+                  >
+                    {getPlaybackState?.(row.id).loading
+                      ? 'Loading'
+                      : getPlaybackState?.(row.id).status === 'playing'
+                        ? 'Pause'
+                        : 'Play'}
+                  </button>
+                  <span className="playback-time">
+                    {formatClock(getPlaybackState?.(row.id).currentTime)}
+                  </span>
+                </div>
+                {getPlaybackState?.(row.id).status === 'error' ? (
+                  <div className="playback-error">{getPlaybackState?.(row.id).error}</div>
+                ) : null}
+              </td>
+              <td>
+                <MiniWaveform
+                  waveform={row.waveform}
+                  progress={getPlaybackState?.(row.id).duration
+                    ? getPlaybackState?.(row.id).currentTime / getPlaybackState?.(row.id).duration
+                    : 0}
+                  isActive={getPlaybackState?.(row.id).status === 'playing'
+                    || getPlaybackState?.(row.id).status === 'paused'}
+                  onSeek={(event) => row.track && onSeek?.(row.track, event)}
+                />
+                {getPlaybackState?.(row.id).status === 'error' ? (
+                  <div className="playback-error">{getPlaybackState?.(row.id).error}</div>
+                ) : null}
+              </td>
               <td>{row.artist || '-'}</td>
               <td>{row.title || '-'}</td>
               <td>{row.bpm ?? '-'}</td>
@@ -2382,14 +2433,17 @@ export function App() {
                                     {isExpanded ? (
                                       <tr>
                                         <td colSpan={6}>
-                                          <ClusterDetails
-                                            cluster={cluster}
-                                            trackIndexById={trackIndexById}
-                                            onSelectTrack={(trackId) => setSelectedTrackId(trackId)}
-                                          />
-                                        </td>
-                                      </tr>
-                                    ) : null}
+                                            <ClusterDetails
+                                              cluster={cluster}
+                                              trackIndexById={trackIndexById}
+                                              onSelectTrack={(trackId) => setSelectedTrackId(trackId)}
+                                              onTogglePlay={togglePlayPause}
+                                              onSeek={seekFromWaveform}
+                                              getPlaybackState={getPlaybackState}
+                                            />
+                                          </td>
+                                        </tr>
+                                      ) : null}
                                   </React.Fragment>
                                 );
                               })}
@@ -2460,6 +2514,9 @@ export function App() {
                                   cluster={cluster}
                                   trackIndexById={trackIndexById}
                                   onSelectTrack={(trackId) => setSelectedTrackId(trackId)}
+                                  onTogglePlay={togglePlayPause}
+                                  onSeek={seekFromWaveform}
+                                  getPlaybackState={getPlaybackState}
                                 />
                               </td>
                             </tr>
