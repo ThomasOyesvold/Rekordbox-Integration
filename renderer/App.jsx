@@ -700,6 +700,10 @@ export function App() {
         setSelectedFolders(state.selectedFolders);
       }
 
+      if (state?.playlistDecisions && typeof state.playlistDecisions === 'object') {
+        setClusterDecisions(state.playlistDecisions);
+      }
+
       if (typeof state?.tableSortBy === 'string') {
         setSortBy(state.tableSortBy);
       }
@@ -1779,6 +1783,19 @@ export function App() {
       // best-effort UI preference save
     });
   }, [sortBy, sortDirection, visibleTrackColumns, tableDensity, pageSize]);
+
+  useEffect(() => {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.saveState) {
+      return;
+    }
+
+    bridgeApi.saveState({
+      playlistDecisions: clusterDecisions
+    }).catch(() => {
+      // best-effort decision save
+    });
+  }, [clusterDecisions]);
 
   useEffect(() => {
     setCurrentPage(1);
