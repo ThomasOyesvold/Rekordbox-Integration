@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld('rbfa', {
     sourceXmlPath,
     selectedFolders
   }),
+  findSimilarTracks: (payload) => ipcRenderer.invoke('tracks:similar', payload),
   exportAnalysis: (payload) => ipcRenderer.invoke('analysis:export', payload),
   generatePlaylists: (payload) => ipcRenderer.invoke('playlists:cluster', payload),
   loadState: () => ipcRenderer.invoke('state:load'),

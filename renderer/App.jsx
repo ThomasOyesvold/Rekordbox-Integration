@@ -387,6 +387,10 @@ export function App() {
   const [validationIssues, setValidationIssues] = useState([]);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [similarResults, setSimilarResults] = useState(null);
+  const [isFindingSimilar, setIsFindingSimilar] = useState(false);
+  const [similarMinScore, setSimilarMinScore] = useState(0.6);
+  const [similarLimit, setSimilarLimit] = useState(12);
   const [playlistSuggestions, setPlaylistSuggestions] = useState(null);
   const [isClustering, setIsClustering] = useState(false);
   const [clusterThreshold, setClusterThreshold] = useState(0.82);
@@ -814,6 +818,37 @@ export function App() {
     }
   };
 
+  const runSimilarSearch = async () => {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.findSimilarTracks) {
+      setError(DESKTOP_BRIDGE_ERROR);
+      return;
+    }
+
+    if (!selectedTrack) {
+      setError('Select a track first.');
+      return;
+    }
+
+    setIsFindingSimilar(true);
+    setError('');
+    try {
+      const result = await bridgeApi.findSimilarTracks({
+        tracks,
+        targetId: selectedTrack.id,
+        sourceXmlPath: xmlPath.trim(),
+        selectedFolders,
+        limit: Number(similarLimit),
+        minScore: Number(similarMinScore)
+      });
+      setSimilarResults(result);
+    } catch (searchError) {
+      setError(searchError.message || String(searchError));
+    } finally {
+      setIsFindingSimilar(false);
+    }
+  };
+
   useEffect(() => {
     const onKeyDown = (event) => {
       if (event.defaultPrevented) {
@@ -857,6 +892,10 @@ export function App() {
   const selectedTrack = useMemo(() => {
     return tracks.find((track) => track.id === selectedTrackId) || null;
   }, [tracks, selectedTrackId]);
+
+  useEffect(() => {
+    setSimilarResults(null);
+  }, [selectedTrackId]);
 
   const visibleTracks = useMemo(() => {
     const query = trackQuery.trim().toLowerCase();
@@ -1865,10 +1904,90 @@ export function App() {
               <span>BPM: {selectedTrack.bpm ?? '-'}</span>
               <span>Key: {selectedTrack.key || '-'}</span>
             </div>
+            <div className="row" style={{ marginTop: '10px', alignItems: 'center' }}>
+              <button
+                type="button"
+                className="secondary"
+                onClick={runSimilarSearch}
+                disabled={isFindingSimilar || tracks.length < 2}
+              >
+                {isFindingSimilar ? 'Finding...' : 'Find Similar'}
+              </button>
+              <label style={{ marginLeft: '8px' }}>
+                Min Score
+                <input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={similarMinScore}
+                  onChange={(event) => setSimilarMinScore(event.target.value)}
+                  style={{ width: '90px', marginLeft: '6px' }}
+                />
+              </label>
+              <label style={{ marginLeft: '8px' }}>
+                Limit
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={similarLimit}
+                  onChange={(event) => setSimilarLimit(event.target.value)}
+                  style={{ width: '70px', marginLeft: '6px' }}
+                />
+              </label>
+            </div>
             {showTrackLocation ? (
               <p style={{ marginTop: '8px' }}>
                 Location: {selectedTrack.location || '-'}
               </p>
+            ) : null}
+            {similarResults ? (
+              <>
+                <h4 style={{ margin: '12px 0 8px' }}>Similar Tracks</h4>
+                <div className="meta">
+                  <span>Matches: {similarResults.matches?.length || 0}</span>
+                  <span>Pairs: {similarResults.pairCount}</span>
+                  <span>Computed: {similarResults.computed}</span>
+                  <span>Cache Hits: {similarResults.cacheHits}</span>
+                </div>
+                {similarResults.matches?.length ? (
+                  <table className="track-table" style={{ marginTop: '8px' }}>
+                    <thead>
+                      <tr>
+                        <th>Track</th>
+                        <th>Score</th>
+                        <th>BPM</th>
+                        <th>Key</th>
+                        <th>Waveform</th>
+                        <th>Rhythm</th>
+                        <th>Why</th>
+                        <th>Source</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {similarResults.matches.map((match) => {
+                        const track = trackIndexById.get(String(match.trackId));
+                        const label = track ? `${track.artist || ''} ${track.title || ''}`.trim() : match.trackId;
+                        return (
+                          <tr key={match.trackId}>
+                            <td>{label || match.trackId}</td>
+                            <td>{match.score.toFixed(3)}</td>
+                            <td>{(match.components?.bpm ?? 0).toFixed(3)}</td>
+                            <td>{(match.components?.key ?? 0).toFixed(3)}</td>
+                            <td>{(match.components?.waveform ?? 0).toFixed(3)}</td>
+                            <td>{(match.components?.rhythm ?? 0).toFixed(3)}</td>
+                            <td>{match.reason || '-'}</td>
+                            <td>{match.fromCache ? 'Cache' : 'Computed'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p>No similar tracks above the threshold.</p>
+                )}
+              </>
             ) : null}
             <>
               <>

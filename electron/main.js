@@ -18,6 +18,7 @@ import { loadState, saveState } from '../src/state/stateStore.js';
 import { attachAnlzWaveformSummaries } from '../src/services/anlzWaveformService.js';
 import { buildAnlzMapping } from '../src/services/anlzMappingService.js';
 import { generatePlaylistClusters } from '../src/services/playlistClusterService.js';
+import { findSimilarTracks } from '../src/services/similaritySearchService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -236,6 +237,19 @@ ipcMain.handle('analysis:export', async (_event, payload) => {
     filePath: selection.filePath,
     format
   };
+});
+
+ipcMain.handle('tracks:similar', async (_event, payload) => {
+  const tracks = Array.isArray(payload?.tracks) ? payload.tracks : [];
+  return findSimilarTracks({
+    tracks,
+    targetId: payload?.targetId,
+    sourceXmlPath: payload?.sourceXmlPath || null,
+    selectedFolders: Array.isArray(payload?.selectedFolders) ? payload.selectedFolders : [],
+    algorithmVersion: payload?.algorithmVersion,
+    limit: payload?.limit,
+    minScore: payload?.minScore
+  });
 });
 
 ipcMain.handle('playlists:cluster', async (_event, payload) => {
