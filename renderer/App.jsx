@@ -377,6 +377,7 @@ function ClusterDetails({
   sampleSize,
   onSampleSizeChange
 }) {
+  const [focusedWaveformId, setFocusedWaveformId] = useState(null);
   const trackRows = cluster.trackIds.map((trackId) => {
     const track = trackIndexById.get(String(trackId));
     if (!track) {
@@ -403,6 +404,17 @@ function ClusterDetails({
       durationSeconds: track.durationSeconds
     };
   });
+  const playingRow = trackRows.find((row) => getPlaybackState?.(row.id).status === 'playing');
+  const focusedRow = useMemo(() => {
+    const explicit = trackRows.find((row) => row.id === focusedWaveformId);
+    if (explicit) {
+      return explicit;
+    }
+    if (playingRow) {
+      return playingRow;
+    }
+    return trackRows.find((row) => row.waveform) || trackRows[0] || null;
+  }, [focusedWaveformId, playingRow, trackRows]);
 
   return (
     <div>
@@ -449,6 +461,15 @@ function ClusterDetails({
           </span>
         ) : null}
       </div>
+      {focusedRow ? (
+        <div className="cluster-waveform">
+          <div className="meta" style={{ marginBottom: '6px' }}>
+            <span>Waveform Preview</span>
+            <span>{focusedRow.artist || '-'} — {focusedRow.title || focusedRow.id}</span>
+          </div>
+          <WaveformPreview waveform={focusedRow.waveform} />
+        </div>
+      ) : null}
       <table className="track-table">
         <thead>
           <tr>
@@ -464,7 +485,11 @@ function ClusterDetails({
         </thead>
         <tbody>
           {trackRows.map((row, index) => (
-            <tr key={row.id}>
+            <tr
+              key={row.id}
+              className={row.id === focusedRow?.id ? 'selected-row' : ''}
+              onClick={() => setFocusedWaveformId(row.id)}
+            >
               <td>{index + 1}</td>
               <td>
                 <div className="playback-cell">
@@ -510,7 +535,10 @@ function ClusterDetails({
                 <button
                   type="button"
                   className="secondary"
-                  onClick={() => onSelectTrack?.(row.id)}
+                  onClick={() => {
+                    setFocusedWaveformId(row.id);
+                    onSelectTrack?.(row.id);
+                  }}
                 >
                   Focus
                 </button>
