@@ -2947,6 +2947,7 @@ export function App() {
           <p>Generate suggestions to see clustered playlists.</p>
         )}
           </div>
+          </div>
         )}
       </main>
     </div>
