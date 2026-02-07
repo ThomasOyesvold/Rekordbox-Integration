@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AppHeader } from './components/AppHeader';
 import { SetupWizard } from './components/SetupWizard';
+import { PlaylistCard } from './components/PlaylistCard';
+import { StatCard } from './components/StatCard';
+import { TrackTable } from './components/TrackTable';
+import { FolderOpen, ListMusic, Music2, Waves } from 'lucide-react';
 
 const DESKTOP_BRIDGE_ERROR = 'Desktop bridge unavailable. Relaunch from Electron (not browser-only mode).';
 const TRACK_COLUMN_ORDER = ['play', 'id', 'title', 'bpm', 'key', 'waveformPreview', 'genre', 'durationSeconds', 'artist', 'playlists'];
@@ -1894,6 +1898,36 @@ export function App() {
     }
   };
 
+  const playlistCardItems = useMemo(() => {
+    if (!playlistSuggestions?.result?.clusters?.length) {
+      return [];
+    }
+
+    return playlistSuggestions.result.clusters.slice(0, 6).map((cluster, index) => {
+      const tracksInCluster = cluster.trackIds
+        .map((trackId) => trackIndexById.get(String(trackId)))
+        .filter(Boolean);
+      const bpmValues = tracksInCluster
+        .map((track) => Number(track.bpm))
+        .filter((value) => Number.isFinite(value));
+      const bpmRange = bpmValues.length
+        ? { min: Math.min(...bpmValues), max: Math.max(...bpmValues) }
+        : null;
+      const clusterKey = `all-${cluster.id || index}`;
+      const decision = getClusterDecision(clusterKey);
+
+      return {
+        id: cluster.id || index,
+        name: decision?.name || `Cluster #${index + 1}`,
+        confidence: (cluster.confidence ?? 0) * 100,
+        tracks: tracksInCluster,
+        bpmRange,
+        clusterKey,
+        cluster
+      };
+    });
+  }, [playlistSuggestions, trackIndexById, getClusterDecision]);
+
   return (
     <div className="app-shell">
       <AppHeader onSettingsClick={() => console.log('Settings')} />
@@ -1971,19 +2005,27 @@ export function App() {
               {progress !== null && isParsing ? <p className="progress">Parsing in background: {progress}%</p> : null}
               {error ? <p style={{ color: '#be123c', margin: '8px 0 0' }}>{error}</p> : null}
               {summary ? (
-                <div className="meta">
-                  <span>Tracks: {summary.trackCount}</span>
-                  <span>Playlists: {summary.playlistCount}</span>
-                  <span>Folders: {summary.folderCount}</span>
-                  <span>Selected Folders: {selectedFolders.length || 'All'}</span>
-                  <span>ANLZ Map: {anlzMapPath.trim() ? 'Configured' : 'Not set'}</span>
-                  {anlzAttachSummary ? <span>ANLZ Attached: {anlzAttachSummary.attached || 0}</span> : null}
-                  {anlzBuildSummary ? (
-                    <span>
-                      ANLZ Matched: {anlzBuildSummary.matchedTracks || 0}/{anlzBuildSummary.totalTracks || 0}
-                    </span>
-                  ) : null}
-                </div>
+                <>
+                  <div className="stat-grid">
+                    <StatCard icon={Music2} value={summary.trackCount} label="Tracks" />
+                    <StatCard icon={ListMusic} value={summary.playlistCount} label="Playlists" />
+                    <StatCard icon={FolderOpen} value={summary.folderCount} label="Folders" />
+                    <StatCard
+                      icon={Waves}
+                      value={anlzAttachSummary?.attached || 0}
+                      label="ANLZ Attached"
+                    />
+                  </div>
+                  <div className="meta" style={{ marginTop: '10px' }}>
+                    <span>Selected Folders: {selectedFolders.length || 'All'}</span>
+                    <span>ANLZ Map: {anlzMapPath.trim() ? 'Configured' : 'Not set'}</span>
+                    {anlzBuildSummary ? (
+                      <span>
+                        ANLZ Matched: {anlzBuildSummary.matchedTracks || 0}/{anlzBuildSummary.totalTracks || 0}
+                      </span>
+                    ) : null}
+                  </div>
+                </>
               ) : null}
             </div>
 
@@ -2023,6 +2065,15 @@ export function App() {
               <span>Key Coverage: {(libraryStats.keyCoverage * 100).toFixed(0)}%</span>
             </div>
           ) : null}
+        </div>
+
+        <div className="card">
+          <h3 style={{ marginTop: 0 }}>Quick Preview</h3>
+          <TrackTable
+            tracks={sortedTracks.slice(0, 20)}
+            onTrackClick={(track) => setSelectedTrackId(track.id)}
+            playingTrackId={activeTrackId}
+          />
         </div>
 
         <div className="card">
@@ -2688,6 +2739,18 @@ export function App() {
             />
           </label>
         </div>
+        {playlistCardItems.length ? (
+          <div className="playlist-card-grid">
+            {playlistCardItems.map((playlist) => (
+              <PlaylistCard
+                key={playlist.id}
+                playlist={playlist}
+                onSample={() => startSampling(playlist.cluster, playlist.clusterKey)}
+                onViewDetails={() => setExpandedClusterKey(playlist.clusterKey)}
+              />
+            ))}
+          </div>
+        ) : null}
         {playlistSuggestions ? (
           <>
             {playlistSuggestions.mode === 'grouped' ? (
