@@ -1,7 +1,7 @@
 :root {
-  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
-  color: #0f172a;
-  background: #f8fafc;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  background: var(--bg-primary);
 }
 
 * {
@@ -10,7 +10,7 @@
 
 body {
   margin: 0;
-  background: radial-gradient(circle at top, #ecfeff 0%, #f8fafc 45%);
+  background: radial-gradient(circle at top, #0b1220 0%, #0a0e14 45%);
 }
 
 .app-shell {
@@ -30,16 +30,16 @@ body {
 
 .header p {
   margin: 4px 0 0;
-  color: #334155;
+  color: var(--text-secondary);
 }
 
 .card {
-  background: #ffffff;
-  border: 1px solid #dbeafe;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
   border-radius: 14px;
   padding: 16px;
   margin-bottom: 14px;
-  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-md);
 }
 
 .onboarding h3 {
@@ -48,7 +48,7 @@ body {
 
 .onboarding p {
   margin: 4px 0;
-  color: #334155;
+  color: var(--text-secondary);
 }
 
 .row {
@@ -61,23 +61,26 @@ body {
 input[type="text"] {
   flex: 1;
   min-width: 280px;
-  border: 1px solid #cbd5e1;
+  border: 1px solid var(--border-medium);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 0.95rem;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 button {
   border: none;
   border-radius: 8px;
-  background: #0f766e;
-  color: white;
+  background: var(--accent-primary);
+  color: #ffffff;
   padding: 10px 14px;
   cursor: pointer;
 }
 
 button.secondary {
-  background: #334155;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 button:disabled {
@@ -94,7 +97,7 @@ button:disabled {
 .folder-list {
   max-height: 380px;
   overflow: auto;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 8px;
 }
@@ -114,7 +117,7 @@ button:disabled {
 .disclosure {
   border: 0;
   background: transparent;
-  color: #0f172a;
+  color: var(--text-primary);
   padding: 0 4px;
   font-size: 0.85rem;
   line-height: 1;
@@ -128,7 +131,7 @@ button:disabled {
 .meta {
   display: flex;
   gap: 14px;
-  color: #334155;
+  color: var(--text-secondary);
   flex-wrap: wrap;
   margin-top: 8px;
 }
@@ -142,7 +145,7 @@ button:disabled {
 
 .track-table th,
 .track-table td {
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1px solid var(--border-subtle);
   text-align: left;
   padding: 8px;
   vertical-align: top;
@@ -152,7 +155,7 @@ button:disabled {
 .track-table th {
   position: sticky;
   top: 0;
-  background: #f8fafc;
+  background: var(--bg-secondary);
   z-index: 1;
 }
 
@@ -165,7 +168,7 @@ button:disabled {
 .sort-button {
   border: 0;
   background: transparent;
-  color: #0f172a;
+  color: var(--text-primary);
   font-weight: 600;
   padding: 0;
 }
@@ -175,11 +178,11 @@ button:disabled {
 }
 
 .track-table tbody tr.selected-row {
-  background: #ecfeff;
+  background: rgba(59, 130, 246, 0.18);
 }
 
 .progress {
-  color: #0369a1;
+  color: var(--accent-glow);
   font-weight: 600;
 }
 
@@ -192,8 +195,8 @@ button:disabled {
   margin: 10px 0 14px;
   padding: 10px;
   border-radius: 10px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
 }
 
 .cluster-waveform .waveform-preview {

@@ -1,0 +1,19 @@
+@import './design-system.css';
+
+.ui-stack {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.ui-stack-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ui-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: var(--space-4) 0;
+}

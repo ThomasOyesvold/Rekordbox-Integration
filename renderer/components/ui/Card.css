@@ -1,0 +1,27 @@
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.card-hoverable {
+  transition: all var(--transition-base);
+  cursor: pointer;
+}
+
+.card-header {
+  padding: var(--space-6);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.card-content {
+  padding: var(--space-6);
+}
+
+.card-footer {
+  padding: var(--space-6);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-tertiary);
+}
