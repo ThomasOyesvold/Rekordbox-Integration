@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AppHeader } from './components/AppHeader';
+import { SetupWizard } from './components/SetupWizard';
 
 const DESKTOP_BRIDGE_ERROR = 'Desktop bridge unavailable. Relaunch from Electron (not browser-only mode).';
 const TRACK_COLUMN_ORDER = ['play', 'id', 'title', 'bpm', 'key', 'waveformPreview', 'genre', 'durationSeconds', 'artist', 'playlists'];
@@ -785,6 +787,33 @@ export function App() {
     if (picked) {
       setXmlPath(picked);
       setError('');
+    }
+  };
+
+  const handleWizardFileSelect = (payload) => {
+    if (!payload) {
+      return;
+    }
+
+    if (typeof payload === 'string') {
+      setXmlPath(payload);
+      setError('');
+      return;
+    }
+
+    if (payload?.xmlPath) {
+      applyRecentImport(payload);
+      return;
+    }
+
+    if (payload?.path) {
+      setXmlPath(payload.path);
+      setError('');
+      return;
+    }
+
+    if (payload?.name) {
+      setError('Selected file, but no path available. Use Browse XML to pick the file.');
     }
   };
 
@@ -1867,95 +1896,98 @@ export function App() {
 
   return (
     <div className="app-shell">
-      <div className="header">
-        <h1>Rekordbox Flow Analyzer</h1>
-        <p>Phase 1 shell: import XML, choose folders, inspect parsed tracks.</p>
-        {getBuildTag() ? <p style={{ fontSize: '12px', marginTop: '4px', opacity: 0.7 }}>Build: {getBuildTag()}</p> : null}
-      </div>
+      <AppHeader onSettingsClick={() => console.log('Settings')} />
 
-      <div className="card">
+      <main className="app-main">
         {!xmlPath.trim() ? (
-          <div className="onboarding">
-            <h3>Getting Started</h3>
-            <p>1. Click Browse XML and choose a Rekordbox export file.</p>
-            <p>2. Click Parse Library.</p>
-            <p>3. Filter folders, inspect tracks, and review validation issues.</p>
-          </div>
-        ) : null}
-        <div className="row">
-          <input
-            type="text"
-            placeholder="C:/path/to/rekordbox-export.xml"
-            value={xmlPath}
-            onChange={(event) => setXmlPath(event.target.value)}
+          <SetupWizard
+            onFileSelect={handleWizardFileSelect}
+            isLoading={isParsing}
+            recentImports={recentImports}
           />
-          <button type="button" className="secondary" onClick={pickFile} disabled={isParsing}>Browse XML</button>
-          <button type="button" onClick={parse} disabled={isParsing}>Parse Library</button>
-          <button type="button" onClick={runAnalysis} disabled={isParsing || isAnalyzing || tracks.length < 2}>
-            {isAnalyzing ? 'Analyzing...' : 'Run Baseline Analysis'}
-          </button>
-        </div>
-        <div className="row" style={{ marginTop: '8px' }}>
-          <input
-            type="text"
-            placeholder="Optional ANLZ map path (.planning/anlz-track-map.json)"
-            value={anlzMapPath}
-            onChange={(event) => setAnlzMapPath(event.target.value)}
-          />
-        </div>
-        <div className="row" style={{ marginTop: '8px' }}>
-          <input
-            type="text"
-            placeholder="Rekordbox USBANLZ folder (e.g., PIONEER/USBANLZ)"
-            value={usbAnlzPath}
-            onChange={(event) => setUsbAnlzPath(event.target.value)}
-          />
-          <button type="button" className="secondary" onClick={pickUsbAnlzFolder} disabled={isBuildingAnlzMap}>
-            Browse USBANLZ
-          </button>
-          <button
-            type="button"
-            onClick={buildAnlzMap}
-            disabled={isBuildingAnlzMap || !tracks.length}
-          >
-            {isBuildingAnlzMap ? 'Building...' : 'Build ANLZ Map'}
-          </button>
-          {isBuildingAnlzMap ? (
-            <button type="button" className="secondary" onClick={cancelAnlzMapBuild}>
-              Cancel
-            </button>
-          ) : null}
-        </div>
-        {anlzBuildProgress ? (
-          <div className="meta" style={{ marginTop: '6px' }}>
-            <span>
-              ANLZ Progress: {anlzBuildProgress.scanned || 0}/{anlzBuildProgress.total || 0} EXT files
-            </span>
-            <span>Parsed: {anlzBuildProgress.parsedCount || 0}</span>
-            <span>Errors: {anlzBuildProgress.parseErrors || 0}</span>
-            <span>Missing PPTH: {anlzBuildProgress.missingPpth || 0}</span>
-          </div>
-        ) : null}
-        {progress !== null && isParsing ? <p className="progress">Parsing in background: {progress}%</p> : null}
-        {error ? <p style={{ color: '#be123c', margin: '8px 0 0' }}>{error}</p> : null}
-        {summary ? (
-          <div className="meta">
-            <span>Tracks: {summary.trackCount}</span>
-            <span>Playlists: {summary.playlistCount}</span>
-            <span>Folders: {summary.folderCount}</span>
-            <span>Selected Folders: {selectedFolders.length || 'All'}</span>
-            <span>ANLZ Map: {anlzMapPath.trim() ? 'Configured' : 'Not set'}</span>
-            {anlzAttachSummary ? <span>ANLZ Attached: {anlzAttachSummary.attached || 0}</span> : null}
-            {anlzBuildSummary ? (
-              <span>
-                ANLZ Matched: {anlzBuildSummary.matchedTracks || 0}/{anlzBuildSummary.totalTracks || 0}
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+        ) : (
+          <div className="app-content">
+            <div className="header">
+              <h1>Rekordbox Flow Analyzer</h1>
+              <p>Phase 1 shell: import XML, choose folders, inspect parsed tracks.</p>
+              {getBuildTag() ? <p style={{ fontSize: '12px', marginTop: '4px', opacity: 0.7 }}>Build: {getBuildTag()}</p> : null}
+            </div>
 
-      <div className="grid">
+            <div className="card">
+              <div className="row">
+                <input
+                  type="text"
+                  placeholder="C:/path/to/rekordbox-export.xml"
+                  value={xmlPath}
+                  onChange={(event) => setXmlPath(event.target.value)}
+                />
+                <button type="button" className="secondary" onClick={pickFile} disabled={isParsing}>Browse XML</button>
+                <button type="button" onClick={parse} disabled={isParsing}>Parse Library</button>
+                <button type="button" onClick={runAnalysis} disabled={isParsing || isAnalyzing || tracks.length < 2}>
+                  {isAnalyzing ? 'Analyzing...' : 'Run Baseline Analysis'}
+                </button>
+              </div>
+              <div className="row" style={{ marginTop: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="Optional ANLZ map path (.planning/anlz-track-map.json)"
+                  value={anlzMapPath}
+                  onChange={(event) => setAnlzMapPath(event.target.value)}
+                />
+              </div>
+              <div className="row" style={{ marginTop: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="Rekordbox USBANLZ folder (e.g., PIONEER/USBANLZ)"
+                  value={usbAnlzPath}
+                  onChange={(event) => setUsbAnlzPath(event.target.value)}
+                />
+                <button type="button" className="secondary" onClick={pickUsbAnlzFolder} disabled={isBuildingAnlzMap}>
+                  Browse USBANLZ
+                </button>
+                <button
+                  type="button"
+                  onClick={buildAnlzMap}
+                  disabled={isBuildingAnlzMap || !tracks.length}
+                >
+                  {isBuildingAnlzMap ? 'Building...' : 'Build ANLZ Map'}
+                </button>
+                {isBuildingAnlzMap ? (
+                  <button type="button" className="secondary" onClick={cancelAnlzMapBuild}>
+                    Cancel
+                  </button>
+                ) : null}
+              </div>
+              {anlzBuildProgress ? (
+                <div className="meta" style={{ marginTop: '6px' }}>
+                  <span>
+                    ANLZ Progress: {anlzBuildProgress.scanned || 0}/{anlzBuildProgress.total || 0} EXT files
+                  </span>
+                  <span>Parsed: {anlzBuildProgress.parsedCount || 0}</span>
+                  <span>Errors: {anlzBuildProgress.parseErrors || 0}</span>
+                  <span>Missing PPTH: {anlzBuildProgress.missingPpth || 0}</span>
+                </div>
+              ) : null}
+              {progress !== null && isParsing ? <p className="progress">Parsing in background: {progress}%</p> : null}
+              {error ? <p style={{ color: '#be123c', margin: '8px 0 0' }}>{error}</p> : null}
+              {summary ? (
+                <div className="meta">
+                  <span>Tracks: {summary.trackCount}</span>
+                  <span>Playlists: {summary.playlistCount}</span>
+                  <span>Folders: {summary.folderCount}</span>
+                  <span>Selected Folders: {selectedFolders.length || 'All'}</span>
+                  <span>ANLZ Map: {anlzMapPath.trim() ? 'Configured' : 'Not set'}</span>
+                  {anlzAttachSummary ? <span>ANLZ Attached: {anlzAttachSummary.attached || 0}</span> : null}
+                  {anlzBuildSummary ? (
+                    <span>
+                      ANLZ Matched: {anlzBuildSummary.matchedTracks || 0}/{anlzBuildSummary.totalTracks || 0}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="grid">
         <div className="card">
           <h3>Folder Filter Tree</h3>
           <div className="folder-list">
@@ -2914,7 +2946,9 @@ export function App() {
         ) : (
           <p>Generate suggestions to see clustered playlists.</p>
         )}
-      </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }

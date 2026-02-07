@@ -14,9 +14,8 @@ body {
 }
 
 .app-shell {
-  max-width: 1480px;
-  margin: 0 auto;
-  padding: 24px;
+  min-height: 100vh;
+  background: var(--bg-primary);
 }
 
 .header {
