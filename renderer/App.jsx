@@ -1773,6 +1773,21 @@ export function App() {
     return new Map(tracks.map((track) => [String(track.id), track]));
   }, [tracks]);
 
+  const similarMatches = useMemo(() => {
+    if (!Array.isArray(similarResults?.matches)) {
+      return [];
+    }
+    const seen = new Set();
+    return similarResults.matches.filter((match) => {
+      const key = String(match.trackId ?? match.id ?? match.TrackID ?? '');
+      if (!key || seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+  }, [similarResults]);
+
   const rowHeight = tableDensity === 'compact' ? 30 : 40;
   const virtualWindowSize = Math.ceil(TABLE_VIEWPORT_HEIGHT / rowHeight) + (VIRTUAL_OVERSCAN_ROWS * 2);
   const virtualStartIndex = Math.max(0, Math.floor(tableScrollTop / rowHeight) - VIRTUAL_OVERSCAN_ROWS);
@@ -2076,7 +2091,7 @@ export function App() {
           />
         </div>
 
-        <div className="card">
+        <div className="card grid-span">
           <div className="row" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
             <h3 style={{ margin: 0 }}>Track Table ({sortedTracks.length}/{tracks.length})</h3>
             <div className="row" style={{ gap: '8px', alignItems: 'center' }}>
@@ -2433,44 +2448,55 @@ export function App() {
               <>
                 <h4 style={{ margin: '12px 0 8px' }}>Similar Tracks</h4>
                 <div className="meta">
-                  <span>Matches: {similarResults.matches?.length || 0}</span>
+                  <span>Matches: {similarMatches.length}</span>
                   <span>Pairs: {similarResults.pairCount}</span>
                   <span>Computed: {similarResults.computed}</span>
                   <span>Cache Hits: {similarResults.cacheHits}</span>
                 </div>
-                {similarResults.matches?.length ? (
-                  <table className="track-table" style={{ marginTop: '8px' }}>
-                    <thead>
-                      <tr>
-                        <th>Track</th>
-                        <th>Score</th>
-                        <th>BPM</th>
-                        <th>Key</th>
-                        <th>Waveform</th>
-                        <th>Rhythm</th>
-                        <th>Why</th>
-                        <th>Source</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {similarResults.matches.map((match) => {
-                        const track = trackIndexById.get(String(match.trackId));
-                        const label = track ? `${track.artist || ''} ${track.title || ''}`.trim() : match.trackId;
-                        return (
-                          <tr key={match.trackId}>
-                            <td>{label || match.trackId}</td>
-                            <td>{match.score.toFixed(3)}</td>
-                            <td>{(match.components?.bpm ?? 0).toFixed(3)}</td>
-                            <td>{(match.components?.key ?? 0).toFixed(3)}</td>
-                            <td>{(match.components?.waveform ?? 0).toFixed(3)}</td>
-                            <td>{(match.components?.rhythm ?? 0).toFixed(3)}</td>
-                            <td>{match.reason || '-'}</td>
-                            <td>{match.fromCache ? 'Cache' : 'Computed'}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                {similarMatches.length ? (
+                  <div className="similar-track-list">
+                    {similarMatches.map((match) => {
+                      const track = trackIndexById.get(String(match.trackId));
+                      if (!track) {
+                        return null;
+                      }
+                      const title = track.title || track.Name || 'Unknown';
+                      const artist = track.artist || track.Artist || 'Unknown';
+                      const bpmValue = track.bpm ?? track.AverageBpm;
+                      const bpmLabel = Number.isFinite(Number(bpmValue))
+                        ? `${Math.round(bpmValue)} BPM`
+                        : '-';
+                      const keyValue = track.key || track.tonality?.key || '-';
+                      return (
+                        <div className="similar-track-card" key={match.trackId}>
+                          <div className="similar-track-header">
+                            <button
+                              type="button"
+                              className="secondary"
+                              onClick={() => playTrack(track)}
+                            >
+                              Play
+                            </button>
+                            <div className="similar-track-info">
+                              <div className="similar-track-title">{title}</div>
+                              <div className="similar-track-artist">{artist}</div>
+                            </div>
+                            <div className="similar-track-meta">
+                              <span>{bpmLabel}</span>
+                              <span>{keyValue}</span>
+                            </div>
+                          </div>
+                          <div className="similar-waveform">
+                            {track.anlzWaveform ? (
+                              <WaveformPreview waveform={track.anlzWaveform} />
+                            ) : (
+                              <div className="waveform-placeholder">No waveform available</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 ) : (
                   <p>No similar tracks above the threshold.</p>
                 )}

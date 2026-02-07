@@ -93,6 +93,10 @@ button:disabled {
   gap: 14px;
 }
 
+.grid-span {
+  grid-column: 1 / -1;
+}
+
 .folder-list {
   max-height: 380px;
   overflow: auto;
@@ -216,6 +220,64 @@ button:disabled {
   gap: 1px;
   align-items: end;
   overflow: hidden;
+}
+
+.similar-track-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.similar-track-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.similar-track-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.similar-track-info {
+  flex: 1;
+  min-width: 220px;
+}
+
+.similar-track-title {
+  font-weight: var(--weight-semibold);
+}
+
+.similar-track-artist {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.similar-track-meta {
+  display: flex;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.similar-waveform .waveform-preview {
+  height: 90px;
+  margin-top: 10px;
+}
+
+.waveform-placeholder {
+  margin-top: 10px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px dashed var(--border-subtle);
+  color: var(--text-tertiary);
+  text-align: center;
 }
 
 .waveform-bin {
