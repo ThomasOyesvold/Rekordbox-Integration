@@ -25,6 +25,8 @@ Status: Active development
   - Added progress bar showing position within sampling queue
 - ✅ **Sampling Skip Control**:
   - Added skip button to advance to next sample immediately
+- ✅ **Sampling Status Badge**:
+  - Added active sampling badge with compact counter
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files

@@ -329,6 +329,17 @@ button:disabled {
   transition: width 180ms ease;
 }
 
+.sampling-badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .waveform-placeholder {
   margin-top: 10px;
   padding: 16px;

@@ -511,8 +511,11 @@ function ClusterDetails({
           </button>
         </span>
         {samplingState?.active ? (
+          <span className="sampling-badge">Sampling</span>
+        ) : null}
+        {samplingState?.active ? (
           <span>
-            Sampling {samplingState.currentIndex + 1}/{samplingState.total}
+            {samplingState.currentIndex + 1}/{samplingState.total}
           </span>
         ) : null}
         {samplingState?.active ? (
