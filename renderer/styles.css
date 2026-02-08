@@ -340,6 +340,12 @@ button:disabled {
   letter-spacing: 0.08em;
 }
 
+.sampling-badge.paused {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.4);
+}
+
 .sampling-track-label {
   font-size: 0.85rem;
   color: var(--text-secondary);

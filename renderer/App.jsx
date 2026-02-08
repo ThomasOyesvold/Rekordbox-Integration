@@ -511,7 +511,9 @@ function ClusterDetails({
           </button>
         </span>
         {samplingState?.active ? (
-          <span className="sampling-badge">Sampling</span>
+          <span className={`sampling-badge${samplingPausedRef.current ? ' paused' : ''}`}>
+            {samplingPausedRef.current ? 'Paused' : 'Sampling'}
+          </span>
         ) : null}
         {samplingState?.active ? (
           <span className="sampling-track-label">{getSamplingTrackLabel()}</span>
