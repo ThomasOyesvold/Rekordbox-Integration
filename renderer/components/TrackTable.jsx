@@ -5,7 +5,8 @@ export function TrackTable({
   tracks,
   onTrackClick,
   onTogglePlay,
-  getPlaybackState
+  getPlaybackState,
+  disablePlay = false
 }) {
   return (
     <div className="track-list-container">
@@ -30,6 +31,7 @@ export function TrackTable({
               onClick={() => onTrackClick?.(track)}
               onTogglePlay={onTogglePlay}
               getPlaybackState={getPlaybackState}
+              disablePlay={disablePlay}
             />
           ))}
         </div>
@@ -38,7 +40,7 @@ export function TrackTable({
   );
 }
 
-function TrackRow({ track, index, onClick, onTogglePlay, getPlaybackState }) {
+function TrackRow({ track, index, onClick, onTogglePlay, getPlaybackState, disablePlay }) {
   const trackId = String(track.id || track.trackId || track.TrackID || '');
   const playback = trackId ? getPlaybackState?.(trackId) : null;
   const isPlaying = playback?.status === 'playing';
@@ -68,7 +70,7 @@ function TrackRow({ track, index, onClick, onTogglePlay, getPlaybackState }) {
             event.stopPropagation();
             onTogglePlay?.(track);
           }}
-          disabled={!trackId || isLoading}
+          disabled={disablePlay || !trackId || isLoading}
         >
           {isLoading ? 'Loading' : isPlaying ? 'Pause' : 'Play'}
         </button>

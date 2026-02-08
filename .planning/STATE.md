@@ -41,6 +41,8 @@ Status: Active development
   - If a sample fails to play, advance to the next track automatically
 - ✅ **Sampling Finished State**:
   - Badge shows Finished after completing the sampling queue
+- ✅ **Playback Lock During Sampling**:
+  - Disabled track table play buttons while sampling is active
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files

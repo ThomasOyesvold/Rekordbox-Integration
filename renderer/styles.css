@@ -352,6 +352,10 @@ button:disabled {
   border-color: rgba(16, 185, 129, 0.4);
 }
 
+.card.sampling-active {
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
 .sampling-track-label {
   font-size: 0.85rem;
   color: var(--text-secondary);

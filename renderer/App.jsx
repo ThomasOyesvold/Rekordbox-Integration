@@ -421,7 +421,8 @@ function ClusterDetails({
   onResumeSample,
   samplingState,
   sampleSize,
-  onSampleSizeChange
+  onSampleSizeChange,
+  disablePlay
 }) {
   const [focusedWaveformId, setFocusedWaveformId] = useState(null);
   const trackRows = cluster.trackIds.map((trackId) => {
@@ -587,12 +588,12 @@ function ClusterDetails({
               <td>{index + 1}</td>
               <td>
                 <div className="playback-cell">
-                  <button
-                    type="button"
-                    className="playback-button"
-                    onClick={() => row.track && onTogglePlay?.(row.track)}
-                    disabled={!row.track || getPlaybackState?.(row.id).loading}
-                  >
+                    <button
+                      type="button"
+                      className="playback-button"
+                      onClick={() => row.track && onTogglePlay?.(row.track)}
+                      disabled={disablePlay || !row.track || getPlaybackState?.(row.id).loading}
+                    >
                     {getPlaybackState?.(row.id).loading
                       ? 'Loading'
                       : getPlaybackState?.(row.id).status === 'playing'
@@ -692,6 +693,7 @@ export function App() {
   const samplingPausedRef = useRef(false);
   const samplingCooldownMsRef = useRef(1200);
   const [samplingFinished, setSamplingFinished] = useState(false);
+  const isSamplingActive = samplingState.active;
   const [clusterDecisions, setClusterDecisions] = useState({});
   const [playlistDecisionsByContext, setPlaylistDecisionsByContext] = useState({});
   const [decisionContextKey, setDecisionContextKey] = useState('');
@@ -2474,10 +2476,11 @@ export function App() {
             onTrackClick={(track) => setSelectedTrackId(getTrackId(track))}
             onTogglePlay={togglePlayPause}
             getPlaybackState={getPlaybackState}
+            disablePlay={isSamplingActive}
           />
         </div>
 
-        <div className="card grid-span">
+        <div className={`card grid-span${isSamplingActive ? ' sampling-active' : ''}`}>
           <div className="row" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
             <h3 style={{ margin: 0 }}>Track Table ({sortedTracks.length}/{tracks.length})</h3>
           </div>
@@ -2626,7 +2629,7 @@ export function App() {
                             type="button"
                             className="playback-button"
                             onClick={() => togglePlayPause(track)}
-                            disabled={getPlaybackState(rowTrackId).loading}
+                            disabled={isSamplingActive || getPlaybackState(rowTrackId).loading}
                           >
                             {getPlaybackState(rowTrackId).loading
                               ? 'Loading'
@@ -3259,6 +3262,7 @@ export function App() {
                                               samplingState={clusterSamplingState}
                                               sampleSize={sampleSize}
                                               onSampleSizeChange={handleSampleSizeChange}
+                                              disablePlay={samplingState?.active}
                                             />
                                           </td>
                                         </tr>
@@ -3385,6 +3389,7 @@ export function App() {
                                   samplingState={clusterSamplingState}
                                   sampleSize={sampleSize}
                                   onSampleSizeChange={handleSampleSizeChange}
+                                  disablePlay={samplingState?.active}
                                 />
                               </td>
                             </tr>
