@@ -11,7 +11,9 @@ function parseArgs(argv) {
     xmlPath: null,
     folders: [],
     maxPairs: 200000,
+    maxPairsCap: 100000,
     topLimit: 50,
+    yieldEveryPairs: 5000,
     dbPath: path.resolve('.planning/rbfa-stress.db')
   };
 
@@ -38,8 +40,20 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (token === '--max-pairs-cap' && argv[index + 1]) {
+      options.maxPairsCap = Number(argv[index + 1]);
+      index += 1;
+      continue;
+    }
+
     if (token === '--top-limit' && argv[index + 1]) {
       options.topLimit = Number(argv[index + 1]);
+      index += 1;
+      continue;
+    }
+
+    if (token === '--yield-every' && argv[index + 1]) {
+      options.yieldEveryPairs = Number(argv[index + 1]);
       index += 1;
       continue;
     }
@@ -68,7 +82,7 @@ function memorySnapshot(label) {
 
 function printUsage() {
   console.log('Phase 2 Stress Usage:');
-  console.log('  node scripts/phase2Stress.js --xml /path/to/rekordbox.xml [--folders "ROOT/Techno,ROOT/House"] [--max-pairs 200000] [--top-limit 50] [--db .planning/rbfa-stress.db]');
+  console.log('  node scripts/phase2Stress.js --xml /path/to/rekordbox.xml [--folders "ROOT/Techno,ROOT/House"] [--max-pairs 200000] [--max-pairs-cap 100000] [--yield-every 5000] [--top-limit 50] [--db .planning/rbfa-stress.db]');
 }
 
 async function main() {
@@ -90,6 +104,7 @@ async function main() {
   console.log(`[stress] db=${options.dbPath}`);
   console.log(`[stress] folders=${options.folders.length ? options.folders.join(', ') : '(all)'}`);
   console.log(`[stress] maxPairs=${options.maxPairs} topLimit=${options.topLimit}`);
+  console.log(`[stress] maxPairsCap=${options.maxPairsCap} yieldEvery=${options.yieldEveryPairs}`);
 
   memorySnapshot('start');
 
@@ -103,30 +118,50 @@ async function main() {
   console.log(`[stress] tracks=${tracks.length} totalPairs=${totalPairs}`);
 
   const coldStart = performance.now();
+  let nextProgress = 0.1;
+  const onProgress = (progress) => {
+    if (!progress?.totalPairs) {
+      return;
+    }
+    const ratio = progress.pairCount / progress.totalPairs;
+    if (ratio >= nextProgress || progress.done) {
+      console.log(`[progress] ${(ratio * 100).toFixed(1)}% pairs=${progress.pairCount} cacheHits=${progress.cacheHits} computed=${progress.computed}`);
+      memorySnapshot('progress');
+      nextProgress += 0.1;
+    }
+  };
+
   const cold = await runBaselineAnalysis({
     tracks,
     sourceXmlPath: xmlPath,
     selectedFolders: options.folders,
     maxPairs: options.maxPairs,
-    topLimit: options.topLimit
+    maxPairsCap: options.maxPairsCap,
+    topLimit: options.topLimit,
+    yieldEveryPairs: options.yieldEveryPairs,
+    onProgress
   });
   const coldEnd = performance.now();
   memorySnapshot('after-cold');
 
   const warmStart = performance.now();
+  nextProgress = 0.1;
   const warm = await runBaselineAnalysis({
     tracks,
     sourceXmlPath: xmlPath,
     selectedFolders: options.folders,
     maxPairs: options.maxPairs,
-    topLimit: options.topLimit
+    maxPairsCap: options.maxPairsCap,
+    topLimit: options.topLimit,
+    yieldEveryPairs: options.yieldEveryPairs,
+    onProgress
   });
   const warmEnd = performance.now();
   memorySnapshot('after-warm');
 
   console.log(`[timing] parse=${formatDurationMs(parseEnd - parseStart)} cold=${formatDurationMs(coldEnd - coldStart)} warm=${formatDurationMs(warmEnd - warmStart)}`);
-  console.log(`[cold] pairs=${cold.pairCount} computed=${cold.computed} cacheHits=${cold.cacheHits}`);
-  console.log(`[warm] pairs=${warm.pairCount} computed=${warm.computed} cacheHits=${warm.cacheHits}`);
+  console.log(`[cold] pairs=${cold.pairCount} pairLimit=${cold.pairLimit} computed=${cold.computed} cacheHits=${cold.cacheHits}`);
+  console.log(`[warm] pairs=${warm.pairCount} pairLimit=${warm.pairLimit} computed=${warm.computed} cacheHits=${warm.cacheHits}`);
 
   closeDatabase();
 }
