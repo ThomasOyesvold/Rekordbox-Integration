@@ -1,12 +1,12 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-console.log('[rbfa] preload version: rbfa-file-url-2026-02-05-1.1');
+console.log('[rbfa] preload version: rbfa-file-url-2026-02-07-1.1');
 
 contextBridge.exposeInMainWorld('rbfa', {
   platform: process.platform,
   isWsl: Boolean(process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP),
   buildInfo: {
-    buildTag: 'rbfa-file-url-2026-02-05-1.1'
+    buildTag: 'rbfa-file-url-2026-02-07-1.1'
   },
   pickXmlFile: () => ipcRenderer.invoke('dialog:pickXml'),
   pickFolder: () => ipcRenderer.invoke('dialog:pickFolder'),

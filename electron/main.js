@@ -28,6 +28,7 @@ const isSmokeMode = process.env.RBFA_SMOKE === '1';
 
 let mainWindow = null;
 let anlzBuildController = null;
+let cachedLibraryTracks = [];
 
 function createWindow() {
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
@@ -111,6 +112,7 @@ ipcMain.handle('library:parse', async (_event, payload) => {
   }
 
   const filteredTracks = filterTracksByFolders(library, selectedFolders);
+  cachedLibraryTracks = filteredTracks;
   let anlzAttach = null;
   let anlzAttachError = null;
   if (anlzMapPath) {
@@ -240,7 +242,9 @@ ipcMain.handle('analysis:export', async (_event, payload) => {
 });
 
 ipcMain.handle('tracks:similar', async (_event, payload) => {
-  const tracks = Array.isArray(payload?.tracks) ? payload.tracks : [];
+  const tracks = Array.isArray(payload?.tracks) && payload.tracks.length > 0
+    ? payload.tracks
+    : cachedLibraryTracks;
   return findSimilarTracks({
     tracks,
     targetId: payload?.targetId,

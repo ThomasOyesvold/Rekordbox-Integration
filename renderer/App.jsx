@@ -38,15 +38,15 @@ const TRACK_COLUMN_LABELS = {
 };
 const DEFAULT_VISIBLE_TRACK_COLUMNS = {
   play: true,
-  id: true,
+  id: false,
   title: true,
   bpm: true,
   key: true,
-  waveformPreview: false,
+  waveformPreview: true,
   genre: true,
   durationSeconds: true,
   artist: true,
-  playlists: true
+  playlists: false
 };
 
 function getBridgeApi() {
@@ -272,7 +272,15 @@ function formatClock(seconds) {
   return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
 }
 
-function WaveformPreview({ waveform }) {
+function getTrackId(track) {
+  if (!track) {
+    return '';
+  }
+  const rawId = track.id ?? track.trackId ?? track.TrackID ?? track.ID;
+  return rawId !== undefined && rawId !== null ? String(rawId) : '';
+}
+
+function WaveformPreview({ waveform, onSeek, seekLabel = 'Seek waveform', progress = null }) {
   const bins = Array.isArray(waveform?.bins) ? waveform.bins : [];
   if (!bins.length) {
     return <p style={{ marginTop: '6px' }}>No waveform bins available.</p>;
@@ -282,8 +290,35 @@ function WaveformPreview({ waveform }) {
   const fallbackColor = waveform?.avgColor || { red: 0, green: 170, blue: 255 };
   const maxHeight = 31;
 
+  const handleSeek = (event) => {
+    if (!onSeek || typeof onSeek !== 'function') {
+      return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+    onSeek(ratio);
+  };
+
+  const progressPercent = Number.isFinite(progress) ? clamp(progress, 0, 1) * 100 : null;
+
   return (
-    <div className="waveform-preview">
+    <div
+      className="waveform-preview"
+      role={onSeek ? 'button' : undefined}
+      tabIndex={onSeek ? 0 : undefined}
+      onClick={onSeek ? handleSeek : undefined}
+      onKeyDown={
+        onSeek
+          ? (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              handleSeek(event);
+            }
+          }
+          : undefined
+      }
+      title={onSeek ? seekLabel : undefined}
+    >
       {bins.map((rawHeight, index) => {
         const height = Math.max(0, Math.min(maxHeight, Number(rawHeight) || 0));
         const normalized = height / maxHeight;
@@ -301,9 +336,12 @@ function WaveformPreview({ waveform }) {
               height: `${Math.max(4, normalized * 100)}%`,
               backgroundColor: `rgb(${red}, ${green}, ${blue})`
             }}
-          />
-        );
-      })}
+            />
+          );
+        })}
+      {progressPercent !== null ? (
+        <div className="waveform-playhead" style={{ left: `${progressPercent}%` }} />
+      ) : null}
     </div>
   );
 }
@@ -620,11 +658,14 @@ export function App() {
   const [progress, setProgress] = useParseProgress();
   const trackFilterInputRef = useRef(null);
   const tableViewportRef = useRef(null);
-  const audioRegistryRef = useRef(new Map());
+  const sharedAudioRef = useRef(null);
+  const sharedAudioTrackIdRef = useRef(null);
   const [playbackStates, setPlaybackStates] = useState({});
+  const playbackStateRef = useRef({});
+  const lastPlaybackUiUpdateRef = useRef({});
   const [activeTrackId, setActiveTrackId] = useState(null);
-  const [playbackVolume, setPlaybackVolume] = useState(1);
-  const playbackVolumeRef = useRef(1);
+  const [playbackVolume, setPlaybackVolume] = useState(0.5);
+  const playbackVolumeRef = useRef(0.5);
   const [audioStatus, setAudioStatus] = useState({ level: 'idle', message: '' });
   const audioDebugEnabled = useMemo(() => isAudioDebugEnabled(), []);
   const playRequestIdRef = useRef(0);
@@ -642,11 +683,10 @@ export function App() {
   };
 
   const applyVolumeToAll = (value) => {
-    audioRegistryRef.current.forEach((entry) => {
-      if (entry?.audio) {
-        entry.audio.volume = value;
-      }
-    });
+    if (sharedAudioRef.current) {
+      sharedAudioRef.current.volume = value;
+      sharedAudioRef.current.muted = false;
+    }
   };
 
   const handleVolumeChange = (value) => {
@@ -672,18 +712,153 @@ export function App() {
       gain.gain.value = Math.max(0.05, Math.min(1, playbackVolumeRef.current));
       oscillator.connect(gain);
       gain.connect(context.destination);
-      oscillator.start();
-      oscillator.stop(context.currentTime + 0.25);
-      oscillator.onended = () => {
-        context.close();
+
+      const startTone = () => {
+        oscillator.start();
+        oscillator.stop(context.currentTime + 0.25);
+        oscillator.onended = () => {
+          context.close();
+        };
+        logAudio('[rbfa] test tone played', { volume: playbackVolume });
+        setAudioStatus({ level: 'playing', message: 'Test tone played' });
       };
-      logAudio('[rbfa] test tone played', { volume: playbackVolume });
-      setAudioStatus({ level: 'playing', message: 'Test tone played' });
+
+      if (context.state === 'suspended') {
+        context.resume().then(startTone).catch((error) => {
+          console.error('[rbfa] test tone resume failed', { error });
+          setAudioStatus({ level: 'blocked', message: 'Audio context blocked' });
+        });
+      } else {
+        startTone();
+      }
     } catch (error) {
       console.error('[rbfa] test tone failed', { error });
       setAudioStatus({ level: 'error', message: 'Test tone failed' });
     }
   };
+
+  useEffect(() => {
+    const audio = new Audio();
+    audio.preload = 'metadata';
+    audio.volume = playbackVolumeRef.current;
+    audio.muted = false;
+    sharedAudioRef.current = audio;
+
+    let lastTimeUpdate = 0;
+    const onLoadedMeta = () => {
+      const trackId = sharedAudioTrackIdRef.current;
+      if (!trackId) {
+        return;
+      }
+      updatePlaybackState(trackId, {
+        duration: Number.isFinite(audio.duration) ? audio.duration : 0,
+        loading: false,
+        error: ''
+      });
+    };
+
+    const onTimeUpdate = () => {
+      const trackId = sharedAudioTrackIdRef.current;
+      if (!trackId) {
+        return;
+      }
+      const now = performance.now();
+      if (now - lastTimeUpdate < 200) {
+        return;
+      }
+      lastTimeUpdate = now;
+      updatePlaybackState(trackId, {
+        currentTime: audio.currentTime,
+        duration: Number.isFinite(audio.duration) ? audio.duration : getPlaybackState(trackId).duration
+      });
+    };
+
+    const onPlay = () => {
+      const trackId = sharedAudioTrackIdRef.current;
+      if (!trackId) {
+        return;
+      }
+      updatePlaybackState(trackId, {
+        status: 'playing',
+        loading: false,
+        error: ''
+      });
+      setActiveTrackId(trackId);
+      setAudioStatus({ level: 'playing', message: 'Playing' });
+    };
+
+    const onPause = () => {
+      const trackId = sharedAudioTrackIdRef.current;
+      if (!trackId) {
+        return;
+      }
+      updatePlaybackState(trackId, {
+        status: 'paused'
+      });
+      setAudioStatus({ level: 'paused', message: 'Paused' });
+    };
+
+    const onEnded = () => {
+      const trackId = sharedAudioTrackIdRef.current;
+      if (!trackId) {
+        return;
+      }
+      updatePlaybackState(trackId, {
+        status: 'idle',
+        currentTime: 0
+      });
+      setAudioStatus({ level: 'idle', message: 'Ended' });
+      handleSamplingEnded(trackId);
+    };
+
+    const onError = () => {
+      const trackId = sharedAudioTrackIdRef.current;
+      if (!trackId) {
+        return;
+      }
+      const mediaError = audio.error;
+      const errorCode = mediaError?.code;
+      let errorMsg = 'Audio unavailable or failed to load';
+      if (errorCode === 1) {
+        errorMsg = 'Audio loading aborted';
+      } else if (errorCode === 2) {
+        errorMsg = 'Network error loading audio';
+      } else if (errorCode === 3) {
+        errorMsg = 'Audio format not supported or file corrupted';
+      } else if (errorCode === 4) {
+        errorMsg = 'Audio source not found or not accessible';
+      } else if (errorCode) {
+        errorMsg = `${errorMsg} (code ${errorCode})`;
+      }
+      updatePlaybackState(trackId, {
+        status: 'error',
+        loading: false,
+        error: errorMsg
+      });
+      setAudioStatus({ level: 'error', message: 'Playback failed' });
+      console.error('[rbfa] audio error', {
+        trackId,
+        src: audio.src,
+        error: errorMsg
+      });
+    };
+
+    audio.addEventListener('loadedmetadata', onLoadedMeta);
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('play', onPlay);
+    audio.addEventListener('pause', onPause);
+    audio.addEventListener('ended', onEnded);
+    audio.addEventListener('error', onError);
+
+    return () => {
+      audio.removeEventListener('loadedmetadata', onLoadedMeta);
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('play', onPlay);
+      audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('ended', onEnded);
+      audio.removeEventListener('error', onError);
+    };
+  }, []);
 
   useEffect(() => {
     const bridgeApi = getBridgeApi();
@@ -722,7 +897,12 @@ export function App() {
         setSortDirection(state.tableSortDirection);
       }
 
-      setVisibleTrackColumns(normalizeVisibleTrackColumns(state?.visibleTrackColumns));
+      const normalizedColumns = normalizeVisibleTrackColumns(state?.visibleTrackColumns);
+      const looksLegacy =
+        normalizedColumns.id &&
+        normalizedColumns.playlists &&
+        !normalizedColumns.waveformPreview;
+      setVisibleTrackColumns(looksLegacy ? DEFAULT_VISIBLE_TRACK_COLUMNS : normalizedColumns);
 
       if (state?.tableDensity === 'compact' || state?.tableDensity === 'cozy') {
         setTableDensity(state.tableDensity);
@@ -1092,8 +1272,7 @@ export function App() {
     setError('');
     try {
       const result = await bridgeApi.findSimilarTracks({
-        tracks,
-        targetId: selectedTrack.id,
+        targetId: getTrackId(selectedTrack),
         sourceXmlPath: xmlPath.trim(),
         selectedFolders,
         limit: Number(similarLimit),
@@ -1179,12 +1358,44 @@ export function App() {
   }, [tracks, trackQuery]);
 
   const updatePlaybackState = (trackId, patch) => {
-    setPlaybackStates((current) => ({
-      ...current,
-      [trackId]: {
-        ...(current[trackId] || { status: 'idle', currentTime: 0, duration: 0, loading: false, error: '' }),
-        ...patch
+    if (!trackId) {
+      return;
+    }
+    const current = playbackStateRef.current[trackId] || {
+      status: 'idle',
+      currentTime: 0,
+      duration: 0,
+      loading: false,
+      error: ''
+    };
+    const next = { ...current, ...patch };
+    playbackStateRef.current = { ...playbackStateRef.current, [trackId]: next };
+
+    const patchKeys = Object.keys(patch || {});
+    const timeOnly = patchKeys.every((key) => key === 'currentTime' || key === 'duration');
+    if (
+      timeOnly
+      && String(trackId) !== String(activeTrackId)
+      && String(trackId) !== String(sharedAudioTrackIdRef.current)
+    ) {
+      return;
+    }
+
+    if (timeOnly) {
+      const now = performance.now();
+      const last = lastPlaybackUiUpdateRef.current[trackId] || 0;
+      if (now - last < 500) {
+        return;
       }
+      lastPlaybackUiUpdateRef.current = {
+        ...lastPlaybackUiUpdateRef.current,
+        [trackId]: now
+      };
+    }
+
+    setPlaybackStates((prev) => ({
+      ...prev,
+      [trackId]: next
     }));
   };
 
@@ -1196,10 +1407,10 @@ export function App() {
     if (!trackId) {
       return;
     }
-    const entry = audioRegistryRef.current.get(trackId);
-    if (entry?.audio) {
-      entry.audio.pause();
-      entry.audio.currentTime = 0;
+    const audio = sharedAudioRef.current;
+    if (audio && String(sharedAudioTrackIdRef.current) === String(trackId)) {
+      audio.pause();
+      audio.currentTime = 0;
     }
     updatePlaybackState(trackId, {
       status: 'idle',
@@ -1209,23 +1420,29 @@ export function App() {
   };
 
   const stopAllPlayback = (keepTrackId = null) => {
-    audioRegistryRef.current.forEach((_entry, trackId) => {
-      if (keepTrackId && String(trackId) === String(keepTrackId)) {
-        return;
-      }
-      stopPlayback(trackId);
-    });
+    const audio = sharedAudioRef.current;
+    if (!audio) {
+      return;
+    }
+    const currentTrackId = sharedAudioTrackIdRef.current;
+    if (keepTrackId && String(currentTrackId) === String(keepTrackId)) {
+      return;
+    }
+    if (currentTrackId) {
+      stopPlayback(currentTrackId);
+    }
   };
 
   const disposeAudio = (trackId) => {
     if (!trackId) {
       return;
     }
-    const entry = audioRegistryRef.current.get(trackId);
-    if (entry?.cleanup) {
-      entry.cleanup();
+    const audio = sharedAudioRef.current;
+    if (audio && String(sharedAudioTrackIdRef.current) === String(trackId)) {
+      audio.pause();
+      audio.currentTime = 0;
+      sharedAudioTrackIdRef.current = null;
     }
-    audioRegistryRef.current.delete(trackId);
   };
 
   const clearSamplingTimer = () => {
@@ -1344,7 +1561,7 @@ export function App() {
     const firstTrack = trackIndexById.get(queue[0]);
     if (firstTrack) {
       await playTrack(firstTrack, pickSampleStartSeconds(firstTrack));
-      scheduleSamplingAdvance(firstTrack.id);
+      scheduleSamplingAdvance(getTrackId(firstTrack));
     }
   };
 
@@ -1373,163 +1590,41 @@ export function App() {
     if (nextTrack) {
       disposeAudio(expected);
       await playTrack(nextTrack, pickSampleStartSeconds(nextTrack));
-      scheduleSamplingAdvance(nextTrack.id);
+      scheduleSamplingAdvance(getTrackId(nextTrack));
     }
   };
 
   const ensureAudio = (track, srcOverride = '') => {
-    const trackId = track.id;
-    let existing = audioRegistryRef.current.get(trackId);
-    const src = srcOverride || normalizeAudioLocation(track.location);
-
-    if (existing?.audio && src && existing.audio.src !== src) {
-      existing.cleanup?.();
-      audioRegistryRef.current.delete(trackId);
-      existing = null;
+    const trackId = getTrackId(track);
+    if (!trackId) {
+      warnAudio('[rbfa] ensureAudio missing track id', { track });
+      return null;
+    }
+    const location = track?.location || track?.Location || track?.LOCATION || '';
+    const src = srcOverride || normalizeAudioLocation(location);
+    const audio = sharedAudioRef.current;
+    if (!audio) {
+      warnAudio('[rbfa] shared audio unavailable', { trackId });
+      return null;
     }
 
-    logAudio('[rbfa] ensureAudio', {
+    logAudio('[rbfa] ensureAudio(shared)', {
       trackId,
-      rawLocation: track.location,
-      normalizedSrc: src,
-      hasExisting: Boolean(existing)
+      rawLocation: location,
+      normalizedSrc: src
     });
 
     if (!src) {
-      warnAudio('[rbfa] empty audio src', { trackId, location: track.location });
+      warnAudio('[rbfa] empty audio src', { trackId, location });
     }
 
-    if (existing?.audio) {
-      if (src && existing.audio.src !== src) {
-        logAudio('[rbfa] Updating audio src', {
-          trackId,
-          oldSrc: existing.audio.src,
-          newSrc: src
-        });
-        existing.audio.src = src;
-        existing.audio.load();
-      }
-      return existing.audio;
+    if (audio.src !== src) {
+      audio.src = src;
+      audio.load();
     }
-
-    logAudio('[rbfa] Creating new Audio element', { trackId, src });
-    const audio = new Audio();
-    audio.preload = 'metadata';
-    audio.src = src;
-    audio.load();
     audio.volume = playbackVolumeRef.current;
-
-    const onLoadedMeta = () => {
-      updatePlaybackState(trackId, {
-        duration: Number.isFinite(audio.duration) ? audio.duration : 0,
-        loading: false,
-        error: ''
-      });
-    };
-    const onTimeUpdate = () => {
-      updatePlaybackState(trackId, {
-        currentTime: audio.currentTime,
-        duration: Number.isFinite(audio.duration) ? audio.duration : getPlaybackState(trackId).duration
-      });
-      if (audio.muted || audio.volume === 0) {
-        warnAudio('[rbfa] audio muted or zero volume', {
-          trackId,
-          muted: audio.muted,
-          volume: audio.volume
-        });
-        setAudioStatus({ level: 'muted', message: 'Muted or volume 0' });
-      }
-    };
-    const onPlay = () => {
-      updatePlaybackState(trackId, {
-        status: 'playing',
-        loading: false,
-        error: ''
-      });
-      setActiveTrackId(trackId);
-      logAudio('[rbfa] audio state', {
-        trackId,
-        src: audio.src,
-        muted: audio.muted,
-        volume: audio.volume,
-        readyState: audio.readyState,
-        currentTime: audio.currentTime,
-        duration: audio.duration
-      });
-      if (audio.muted || audio.volume === 0) {
-        setAudioStatus({ level: 'muted', message: 'Muted or volume 0' });
-      } else {
-        setAudioStatus({ level: 'playing', message: 'Playing' });
-      }
-    };
-    const onPause = () => {
-      updatePlaybackState(trackId, {
-        status: 'paused'
-      });
-      setAudioStatus({ level: 'paused', message: 'Paused' });
-    };
-    const onEnded = () => {
-      updatePlaybackState(trackId, {
-        status: 'idle',
-        currentTime: 0
-      });
-      setAudioStatus({ level: 'idle', message: 'Ended' });
-      handleSamplingEnded(trackId);
-    };
-    const onError = () => {
-      const mediaError = audio.error;
-      const errorCode = mediaError?.code;
-      let errorMsg = 'Audio unavailable or failed to load';
-
-      // Map MediaError codes to user-friendly messages
-      if (errorCode === 1) {
-        errorMsg = 'Audio loading aborted';
-      } else if (errorCode === 2) {
-        errorMsg = 'Network error loading audio';
-      } else if (errorCode === 3) {
-        errorMsg = 'Audio format not supported or file corrupted';
-      } else if (errorCode === 4) {
-        errorMsg = 'Audio source not found or not accessible';
-      } else if (errorCode) {
-        errorMsg = `${errorMsg} (code ${errorCode})`;
-      }
-
-      updatePlaybackState(trackId, {
-        status: 'error',
-        loading: false,
-        error: errorMsg
-      });
-      setAudioStatus({ level: 'error', message: errorMsg });
-
-      console.error('[rbfa] audio error', {
-        trackId,
-        src: audio.src,
-        mediaError: {
-          code: errorCode,
-          message: mediaError?.message
-        }
-      });
-    };
-
-    audio.addEventListener('loadedmetadata', onLoadedMeta);
-    audio.addEventListener('timeupdate', onTimeUpdate);
-    audio.addEventListener('play', onPlay);
-    audio.addEventListener('pause', onPause);
-    audio.addEventListener('ended', onEnded);
-    audio.addEventListener('error', onError);
-
-    audioRegistryRef.current.set(trackId, {
-      audio,
-      cleanup: () => {
-        audio.removeEventListener('loadedmetadata', onLoadedMeta);
-        audio.removeEventListener('timeupdate', onTimeUpdate);
-        audio.removeEventListener('play', onPlay);
-        audio.removeEventListener('pause', onPause);
-        audio.removeEventListener('ended', onEnded);
-        audio.removeEventListener('error', onError);
-      }
-    });
-
+    audio.muted = false;
+    sharedAudioTrackIdRef.current = trackId;
     updatePlaybackState(trackId, { loading: true });
     return audio;
   };
@@ -1544,32 +1639,34 @@ export function App() {
   const playTrack = async (track, seekSeconds = null) => {
     const requestId = playRequestIdRef.current + 1;
     playRequestIdRef.current = requestId;
+    const trackId = getTrackId(track);
 
-    if (!track?.location) {
-      updatePlaybackState(track.id, { status: 'error', error: 'Missing audio path.' });
+    const location = track?.location || track?.Location || track?.LOCATION;
+    if (!trackId || !location) {
+      updatePlaybackState(trackId || track?.id, { status: 'error', error: 'Missing audio path.' });
       setAudioStatus({ level: 'error', message: 'Missing audio path' });
-      console.error('[rbfa] playTrack: missing location', { trackId: track.id });
+      console.error('[rbfa] playTrack: missing location', { trackId: trackId || track?.id });
       return;
     }
 
     logAudio('[rbfa] playTrack START', {
-      trackId: track.id,
+      trackId,
       title: track.title,
-      rawLocation: track.location,
+      rawLocation: location,
       seekSeconds
     });
 
-    stopAllPlayback(track.id);
+    stopAllPlayback(trackId);
 
     // Get normalized file URL and filesystem path
     const bridgeApi = getBridgeApi();
     setAudioStatus({ level: 'loading', message: 'Loading audio…' });
-    let fileUrl = normalizeAudioLocation(track.location, { debug: audioDebugEnabled });
+    let fileUrl = normalizeAudioLocation(location, { debug: audioDebugEnabled });
 
     // Verify file exists and is readable using bridge API
     let pathInfo = null;
     if (bridgeApi?.resolveAudioPath) {
-      pathInfo = await bridgeApi.resolveAudioPath(track.location);
+      pathInfo = await bridgeApi.resolveAudioPath(location);
       if (requestId !== playRequestIdRef.current) {
         return;
       }
@@ -1580,22 +1677,22 @@ export function App() {
       }
 
       if (!pathInfo.exists) {
-        let errorMsg = `File not found: ${pathInfo.fsPath || track.location}`;
+        let errorMsg = `File not found: ${pathInfo.fsPath || location}`;
         if (pathInfo.parentExists) {
           errorMsg += ' (Parent folder exists; filename or encoding may not match.)';
         }
         if (pathInfo.hadEncodedSegments) {
           errorMsg += ' (Path contains encoded characters; verify Rekordbox XML matches actual folder names.)';
         }
-        updatePlaybackState(track.id, {
+        updatePlaybackState(trackId, {
           status: 'error',
           loading: false,
           error: errorMsg
         });
         setAudioStatus({ level: 'error', message: 'File not found' });
         console.error('[rbfa] File does not exist', {
-          trackId: track.id,
-          rawLocation: track.location,
+          trackId,
+          rawLocation: location,
           fsPath: pathInfo.fsPath,
           fileUrl
         });
@@ -1604,14 +1701,14 @@ export function App() {
 
       if (!pathInfo.readable) {
         const errorMsg = `Permission denied: ${pathInfo.fsPath}`;
-        updatePlaybackState(track.id, {
+        updatePlaybackState(trackId, {
           status: 'error',
           loading: false,
           error: errorMsg
         });
         setAudioStatus({ level: 'error', message: 'File not readable' });
         console.error('[rbfa] File not readable', {
-          trackId: track.id,
+          trackId,
           fsPath: pathInfo.fsPath,
           fileUrl
         });
@@ -1619,7 +1716,7 @@ export function App() {
       }
 
       logAudio('[rbfa] File verification passed', {
-        trackId: track.id,
+        trackId,
         fsPath: pathInfo.fsPath,
         exists: pathInfo.exists,
         readable: pathInfo.readable
@@ -1628,8 +1725,15 @@ export function App() {
       warnAudio('[rbfa] Bridge API not available for file verification');
     }
 
-    logAudio('[rbfa] Setting audio src', { trackId: track.id, fileUrl });
+    logAudio('[rbfa] Setting audio src', { trackId, fileUrl });
     const audio = ensureAudio(track, fileUrl);
+    if (!audio) {
+      updatePlaybackState(trackId, { status: 'error', error: 'Audio setup failed.' });
+      setAudioStatus({ level: 'error', message: 'Audio setup failed' });
+      return;
+    }
+    audio.muted = false;
+    audio.volume = playbackVolumeRef.current;
     const duration = Number.isFinite(audio.duration) && audio.duration > 0
       ? audio.duration
       : Number(track.durationSeconds) || 0;
@@ -1637,17 +1741,17 @@ export function App() {
     if (seekSeconds !== null && Number.isFinite(seekSeconds)) {
       const target = clamp(seekSeconds, 0, duration || seekSeconds);
       audio.currentTime = target;
-      updatePlaybackState(track.id, { currentTime: target });
-      logAudio('[rbfa] Seeking to', { trackId: track.id, target });
+      updatePlaybackState(trackId, { currentTime: target });
+      logAudio('[rbfa] Seeking to', { trackId, target });
     }
 
-    updatePlaybackState(track.id, { loading: audio.readyState < 1, error: '' });
+    updatePlaybackState(trackId, { loading: audio.readyState < 1, error: '' });
     if (audio.readyState < 1) {
       try {
         await waitForEvent(audio, 'loadedmetadata', 3000);
       } catch (error) {
         warnAudio('[rbfa] audio metadata not loaded', {
-          trackId: track.id,
+          trackId,
           src: audio.src,
           error: error?.message || error
         });
@@ -1658,19 +1762,19 @@ export function App() {
     }
     try {
       logAudio('[rbfa] Attempting audio.play()', {
-        trackId: track.id,
+        trackId,
         readyState: audio.readyState,
         src: audio.src
       });
       await audio.play();
-      logAudio('[rbfa] audio.play() succeeded', { trackId: track.id });
+      logAudio('[rbfa] audio.play() succeeded', { trackId });
     } catch (error) {
       if (error?.name === 'AbortError' || error?.code === 20) {
         warnAudio('[rbfa] audio play aborted', {
-          trackId: track.id,
+          trackId,
           src: audio.src
         });
-        updatePlaybackState(track.id, {
+        updatePlaybackState(trackId, {
           status: 'paused',
           loading: false
         });
@@ -1678,7 +1782,7 @@ export function App() {
       }
       const name = error?.name ? ` (${error.name})` : '';
       const message = error?.message ? ` ${error.message}` : '';
-      updatePlaybackState(track.id, {
+      updatePlaybackState(trackId, {
         status: 'error',
         loading: false,
         error: `Unable to start playback${name}.${message}`
@@ -1689,7 +1793,7 @@ export function App() {
         setAudioStatus({ level: 'error', message: 'Playback failed' });
       }
       console.error('[rbfa] audio play failed', {
-        trackId: track.id,
+        trackId,
         src: audio.src,
         error: {
           name: error?.name,
@@ -1701,21 +1805,31 @@ export function App() {
   };
 
   const togglePlayPause = async (track) => {
-    const state = getPlaybackState(track.id);
-    const entry = audioRegistryRef.current.get(track.id);
-    if (state.status === 'playing' && entry?.audio) {
-      entry.audio.pause();
+    const trackId = getTrackId(track);
+    const state = getPlaybackState(trackId);
+    const audio = sharedAudioRef.current;
+    if (state.status === 'playing' && audio && String(sharedAudioTrackIdRef.current) === String(trackId)) {
+      audio.pause();
       return;
     }
 
     if (samplingStateRef.current.active) {
       stopSampling();
     }
+    if (state.status === 'paused' && audio && String(sharedAudioTrackIdRef.current) === String(trackId)) {
+      try {
+        await audio.play();
+        return;
+      } catch {
+        // fallback to full playTrack
+      }
+    }
     await playTrack(track, state.currentTime || 0);
   };
 
   const seekFromWaveform = async (track, event) => {
-    const state = getPlaybackState(track.id);
+    const trackId = getTrackId(track);
+    const state = getPlaybackState(trackId);
     const container = event.currentTarget;
     if (!container) {
       return;
@@ -1770,7 +1884,14 @@ export function App() {
   }, [currentPage, pageSize, sortedTracks]);
 
   const trackIndexById = useMemo(() => {
-    return new Map(tracks.map((track) => [String(track.id), track]));
+    return new Map(
+      tracks
+        .map((track) => {
+          const trackId = getTrackId(track);
+          return trackId ? [trackId, track] : null;
+        })
+        .filter(Boolean)
+    );
   }, [tracks]);
 
   const similarMatches = useMemo(() => {
@@ -2083,17 +2204,8 @@ export function App() {
         </div>
 
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Quick Preview</h3>
-          <TrackTable
-            tracks={sortedTracks.slice(0, 20)}
-            onTrackClick={(track) => setSelectedTrackId(track.id)}
-            playingTrackId={activeTrackId}
-          />
-        </div>
-
-        <div className="card grid-span">
           <div className="row" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
-            <h3 style={{ margin: 0 }}>Track Table ({sortedTracks.length}/{tracks.length})</h3>
+            <h3 style={{ marginTop: 0, marginBottom: 0 }}>Quick Preview</h3>
             <div className="row" style={{ gap: '8px', alignItems: 'center' }}>
               <span style={{ fontSize: '0.9rem', color: '#334155' }}>Volume</span>
               <input
@@ -2139,6 +2251,18 @@ export function App() {
                 Test Tone
               </button>
             </div>
+          </div>
+          <TrackTable
+            tracks={sortedTracks.slice(0, 20)}
+            onTrackClick={(track) => setSelectedTrackId(getTrackId(track))}
+            onTogglePlay={togglePlayPause}
+            getPlaybackState={getPlaybackState}
+          />
+        </div>
+
+        <div className="card grid-span">
+          <div className="row" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
+            <h3 style={{ margin: 0 }}>Track Table ({sortedTracks.length}/{tracks.length})</h3>
           </div>
           <div className="row" style={{ marginBottom: '8px' }}>
             <input
@@ -2270,11 +2394,13 @@ export function App() {
                     <td colSpan={visibleTrackColumnCount} style={{ height: `${topSpacerHeight}px`, padding: 0, borderBottom: 'none' }} />
                   </tr>
                 ) : null}
-                {virtualRows.map((track) => (
+                {virtualRows.map((track) => {
+                  const rowTrackId = getTrackId(track);
+                  return (
                   <tr
-                    key={track.id}
-                    className={track.id === selectedTrackId ? 'selected-row' : ''}
-                    onClick={() => setSelectedTrackId(track.id)}
+                    key={rowTrackId || track.id}
+                    className={rowTrackId === selectedTrackId ? 'selected-row' : ''}
+                    onClick={() => setSelectedTrackId(rowTrackId)}
                   >
                     {visibleTrackColumns.play ? (
                       <td>
@@ -2283,20 +2409,20 @@ export function App() {
                             type="button"
                             className="playback-button"
                             onClick={() => togglePlayPause(track)}
-                            disabled={getPlaybackState(track.id).loading}
+                            disabled={getPlaybackState(rowTrackId).loading}
                           >
-                            {getPlaybackState(track.id).loading
+                            {getPlaybackState(rowTrackId).loading
                               ? 'Loading'
-                              : getPlaybackState(track.id).status === 'playing'
+                              : getPlaybackState(rowTrackId).status === 'playing'
                                 ? 'Pause'
                                 : 'Play'}
                           </button>
                           <span className="playback-time">
-                            {formatClock(getPlaybackState(track.id).currentTime)}
+                            {formatClock(getPlaybackState(rowTrackId).currentTime)}
                           </span>
                         </div>
-                        {getPlaybackState(track.id).status === 'error' ? (
-                          <div className="playback-error">{getPlaybackState(track.id).error}</div>
+                        {getPlaybackState(rowTrackId).status === 'error' ? (
+                          <div className="playback-error">{getPlaybackState(rowTrackId).error}</div>
                         ) : null}
                       </td>
                     ) : null}
@@ -2308,15 +2434,15 @@ export function App() {
                       <td>
                         <MiniWaveform
                           waveform={track.anlzWaveform}
-                          progress={getPlaybackState(track.id).duration
-                            ? getPlaybackState(track.id).currentTime / getPlaybackState(track.id).duration
+                          progress={getPlaybackState(rowTrackId).duration
+                            ? getPlaybackState(rowTrackId).currentTime / getPlaybackState(rowTrackId).duration
                             : 0}
-                          isActive={getPlaybackState(track.id).status === 'playing'
-                            || getPlaybackState(track.id).status === 'paused'}
+                          isActive={getPlaybackState(rowTrackId).status === 'playing'
+                            || getPlaybackState(rowTrackId).status === 'paused'}
                           onSeek={(event) => seekFromWaveform(track, event)}
                         />
-                        {getPlaybackState(track.id).status === 'error' ? (
-                          <div className="playback-error">{getPlaybackState(track.id).error}</div>
+                        {getPlaybackState(rowTrackId).status === 'error' ? (
+                          <div className="playback-error">{getPlaybackState(rowTrackId).error}</div>
                         ) : null}
                       </td>
                     ) : null}
@@ -2325,7 +2451,8 @@ export function App() {
                     {visibleTrackColumns.artist ? <td>{track.artist || '-'}</td> : null}
                     {visibleTrackColumns.playlists ? <td>{trackPlaylistIndex[track.id]?.length || 0}</td> : null}
                   </tr>
-                ))}
+                );
+                })}
                 {bottomSpacerHeight > 0 ? (
                   <tr>
                     <td colSpan={visibleTrackColumnCount} style={{ height: `${bottomSpacerHeight}px`, padding: 0, borderBottom: 'none' }} />
@@ -2365,39 +2492,73 @@ export function App() {
         {!selectedTrack ? <p>Select a track row to inspect metadata and source playlists.</p> : null}
         {selectedTrack ? (
           <div>
-            <div className="row" style={{ marginBottom: '8px' }}>
-              <button
-                type="button"
-                className={showTrackMeta ? '' : 'secondary'}
-                style={{ padding: '6px 10px' }}
-                onClick={() => setShowTrackMeta((value) => !value)}
-              >
-                {showTrackMeta ? 'Hide ID' : 'Show ID'}
-              </button>
-              <button
-                type="button"
-                className={showTrackLocation ? '' : 'secondary'}
-                style={{ padding: '6px 10px' }}
-                onClick={() => setShowTrackLocation((value) => !value)}
-              >
-                {showTrackLocation ? 'Hide Location' : 'Show Location'}
-              </button>
-              <button
-                type="button"
-                className={showTrackAnlzMeta ? '' : 'secondary'}
-                style={{ padding: '6px 10px' }}
-                onClick={() => setShowTrackAnlzMeta((value) => !value)}
-              >
-                {showTrackAnlzMeta ? 'Hide ANLZ Meta' : 'Show ANLZ Meta'}
-              </button>
-              <button
-                type="button"
-                className={showTrackPlaylists ? '' : 'secondary'}
-                style={{ padding: '6px 10px' }}
-                onClick={() => setShowTrackPlaylists((value) => !value)}
-              >
-                {showTrackPlaylists ? 'Hide Playlists' : 'Show Playlists'}
-              </button>
+            <div className="row" style={{ marginBottom: '8px', justifyContent: 'space-between' }}>
+              <div className="row">
+                <button
+                  type="button"
+                  className={showTrackMeta ? '' : 'secondary'}
+                  style={{ padding: '6px 10px' }}
+                  onClick={() => setShowTrackMeta((value) => !value)}
+                >
+                  {showTrackMeta ? 'Hide ID' : 'Show ID'}
+                </button>
+                <button
+                  type="button"
+                  className={showTrackLocation ? '' : 'secondary'}
+                  style={{ padding: '6px 10px' }}
+                  onClick={() => setShowTrackLocation((value) => !value)}
+                >
+                  {showTrackLocation ? 'Hide Location' : 'Show Location'}
+                </button>
+                <button
+                  type="button"
+                  className={showTrackAnlzMeta ? '' : 'secondary'}
+                  style={{ padding: '6px 10px' }}
+                  onClick={() => setShowTrackAnlzMeta((value) => !value)}
+                >
+                  {showTrackAnlzMeta ? 'Hide ANLZ Meta' : 'Show ANLZ Meta'}
+                </button>
+                <button
+                  type="button"
+                  className={showTrackPlaylists ? '' : 'secondary'}
+                  style={{ padding: '6px 10px' }}
+                  onClick={() => setShowTrackPlaylists((value) => !value)}
+                >
+                  {showTrackPlaylists ? 'Hide Playlists' : 'Show Playlists'}
+                </button>
+              </div>
+              <div className="row">
+                <button
+                  type="button"
+                  onClick={runSimilarSearch}
+                  disabled={isFindingSimilar || tracks.length < 2}
+                >
+                  {isFindingSimilar ? 'Finding...' : 'Find Similar'}
+                </button>
+                <label style={{ marginLeft: '8px' }}>
+                  Min Score
+                  <input
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={similarMinScore}
+                    onChange={(event) => setSimilarMinScore(event.target.value)}
+                    style={{ width: '90px', marginLeft: '6px' }}
+                  />
+                </label>
+                <label style={{ marginLeft: '8px' }}>
+                  Limit
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={similarLimit}
+                    onChange={(event) => setSimilarLimit(event.target.value)}
+                    style={{ width: '70px', marginLeft: '6px' }}
+                  />
+                </label>
+              </div>
             </div>
             <div className="meta">
               {showTrackMeta ? <span>ID: {selectedTrack.trackId || selectedTrack.id}</span> : null}
@@ -2405,39 +2566,6 @@ export function App() {
               <span>Title: {selectedTrack.title || '-'}</span>
               <span>BPM: {selectedTrack.bpm ?? '-'}</span>
               <span>Key: {selectedTrack.key || '-'}</span>
-            </div>
-            <div className="row" style={{ marginTop: '10px', alignItems: 'center' }}>
-              <button
-                type="button"
-                className="secondary"
-                onClick={runSimilarSearch}
-                disabled={isFindingSimilar || tracks.length < 2}
-              >
-                {isFindingSimilar ? 'Finding...' : 'Find Similar'}
-              </button>
-              <label style={{ marginLeft: '8px' }}>
-                Min Score
-                <input
-                  type="number"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={similarMinScore}
-                  onChange={(event) => setSimilarMinScore(event.target.value)}
-                  style={{ width: '90px', marginLeft: '6px' }}
-                />
-              </label>
-              <label style={{ marginLeft: '8px' }}>
-                Limit
-                <input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={similarLimit}
-                  onChange={(event) => setSimilarLimit(event.target.value)}
-                  style={{ width: '70px', marginLeft: '6px' }}
-                />
-              </label>
             </div>
             {showTrackLocation ? (
               <p style={{ marginTop: '8px' }}>
@@ -2460,6 +2588,8 @@ export function App() {
                       if (!track) {
                         return null;
                       }
+                      const trackId = getTrackId(track);
+                      const playback = getPlaybackState(trackId);
                       const title = track.title || track.Name || 'Unknown';
                       const artist = track.artist || track.Artist || 'Unknown';
                       const bpmValue = track.bpm ?? track.AverageBpm;
@@ -2467,15 +2597,19 @@ export function App() {
                         ? `${Math.round(bpmValue)} BPM`
                         : '-';
                       const keyValue = track.key || track.tonality?.key || '-';
+                      const duration = Number(track.durationSeconds)
+                        || Number(track.anlzWaveform?.durationSeconds)
+                        || Number(playback.duration)
+                        || 0;
                       return (
                         <div className="similar-track-card" key={match.trackId}>
                           <div className="similar-track-header">
                             <button
                               type="button"
                               className="secondary"
-                              onClick={() => playTrack(track)}
+                              onClick={() => togglePlayPause(track)}
                             >
-                              Play
+                              {playback.status === 'playing' ? 'Pause' : 'Play'}
                             </button>
                             <div className="similar-track-info">
                               <div className="similar-track-title">{title}</div>
@@ -2484,11 +2618,23 @@ export function App() {
                             <div className="similar-track-meta">
                               <span>{bpmLabel}</span>
                               <span>{keyValue}</span>
+                              <span>{formatClock(playback.currentTime || 0)}</span>
                             </div>
                           </div>
                           <div className="similar-waveform">
                             {track.anlzWaveform ? (
-                              <WaveformPreview waveform={track.anlzWaveform} />
+                              <WaveformPreview
+                                waveform={track.anlzWaveform}
+                                seekLabel="Seek in track"
+                                progress={playback.duration ? playback.currentTime / playback.duration : 0}
+                                onSeek={(ratio) => {
+                                  if (!duration) {
+                                    return;
+                                  }
+                                  const target = ratio * duration;
+                                  playTrack(track, target);
+                                }}
+                              />
                             ) : (
                               <div className="waveform-placeholder">No waveform available</div>
                             )}
