@@ -670,6 +670,7 @@ export function App() {
   const samplingEndAtRef = useRef(null);
   const samplingIntervalRef = useRef(null);
   const [samplingCountdown, setSamplingCountdown] = useState(null);
+  const samplingPausedRef = useRef(false);
   const [clusterDecisions, setClusterDecisions] = useState({});
   const [playlistDecisionsByContext, setPlaylistDecisionsByContext] = useState({});
   const [decisionContextKey, setDecisionContextKey] = useState('');
@@ -1503,6 +1504,7 @@ export function App() {
     clearSamplingInterval();
     samplingSessionRef.current += 1;
     samplingAdvanceRef.current = { trackId: null, index: null };
+    samplingPausedRef.current = false;
     const active = samplingStateRef.current;
     const currentTrackId = active?.trackIds?.[active?.currentIndex];
     if (active?.active && currentTrackId) {
@@ -1522,6 +1524,7 @@ export function App() {
     if (!state.active) {
       return;
     }
+    samplingPausedRef.current = false;
     const currentTrackId = state.trackIds[state.currentIndex];
     if (currentTrackId) {
       disposeAudio(currentTrackId);
@@ -1600,6 +1603,9 @@ export function App() {
 
   const scheduleSamplingAdvance = (trackId) => {
     clearSamplingTimer();
+    if (samplingPausedRef.current) {
+      return;
+    }
     const seconds = 30 + Math.random() * 15;
     samplingEndAtRef.current = Date.now() + (seconds * 1000);
     setSamplingCountdown(Math.ceil(seconds));
@@ -1660,6 +1666,7 @@ export function App() {
     if (!state.active) {
       return;
     }
+    samplingPausedRef.current = false;
     const expected = state.trackIds[state.currentIndex];
     if (String(trackId) !== String(expected)) {
       return;
@@ -1913,15 +1920,27 @@ export function App() {
     const audio = sharedAudioRef.current;
     if (state.status === 'playing' && audio && String(sharedAudioTrackIdRef.current) === String(trackId)) {
       audio.pause();
+      if (samplingStateRef.current.active && String(trackId) === String(samplingStateRef.current.trackIds?.[samplingStateRef.current.currentIndex])) {
+        samplingPausedRef.current = true;
+        clearSamplingTimer();
+        clearSamplingInterval();
+      }
       return;
     }
 
     if (samplingStateRef.current.active) {
-      stopSampling();
+      if (state.status === 'paused' && audio && String(sharedAudioTrackIdRef.current) === String(trackId)) {
+        samplingPausedRef.current = false;
+      } else {
+        stopSampling();
+      }
     }
     if (state.status === 'paused' && audio && String(sharedAudioTrackIdRef.current) === String(trackId)) {
       try {
         await audio.play();
+        if (samplingStateRef.current.active && String(trackId) === String(samplingStateRef.current.trackIds?.[samplingStateRef.current.currentIndex])) {
+          scheduleSamplingAdvance(trackId);
+        }
         return;
       } catch {
         // fallback to full playTrack

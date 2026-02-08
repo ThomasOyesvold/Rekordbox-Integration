@@ -27,6 +27,8 @@ Status: Active development
   - Added skip button to advance to next sample immediately
 - ✅ **Sampling Status Badge**:
   - Added active sampling badge with compact counter
+- ✅ **Sampling Auto-Resume**:
+  - Pausing a sampling track now pauses the timer and resumes when playback resumes
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files
