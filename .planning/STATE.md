@@ -43,6 +43,8 @@ Status: Active development
   - Badge shows Finished after completing the sampling queue
 - ✅ **Playback Lock During Sampling**:
   - Disabled track table play buttons while sampling is active
+- ✅ **Sampling Cooldown Control**:
+  - Added cooldown slider (0–2s) for sample transitions
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files

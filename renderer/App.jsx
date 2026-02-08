@@ -483,6 +483,24 @@ function ClusterDetails({
           />
         </span>
         <span>
+          Cooldown
+          <input
+            type="number"
+            min="0"
+            max="2"
+            step="0.1"
+            value={(samplingCooldownMsRef.current || 0) / 1000}
+            onChange={(event) => {
+              const seconds = Number(event.target.value);
+              if (!Number.isFinite(seconds)) {
+                return;
+              }
+              samplingCooldownMsRef.current = Math.max(0, Math.min(2, seconds)) * 1000;
+            }}
+            style={{ width: '70px', marginLeft: '6px' }}
+          />
+        </span>
+        <span>
           <button
             type="button"
             className="secondary"
