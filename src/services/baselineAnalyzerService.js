@@ -553,6 +553,7 @@ export async function runBaselineAnalysis({
   maxPairs = 5000,
   topLimit = 20,
   yieldEveryPairs = 5000,
+  maxPairsCap = 100000,
   onProgress = null
 }) {
   const safeTracks = Array.isArray(tracks) ? tracks : [];
@@ -572,7 +573,9 @@ export async function runBaselineAnalysis({
   const topMatches = [];
 
   try {
-    const pairLimit = Number.isFinite(maxPairs) ? Math.max(0, maxPairs) : Infinity;
+    const safeCap = Number.isFinite(maxPairsCap) ? Math.max(0, Math.floor(maxPairsCap)) : Infinity;
+    const requested = Number.isFinite(maxPairs) ? Math.max(0, maxPairs) : Infinity;
+    const pairLimit = Math.min(requested, safeCap);
     const totalPairs = Math.min(
       pairLimit,
       Math.max(0, (safeTracks.length * (safeTracks.length - 1)) / 2)
@@ -669,6 +672,7 @@ export async function runBaselineAnalysis({
     return {
       runId,
       algorithmVersion,
+      pairLimit,
       pairCount,
       cacheHits,
       computed,
