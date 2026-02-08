@@ -634,6 +634,8 @@ export function App() {
   });
   const samplingStateRef = useRef(samplingState);
   const samplingTimerRef = useRef(null);
+  const samplingSessionRef = useRef(0);
+  const samplingAdvanceRef = useRef({ trackId: null, index: null });
   const [clusterDecisions, setClusterDecisions] = useState({});
   const [playlistDecisionsByContext, setPlaylistDecisionsByContext] = useState({});
   const [decisionContextKey, setDecisionContextKey] = useState('');
@@ -1454,6 +1456,8 @@ export function App() {
 
   const stopSampling = () => {
     clearSamplingTimer();
+    samplingSessionRef.current += 1;
+    samplingAdvanceRef.current = { trackId: null, index: null };
     const active = samplingStateRef.current;
     const currentTrackId = active?.trackIds?.[active?.currentIndex];
     if (active?.active && currentTrackId) {
@@ -1538,7 +1542,11 @@ export function App() {
   const scheduleSamplingAdvance = (trackId) => {
     clearSamplingTimer();
     const seconds = 30 + Math.random() * 15;
+    const sessionId = samplingSessionRef.current;
     samplingTimerRef.current = setTimeout(() => {
+      if (sessionId !== samplingSessionRef.current) {
+        return;
+      }
       handleSamplingEnded(trackId);
     }, seconds * 1000);
   };
@@ -1554,6 +1562,8 @@ export function App() {
     if (samplingStateRef.current.active) {
       stopSampling();
     }
+    samplingSessionRef.current += 1;
+    samplingAdvanceRef.current = { trackId: null, index: null };
     const queue = candidates.slice(0, Math.min(limit, candidates.length));
     stopAllPlayback();
     setSamplingState({
@@ -1581,6 +1591,14 @@ export function App() {
     if (String(trackId) !== String(expected)) {
       return;
     }
+    const advanceKey = { trackId: String(trackId), index: state.currentIndex };
+    if (
+      samplingAdvanceRef.current.trackId === advanceKey.trackId
+      && samplingAdvanceRef.current.index === advanceKey.index
+    ) {
+      return;
+    }
+    samplingAdvanceRef.current = advanceKey;
     const nextIndex = state.currentIndex + 1;
     if (nextIndex >= state.total) {
       disposeAudio(expected);
