@@ -35,6 +35,8 @@ Status: Active development
   - Shows current sampling track title next to the badge
 - ✅ **Sampling Status States**:
   - Badge reflects active vs paused state
+- ✅ **Sampling Resume Control**:
+  - Added Resume button when sampling is paused
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files

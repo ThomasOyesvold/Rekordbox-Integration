@@ -418,6 +418,7 @@ function ClusterDetails({
   onStartSample,
   onStopSample,
   onSkipSample,
+  onResumeSample,
   samplingState,
   sampleSize,
   onSampleSizeChange
@@ -508,6 +509,16 @@ function ClusterDetails({
             disabled={!samplingState?.active}
           >
             Skip
+          </button>
+        </span>
+        <span>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => onResumeSample?.()}
+            disabled={!samplingState?.active || !samplingPausedRef.current}
+          >
+            Resume
           </button>
         </span>
         {samplingState?.active ? (
@@ -1538,6 +1549,21 @@ export function App() {
     clearSamplingTimer();
     clearSamplingInterval();
     await handleSamplingEnded(currentTrackId);
+  };
+
+  const resumeSampling = async () => {
+    const state = samplingStateRef.current;
+    if (!state.active || !samplingPausedRef.current) {
+      return;
+    }
+    const currentTrackId = state.trackIds[state.currentIndex];
+    const track = trackIndexById.get(String(currentTrackId));
+    if (!track) {
+      return;
+    }
+    samplingPausedRef.current = false;
+    await playTrack(track, getPlaybackState(getTrackId(track)).currentTime || 0);
+    scheduleSamplingAdvance(getTrackId(track));
   };
 
   const pickSampleStartSeconds = (track) => {
@@ -3211,6 +3237,7 @@ export function App() {
                                               onStartSample={startSampling}
                                               onStopSample={stopSampling}
                                               onSkipSample={skipSample}
+                                              onResumeSample={resumeSampling}
                                               samplingState={clusterSamplingState}
                                               sampleSize={sampleSize}
                                               onSampleSizeChange={handleSampleSizeChange}
@@ -3336,6 +3363,7 @@ export function App() {
                                   onStartSample={startSampling}
                                   onStopSample={stopSampling}
                                   onSkipSample={skipSample}
+                                  onResumeSample={resumeSampling}
                                   samplingState={clusterSamplingState}
                                   sampleSize={sampleSize}
                                   onSampleSizeChange={handleSampleSizeChange}
