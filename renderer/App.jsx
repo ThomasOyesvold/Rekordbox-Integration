@@ -671,6 +671,7 @@ export function App() {
   const samplingIntervalRef = useRef(null);
   const [samplingCountdown, setSamplingCountdown] = useState(null);
   const samplingPausedRef = useRef(false);
+  const samplingCooldownMsRef = useRef(1200);
   const [clusterDecisions, setClusterDecisions] = useState({});
   const [playlistDecisionsByContext, setPlaylistDecisionsByContext] = useState({});
   const [decisionContextKey, setDecisionContextKey] = useState('');
@@ -1694,6 +1695,10 @@ export function App() {
     }));
     if (nextTrack) {
       disposeAudio(expected);
+      const cooldownMs = samplingCooldownMsRef.current || 0;
+      if (cooldownMs > 0) {
+        await new Promise((resolve) => setTimeout(resolve, cooldownMs));
+      }
       await playTrack(nextTrack, pickSampleStartSeconds(nextTrack));
       scheduleSamplingAdvance(getTrackId(nextTrack));
     }

@@ -29,6 +29,8 @@ Status: Active development
   - Added active sampling badge with compact counter
 - ✅ **Sampling Auto-Resume**:
   - Pausing a sampling track now pauses the timer and resumes when playback resumes
+- ✅ **Sampling Cooldown**:
+  - Added ~1.2s pause between samples to prevent overlap pops
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files
