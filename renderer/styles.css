@@ -346,6 +346,12 @@ button:disabled {
   border-color: rgba(251, 191, 36, 0.4);
 }
 
+.sampling-badge.finished {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
 .sampling-track-label {
   font-size: 0.85rem;
   color: var(--text-secondary);

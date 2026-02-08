@@ -39,6 +39,8 @@ Status: Active development
   - Added Resume button when sampling is paused
 - ✅ **Sampling Auto-Skip on Error**:
   - If a sample fails to play, advance to the next track automatically
+- ✅ **Sampling Finished State**:
+  - Badge shows Finished after completing the sampling queue
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files

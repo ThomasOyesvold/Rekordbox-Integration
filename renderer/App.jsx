@@ -526,6 +526,9 @@ function ClusterDetails({
             {samplingPausedRef.current ? 'Paused' : 'Sampling'}
           </span>
         ) : null}
+        {!samplingState?.active && samplingFinished ? (
+          <span className="sampling-badge finished">Finished</span>
+        ) : null}
         {samplingState?.active ? (
           <span className="sampling-track-label">{getSamplingTrackLabel()}</span>
         ) : null}
@@ -688,6 +691,7 @@ export function App() {
   const [samplingCountdown, setSamplingCountdown] = useState(null);
   const samplingPausedRef = useRef(false);
   const samplingCooldownMsRef = useRef(1200);
+  const [samplingFinished, setSamplingFinished] = useState(false);
   const [clusterDecisions, setClusterDecisions] = useState({});
   const [playlistDecisionsByContext, setPlaylistDecisionsByContext] = useState({});
   const [decisionContextKey, setDecisionContextKey] = useState('');
@@ -1533,6 +1537,7 @@ export function App() {
     samplingSessionRef.current += 1;
     samplingAdvanceRef.current = { trackId: null, index: null };
     samplingPausedRef.current = false;
+    setSamplingFinished(false);
     const active = samplingStateRef.current;
     const currentTrackId = active?.trackIds?.[active?.currentIndex];
     if (active?.active && currentTrackId) {
@@ -1699,6 +1704,7 @@ export function App() {
     if (samplingStateRef.current.active) {
       stopSampling();
     }
+    setSamplingFinished(false);
     samplingSessionRef.current += 1;
     samplingAdvanceRef.current = { trackId: null, index: null };
     const queue = candidates.slice(0, Math.min(limit, candidates.length));
@@ -1740,6 +1746,7 @@ export function App() {
     const nextIndex = state.currentIndex + 1;
     if (nextIndex >= state.total) {
       disposeAudio(expected);
+      setSamplingFinished(true);
       stopSampling();
       return;
     }
