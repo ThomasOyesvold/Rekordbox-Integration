@@ -98,7 +98,7 @@ test('baseline analyzer computes then reuses cache entries', async () => {
   const dbPath = path.join(tempDir, 'rbfa.db');
   initDatabase(dbPath);
 
-  const first = runBaselineAnalysis({
+  const first = await runBaselineAnalysis({
     tracks: SAMPLE_TRACKS,
     sourceXmlPath: 'C:/Exports/library.xml',
     selectedFolders: ['ROOT/Techno'],
@@ -115,7 +115,7 @@ test('baseline analyzer computes then reuses cache entries', async () => {
   assert.ok(first.topMatches[0].components.rhythm >= 0);
   assert.equal(typeof first.topMatches[0].reason, 'string');
 
-  const second = runBaselineAnalysis({
+  const second = await runBaselineAnalysis({
     tracks: SAMPLE_TRACKS,
     sourceXmlPath: 'C:/Exports/library.xml',
     selectedFolders: ['ROOT/Techno'],

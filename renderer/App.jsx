@@ -694,6 +694,7 @@ export function App() {
   const [validationIssues, setValidationIssues] = useState([]);
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(null);
   const [similarResults, setSimilarResults] = useState(null);
   const [isFindingSimilar, setIsFindingSimilar] = useState(false);
   const [similarMinScore, setSimilarMinScore] = useState(0.6);
@@ -1024,6 +1025,19 @@ export function App() {
     return () => dispose();
   }, []);
 
+  useEffect(() => {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.onAnalysisProgress) {
+      return undefined;
+    }
+
+    const dispose = bridgeApi.onAnalysisProgress((progress) => {
+      setAnalysisProgress(progress || null);
+    });
+
+    return () => dispose();
+  }, []);
+
   const selectedSet = useMemo(() => new Set(selectedFolders), [selectedFolders]);
 
   const toggleFolder = (folderPath) => {
@@ -1243,6 +1257,7 @@ export function App() {
 
     setIsAnalyzing(true);
     setError('');
+    setAnalysisProgress(null);
     try {
       const result = await bridgeApi.runBaselineAnalysis(tracks, xmlPath.trim(), selectedFolders);
       setAnalysisResult(result);
@@ -2373,6 +2388,16 @@ export function App() {
                   <span>Parsed: {anlzBuildProgress.parsedCount || 0}</span>
                   <span>Errors: {anlzBuildProgress.parseErrors || 0}</span>
                   <span>Missing PPTH: {anlzBuildProgress.missingPpth || 0}</span>
+                </div>
+              ) : null}
+              {analysisProgress ? (
+                <div className="meta" style={{ marginTop: '6px' }}>
+                  <span>
+                    Analysis Progress: {analysisProgress.pairCount || 0}/{analysisProgress.totalPairs || 0} pairs
+                  </span>
+                  <span>Computed: {analysisProgress.computed || 0}</span>
+                  <span>Cache Hits: {analysisProgress.cacheHits || 0}</span>
+                  {analysisProgress.done ? <span>Done</span> : null}
                 </div>
               ) : null}
               {progress !== null && isParsing ? <p className="progress">Parsing in background: {progress}%</p> : null}

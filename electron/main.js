@@ -198,7 +198,13 @@ ipcMain.handle('analysis:baseline', async (_event, payload) => {
     sourceXmlPath: payload?.sourceXmlPath || null,
     selectedFolders: Array.isArray(payload?.selectedFolders) ? payload.selectedFolders : [],
     maxPairs: 5000,
-    topLimit: 20
+    topLimit: 20,
+    yieldEveryPairs: 5000,
+    onProgress: (progress) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('analysis:progress', progress);
+      }
+    }
   });
 });
 ipcMain.handle('analysis:export', async (_event, payload) => {

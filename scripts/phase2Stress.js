@@ -103,7 +103,7 @@ async function main() {
   console.log(`[stress] tracks=${tracks.length} totalPairs=${totalPairs}`);
 
   const coldStart = performance.now();
-  const cold = runBaselineAnalysis({
+  const cold = await runBaselineAnalysis({
     tracks,
     sourceXmlPath: xmlPath,
     selectedFolders: options.folders,
@@ -114,7 +114,7 @@ async function main() {
   memorySnapshot('after-cold');
 
   const warmStart = performance.now();
-  const warm = runBaselineAnalysis({
+  const warm = await runBaselineAnalysis({
     tracks,
     sourceXmlPath: xmlPath,
     selectedFolders: options.folders,

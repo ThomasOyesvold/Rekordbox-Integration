@@ -23,6 +23,14 @@ contextBridge.exposeInMainWorld('rbfa', {
       ipcRenderer.removeListener('anlz:progress', wrapped);
     };
   },
+  onAnalysisProgress: (listener) => {
+    const wrapped = (_event, value) => listener(value);
+    ipcRenderer.on('analysis:progress', wrapped);
+
+    return () => {
+      ipcRenderer.removeListener('analysis:progress', wrapped);
+    };
+  },
   runBaselineAnalysis: (tracks, sourceXmlPath, selectedFolders) => ipcRenderer.invoke('analysis:baseline', {
     tracks,
     sourceXmlPath,

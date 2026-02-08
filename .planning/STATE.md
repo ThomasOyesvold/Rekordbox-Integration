@@ -49,6 +49,9 @@ Status: Active development
   - Shows elapsed time while sampling is active
 - ✅ **Sampling Finished Toast**:
   - Shows toast notification when sampling completes
+- ✅ **Phase 2 Safeguards (Partial)**:
+  - Baseline analysis now yields during long runs and emits progress updates
+  - Analysis progress reported in UI during baseline runs
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files

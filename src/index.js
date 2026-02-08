@@ -99,7 +99,7 @@ async function runAnalyzeCommand(args) {
     );
   }
 
-  const summary = runBaselineAnalysis({
+  const summary = await runBaselineAnalysis({
     tracks,
     sourceXmlPath: path.resolve(xmlPath),
     selectedFolders,

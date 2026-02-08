@@ -536,14 +536,24 @@ export function createAnalyzerVersion(tag = 'baseline-v4') {
   return `flow-${tag}`;
 }
 
-export function runBaselineAnalysis({
+async function yieldToEventLoop() {
+  if (typeof setImmediate === 'function') {
+    await new Promise((resolve) => setImmediate(resolve));
+    return;
+  }
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+export async function runBaselineAnalysis({
   tracks,
   sourceXmlPath = null,
   selectedFolders = [],
   componentWeights = DEFAULT_COMPONENT_WEIGHTS,
   algorithmVersion = createAnalyzerVersion(),
   maxPairs = 5000,
-  topLimit = 20
+  topLimit = 20,
+  yieldEveryPairs = 5000,
+  onProgress = null
 }) {
   const safeTracks = Array.isArray(tracks) ? tracks : [];
   const normalizedWeights = normalizeWeights(componentWeights);
@@ -563,6 +573,11 @@ export function runBaselineAnalysis({
 
   try {
     const pairLimit = Number.isFinite(maxPairs) ? Math.max(0, maxPairs) : Infinity;
+    const totalPairs = Math.min(
+      pairLimit,
+      Math.max(0, (safeTracks.length * (safeTracks.length - 1)) / 2)
+    );
+    const yieldEvery = Number.isFinite(yieldEveryPairs) ? Math.max(0, Math.floor(yieldEveryPairs)) : 0;
 
     for (let i = 0; i < safeTracks.length; i += 1) {
       const trackA = safeTracks[i];
@@ -621,6 +636,18 @@ export function runBaselineAnalysis({
           fromCache: false
         };
         updateTopMatches(topMatches, row, topLimit);
+
+        if (yieldEvery > 0 && pairCount % yieldEvery === 0) {
+          if (typeof onProgress === 'function') {
+            onProgress({
+              pairCount,
+              totalPairs,
+              cacheHits,
+              computed
+            });
+          }
+          await yieldToEventLoop();
+        }
       }
 
       if (pairCount >= pairLimit) {
@@ -628,6 +655,15 @@ export function runBaselineAnalysis({
       }
     }
 
+    if (typeof onProgress === 'function') {
+      onProgress({
+        pairCount,
+        totalPairs,
+        cacheHits,
+        computed,
+        done: true
+      });
+    }
     finishAnalysisRun(runId, 'completed', `pairs=${pairCount}, cacheHits=${cacheHits}, computed=${computed}`);
 
     return {
