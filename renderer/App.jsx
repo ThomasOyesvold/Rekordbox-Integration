@@ -561,6 +561,11 @@ function ClusterDetails({
             Next in {samplingCountdown ?? '--'}s
           </span>
         ) : null}
+        {samplingState?.active ? (
+          <span>
+            Elapsed {formatClock(samplingElapsed)}
+          </span>
+        ) : null}
       </div>
       {samplingState?.active ? (
         <div className="sampling-progress" aria-label="Sampling progress">
@@ -711,6 +716,8 @@ export function App() {
   const samplingPausedRef = useRef(false);
   const samplingCooldownMsRef = useRef(1200);
   const [samplingFinished, setSamplingFinished] = useState(false);
+  const samplingStartedAtRef = useRef(null);
+  const [samplingElapsed, setSamplingElapsed] = useState(0);
   const isSamplingActive = samplingState.active;
   const [clusterDecisions, setClusterDecisions] = useState({});
   const [playlistDecisionsByContext, setPlaylistDecisionsByContext] = useState({});
@@ -1549,6 +1556,8 @@ export function App() {
     }
     samplingEndAtRef.current = null;
     setSamplingCountdown(null);
+    setSamplingElapsed(0);
+    samplingStartedAtRef.current = null;
   };
 
   const stopSampling = () => {
@@ -1690,7 +1699,11 @@ export function App() {
       return;
     }
     const seconds = 30 + Math.random() * 15;
-    samplingEndAtRef.current = Date.now() + (seconds * 1000);
+    const now = Date.now();
+    if (!samplingStartedAtRef.current) {
+      samplingStartedAtRef.current = now;
+    }
+    samplingEndAtRef.current = now + (seconds * 1000);
     setSamplingCountdown(Math.ceil(seconds));
     clearSamplingInterval();
     samplingIntervalRef.current = setInterval(() => {
@@ -1700,6 +1713,10 @@ export function App() {
       const remainingMs = samplingEndAtRef.current - Date.now();
       const remaining = Math.max(0, Math.ceil(remainingMs / 1000));
       setSamplingCountdown(remaining);
+      if (samplingStartedAtRef.current) {
+        const elapsedMs = Date.now() - samplingStartedAtRef.current;
+        setSamplingElapsed(Math.max(0, Math.floor(elapsedMs / 1000)));
+      }
       if (remaining <= 0) {
         clearSamplingInterval();
       }

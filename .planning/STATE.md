@@ -45,6 +45,8 @@ Status: Active development
   - Disabled track table play buttons while sampling is active
 - ✅ **Sampling Cooldown Control**:
   - Added cooldown slider (0–2s) for sample transitions
+- ✅ **Sampling Summary**:
+  - Shows elapsed time while sampling is active
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files
