@@ -47,6 +47,8 @@ Status: Active development
   - Added cooldown slider (0–2s) for sample transitions
 - ✅ **Sampling Summary**:
   - Shows elapsed time while sampling is active
+- ✅ **Sampling Finished Toast**:
+  - Shows toast notification when sampling completes
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files

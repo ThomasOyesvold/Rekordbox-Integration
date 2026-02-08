@@ -4,6 +4,7 @@ import { SetupWizard } from './components/SetupWizard';
 import { PlaylistCard } from './components/PlaylistCard';
 import { StatCard } from './components/StatCard';
 import { TrackTable } from './components/TrackTable';
+import { Toast, ToastContainer } from './components/ui/Toast';
 import { FolderOpen, ListMusic, Music2, Waves } from 'lucide-react';
 
 const DESKTOP_BRIDGE_ERROR = 'Desktop bridge unavailable. Relaunch from Electron (not browser-only mode).';
@@ -718,6 +719,7 @@ export function App() {
   const [samplingFinished, setSamplingFinished] = useState(false);
   const samplingStartedAtRef = useRef(null);
   const [samplingElapsed, setSamplingElapsed] = useState(0);
+  const [samplingToast, setSamplingToast] = useState(null);
   const isSamplingActive = samplingState.active;
   const [clusterDecisions, setClusterDecisions] = useState({});
   const [playlistDecisionsByContext, setPlaylistDecisionsByContext] = useState({});
@@ -1566,7 +1568,6 @@ export function App() {
     samplingSessionRef.current += 1;
     samplingAdvanceRef.current = { trackId: null, index: null };
     samplingPausedRef.current = false;
-    setSamplingFinished(false);
     const active = samplingStateRef.current;
     const currentTrackId = active?.trackIds?.[active?.currentIndex];
     if (active?.active && currentTrackId) {
@@ -1579,6 +1580,7 @@ export function App() {
       currentIndex: 0,
       total: 0
     });
+    setSamplingFinished(true);
   };
 
   const skipSample = async () => {
@@ -1783,7 +1785,7 @@ export function App() {
     const nextIndex = state.currentIndex + 1;
     if (nextIndex >= state.total) {
       disposeAudio(expected);
-      setSamplingFinished(true);
+      setSamplingToast('Sampling finished.');
       stopSampling();
       return;
     }
@@ -3446,6 +3448,15 @@ export function App() {
           </div>
           </div>
         )}
+        <ToastContainer>
+          {samplingToast ? (
+            <Toast
+              message={samplingToast}
+              variant="success"
+              onClose={() => setSamplingToast(null)}
+            />
+          ) : null}
+        </ToastContainer>
       </main>
     </div>
   );
