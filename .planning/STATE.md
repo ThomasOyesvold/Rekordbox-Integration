@@ -18,6 +18,11 @@ Status: Active development
   - Play/pause button state + live timer in Similar list
   - Volume slider moved to Quick Preview; default volume 50%
 - ✅ **Quick Preview Enhancements**: Now Playing strip with timer/BPM/key
+- ✅ **Sampling UX Guardrails**:
+  - Prevented duplicate sampling advances with session/advance guards
+  - Added sampling countdown (“Next in XXs”) and stop-state cleanup
+- ✅ **Sampling Progress UI**:
+  - Added progress bar showing position within sampling queue
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files

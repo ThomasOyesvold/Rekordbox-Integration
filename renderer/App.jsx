@@ -510,6 +510,18 @@ function ClusterDetails({
           </span>
         ) : null}
       </div>
+      {samplingState?.active ? (
+        <div className="sampling-progress" aria-label="Sampling progress">
+          <div
+            className="sampling-progress-bar"
+            style={{
+              width: `${samplingState.total > 0
+                ? Math.min(100, Math.max(0, ((samplingState.currentIndex + 1) / samplingState.total) * 100))
+                : 0}%`
+            }}
+          />
+        </div>
+      ) : null}
       {focusedRow ? (
         <div className="cluster-waveform">
           <div className="meta" style={{ marginBottom: '6px' }}>

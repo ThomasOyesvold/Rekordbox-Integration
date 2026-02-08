@@ -314,6 +314,21 @@ button:disabled {
   white-space: nowrap;
 }
 
+.sampling-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.sampling-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+  transition: width 180ms ease;
+}
+
 .waveform-placeholder {
   margin-top: 10px;
   padding: 16px;
