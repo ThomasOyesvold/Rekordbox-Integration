@@ -31,10 +31,13 @@ contextBridge.exposeInMainWorld('rbfa', {
       ipcRenderer.removeListener('analysis:progress', wrapped);
     };
   },
-  runBaselineAnalysis: (tracks, sourceXmlPath, selectedFolders) => ipcRenderer.invoke('analysis:baseline', {
+  runBaselineAnalysis: (tracks, sourceXmlPath, selectedFolders, options = {}) => ipcRenderer.invoke('analysis:baseline', {
     tracks,
     sourceXmlPath,
-    selectedFolders
+    selectedFolders,
+    maxPairs: options?.maxPairs,
+    maxPairsCap: options?.maxPairsCap,
+    yieldEveryPairs: options?.yieldEveryPairs
   }),
   findSimilarTracks: (payload) => ipcRenderer.invoke('tracks:similar', payload),
   exportAnalysis: (payload) => ipcRenderer.invoke('analysis:export', payload),

@@ -56,6 +56,8 @@ Status: Active development
   - Added maxPairsCap to prevent unbounded pair explosions
 - ✅ **Phase 2 Stress Harness**:
   - Added yield/cap options + progress logging to phase2Stress script
+- ✅ **Phase 2 Safeguards (UI Controls)**:
+  - Added analysis knobs for max pairs, pair cap, and yield cadence
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files

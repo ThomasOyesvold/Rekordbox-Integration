@@ -695,6 +695,9 @@ export function App() {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(null);
+  const [analysisMaxPairs, setAnalysisMaxPairs] = useState(5000);
+  const [analysisPairCap, setAnalysisPairCap] = useState(100000);
+  const [analysisYieldEvery, setAnalysisYieldEvery] = useState(5000);
   const [similarResults, setSimilarResults] = useState(null);
   const [isFindingSimilar, setIsFindingSimilar] = useState(false);
   const [similarMinScore, setSimilarMinScore] = useState(0.6);
@@ -1259,7 +1262,11 @@ export function App() {
     setError('');
     setAnalysisProgress(null);
     try {
-      const result = await bridgeApi.runBaselineAnalysis(tracks, xmlPath.trim(), selectedFolders);
+      const result = await bridgeApi.runBaselineAnalysis(tracks, xmlPath.trim(), selectedFolders, {
+        maxPairs: analysisMaxPairs,
+        maxPairsCap: analysisPairCap,
+        yieldEveryPairs: analysisYieldEvery
+      });
       setAnalysisResult(result);
     } catch (analysisError) {
       setError(analysisError.message || String(analysisError));
@@ -2348,6 +2355,41 @@ export function App() {
                 <button type="button" onClick={runAnalysis} disabled={isParsing || isAnalyzing || tracks.length < 2}>
                   {isAnalyzing ? 'Analyzing...' : 'Run Baseline Analysis'}
                 </button>
+              </div>
+              <div className="row" style={{ marginTop: '8px' }}>
+                <label>
+                  Max Pairs
+                  <input
+                    type="number"
+                    min="100"
+                    step="100"
+                    value={analysisMaxPairs}
+                    onChange={(event) => setAnalysisMaxPairs(Number(event.target.value))}
+                    style={{ width: '120px', marginLeft: '6px' }}
+                  />
+                </label>
+                <label>
+                  Pair Cap
+                  <input
+                    type="number"
+                    min="1000"
+                    step="1000"
+                    value={analysisPairCap}
+                    onChange={(event) => setAnalysisPairCap(Number(event.target.value))}
+                    style={{ width: '120px', marginLeft: '6px' }}
+                  />
+                </label>
+                <label>
+                  Yield Every
+                  <input
+                    type="number"
+                    min="500"
+                    step="500"
+                    value={analysisYieldEvery}
+                    onChange={(event) => setAnalysisYieldEvery(Number(event.target.value))}
+                    style={{ width: '120px', marginLeft: '6px' }}
+                  />
+                </label>
               </div>
               <div className="row" style={{ marginTop: '8px' }}>
                 <input

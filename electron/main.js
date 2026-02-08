@@ -193,13 +193,17 @@ ipcMain.handle('state:save', async (_event, patch) => saveState(statePath, patch
 ipcMain.handle('imports:recent', async () => getRecentImports(10));
 ipcMain.handle('analysis:baseline', async (_event, payload) => {
   const tracks = Array.isArray(payload?.tracks) ? payload.tracks : [];
+  const maxPairs = Number(payload?.maxPairs);
+  const maxPairsCap = Number(payload?.maxPairsCap);
+  const yieldEveryPairs = Number(payload?.yieldEveryPairs);
   return runBaselineAnalysis({
     tracks,
     sourceXmlPath: payload?.sourceXmlPath || null,
     selectedFolders: Array.isArray(payload?.selectedFolders) ? payload.selectedFolders : [],
-    maxPairs: 5000,
+    maxPairs: Number.isFinite(maxPairs) ? maxPairs : 5000,
+    maxPairsCap: Number.isFinite(maxPairsCap) ? maxPairsCap : 100000,
     topLimit: 20,
-    yieldEveryPairs: 5000,
+    yieldEveryPairs: Number.isFinite(yieldEveryPairs) ? yieldEveryPairs : 5000,
     onProgress: (progress) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send('analysis:progress', progress);
