@@ -1426,6 +1426,17 @@ export function App() {
     const next = { ...current, ...patch };
     playbackStateRef.current = { ...playbackStateRef.current, [trackId]: next };
 
+    if (
+      patch?.status === 'error'
+      && samplingStateRef.current.active
+      && String(trackId) === String(samplingStateRef.current.trackIds?.[samplingStateRef.current.currentIndex])
+    ) {
+      samplingPausedRef.current = false;
+      clearSamplingTimer();
+      clearSamplingInterval();
+      handleSamplingEnded(trackId);
+    }
+
     const patchKeys = Object.keys(patch || {});
     const timeOnly = patchKeys.every((key) => key === 'currentTime' || key === 'duration');
     if (

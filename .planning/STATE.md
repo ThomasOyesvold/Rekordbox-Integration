@@ -37,6 +37,8 @@ Status: Active development
   - Badge reflects active vs paused state
 - ✅ **Sampling Resume Control**:
   - Added Resume button when sampling is paused
+- ✅ **Sampling Auto-Skip on Error**:
+  - If a sample fails to play, advance to the next track automatically
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files
