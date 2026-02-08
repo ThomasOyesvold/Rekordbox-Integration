@@ -1475,12 +1475,18 @@ export function App() {
     if (!Number.isFinite(duration) || duration <= 0) {
       return 0;
     }
-    const introCut = Math.min(30, duration * 0.2);
-    const outroCut = Math.min(30, duration * 0.2);
-    const minStart = Math.min(introCut, Math.max(0, duration - 5));
-    const maxStart = Math.max(minStart, duration - outroCut);
-    const start = minStart + (Math.random() * Math.max(0, maxStart - minStart));
-    return Math.max(0, Math.min(duration - 1, start));
+    const introCut = Math.min(45, duration * 0.2);
+    const outroCut = Math.min(45, duration * 0.2);
+    const preferredStart = duration * 0.35;
+    const preferredEnd = duration * 0.7;
+    const minStart = Math.max(introCut, preferredStart);
+    const maxStart = Math.min(duration - outroCut, preferredEnd);
+    if (maxStart <= minStart) {
+      const mid = duration * 0.5;
+      return Math.max(introCut, Math.min(duration - outroCut, mid));
+    }
+    const start = minStart + (Math.random() * (maxStart - minStart));
+    return Math.max(introCut, Math.min(duration - outroCut, start));
   };
 
   const handleSampleSizeChange = (value) => {
