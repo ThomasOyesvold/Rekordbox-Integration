@@ -31,6 +31,8 @@ Status: Active development
   - Pausing a sampling track now pauses the timer and resumes when playback resumes
 - ✅ **Sampling Cooldown**:
   - Added ~1.2s pause between samples to prevent overlap pops
+- ✅ **Sampling Track Label**:
+  - Shows current sampling track title next to the badge
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files

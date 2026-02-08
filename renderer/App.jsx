@@ -514,6 +514,9 @@ function ClusterDetails({
           <span className="sampling-badge">Sampling</span>
         ) : null}
         {samplingState?.active ? (
+          <span className="sampling-track-label">{getSamplingTrackLabel()}</span>
+        ) : null}
+        {samplingState?.active ? (
           <span>
             {samplingState.currentIndex + 1}/{samplingState.total}
           </span>
@@ -1567,6 +1570,21 @@ export function App() {
 
   const getClusterDecision = (clusterKey) => {
     return clusterDecisions[clusterKey] || { status: 'pending', name: '' };
+  };
+
+  const getSamplingTrackLabel = () => {
+    const state = samplingStateRef.current;
+    if (!state.active || !state.trackIds?.length) {
+      return '';
+    }
+    const trackId = state.trackIds[state.currentIndex];
+    const track = trackIndexById.get(String(trackId));
+    if (!track) {
+      return '';
+    }
+    const artist = track.artist || track.Artist || 'Unknown';
+    const title = track.title || track.Name || 'Unknown';
+    return `${artist} — ${title}`;
   };
 
   const persistClusterDecisions = (nextDecisions) => {

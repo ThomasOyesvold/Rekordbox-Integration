@@ -340,6 +340,15 @@ button:disabled {
   letter-spacing: 0.08em;
 }
 
+.sampling-track-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .waveform-placeholder {
   margin-top: 10px;
   padding: 16px;
