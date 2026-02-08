@@ -702,6 +702,7 @@ export function App() {
   const [audioStatus, setAudioStatus] = useState({ level: 'idle', message: '' });
   const audioDebugEnabled = useMemo(() => isAudioDebugEnabled(), []);
   const playRequestIdRef = useRef(0);
+  const lastPlayAttemptRef = useRef({ trackId: null, at: 0 });
 
   const logAudio = (...args) => {
     if (audioDebugEnabled) {
@@ -1734,6 +1735,11 @@ export function App() {
     const requestId = playRequestIdRef.current + 1;
     playRequestIdRef.current = requestId;
     const trackId = getTrackId(track);
+    const now = Date.now();
+    if (lastPlayAttemptRef.current.trackId === trackId && (now - lastPlayAttemptRef.current.at) < 250) {
+      return;
+    }
+    lastPlayAttemptRef.current = { trackId, at: now };
 
     const location = track?.location || track?.Location || track?.LOCATION;
     if (!trackId || !location) {
