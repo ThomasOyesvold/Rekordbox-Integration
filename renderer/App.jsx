@@ -504,6 +504,11 @@ function ClusterDetails({
             Sampling {samplingState.currentIndex + 1}/{samplingState.total}
           </span>
         ) : null}
+        {samplingState?.active ? (
+          <span>
+            Next in {samplingCountdown ?? '--'}s
+          </span>
+        ) : null}
       </div>
       {focusedRow ? (
         <div className="cluster-waveform">
@@ -636,6 +641,9 @@ export function App() {
   const samplingTimerRef = useRef(null);
   const samplingSessionRef = useRef(0);
   const samplingAdvanceRef = useRef({ trackId: null, index: null });
+  const samplingEndAtRef = useRef(null);
+  const samplingIntervalRef = useRef(null);
+  const [samplingCountdown, setSamplingCountdown] = useState(null);
   const [clusterDecisions, setClusterDecisions] = useState({});
   const [playlistDecisionsByContext, setPlaylistDecisionsByContext] = useState({});
   const [decisionContextKey, setDecisionContextKey] = useState('');
@@ -1454,8 +1462,18 @@ export function App() {
     }
   };
 
+  const clearSamplingInterval = () => {
+    if (samplingIntervalRef.current) {
+      clearInterval(samplingIntervalRef.current);
+      samplingIntervalRef.current = null;
+    }
+    samplingEndAtRef.current = null;
+    setSamplingCountdown(null);
+  };
+
   const stopSampling = () => {
     clearSamplingTimer();
+    clearSamplingInterval();
     samplingSessionRef.current += 1;
     samplingAdvanceRef.current = { trackId: null, index: null };
     const active = samplingStateRef.current;
@@ -1542,6 +1560,20 @@ export function App() {
   const scheduleSamplingAdvance = (trackId) => {
     clearSamplingTimer();
     const seconds = 30 + Math.random() * 15;
+    samplingEndAtRef.current = Date.now() + (seconds * 1000);
+    setSamplingCountdown(Math.ceil(seconds));
+    clearSamplingInterval();
+    samplingIntervalRef.current = setInterval(() => {
+      if (!samplingEndAtRef.current) {
+        return;
+      }
+      const remainingMs = samplingEndAtRef.current - Date.now();
+      const remaining = Math.max(0, Math.ceil(remainingMs / 1000));
+      setSamplingCountdown(remaining);
+      if (remaining <= 0) {
+        clearSamplingInterval();
+      }
+    }, 1000);
     const sessionId = samplingSessionRef.current;
     samplingTimerRef.current = setTimeout(() => {
       if (sessionId !== samplingSessionRef.current) {
@@ -1605,6 +1637,7 @@ export function App() {
       stopSampling();
       return;
     }
+    clearSamplingInterval();
     const nextTrackId = state.trackIds[nextIndex];
     const nextTrack = trackIndexById.get(String(nextTrackId));
     setSamplingState((current) => ({
