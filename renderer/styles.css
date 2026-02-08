@@ -237,6 +237,11 @@ button:disabled {
   box-shadow: var(--shadow-sm);
 }
 
+.similar-track-card.playing {
+  border-color: rgba(59, 130, 246, 0.6);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), var(--shadow-sm);
+}
+
 .similar-track-header {
   display: flex;
   align-items: center;
@@ -270,6 +275,43 @@ button:disabled {
 .similar-waveform .waveform-preview {
   height: 90px;
   margin-top: 10px;
+}
+
+.now-playing {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  margin-top: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.now-playing-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.now-playing-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+}
+
+.now-playing-title {
+  font-weight: var(--weight-semibold);
+}
+
+.now-playing-meta {
+  display: flex;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  white-space: nowrap;
 }
 
 .waveform-placeholder {

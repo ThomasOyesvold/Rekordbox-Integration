@@ -1894,6 +1894,13 @@ export function App() {
     );
   }, [tracks]);
 
+  const nowPlayingTrack = useMemo(() => {
+    if (!activeTrackId) {
+      return null;
+    }
+    return trackIndexById.get(String(activeTrackId)) || null;
+  }, [activeTrackId, trackIndexById]);
+
   const similarMatches = useMemo(() => {
     if (!Array.isArray(similarResults?.matches)) {
       return [];
@@ -2252,6 +2259,25 @@ export function App() {
               </button>
             </div>
           </div>
+          {nowPlayingTrack ? (
+            <div className="now-playing">
+              <div className="now-playing-main">
+                <span className="now-playing-label">Now Playing</span>
+                <span className="now-playing-title">
+                  {(nowPlayingTrack.artist || 'Unknown')} — {(nowPlayingTrack.title || 'Unknown')}
+                </span>
+              </div>
+              <div className="now-playing-meta">
+                <span>{nowPlayingTrack.bpm ? `${Math.round(nowPlayingTrack.bpm)} BPM` : '-'}</span>
+                <span>{nowPlayingTrack.key || '-'}</span>
+                <span>
+                  {formatClock(getPlaybackState(activeTrackId).currentTime)}
+                  {' / '}
+                  {formatClock(getPlaybackState(activeTrackId).duration)}
+                </span>
+              </div>
+            </div>
+          ) : null}
           <TrackTable
             tracks={sortedTracks.slice(0, 20)}
             onTrackClick={(track) => setSelectedTrackId(getTrackId(track))}
@@ -2601,8 +2627,9 @@ export function App() {
                         || Number(track.anlzWaveform?.durationSeconds)
                         || Number(playback.duration)
                         || 0;
+                      const isPlaying = playback.status === 'playing';
                       return (
-                        <div className="similar-track-card" key={match.trackId}>
+                        <div className={`similar-track-card${isPlaying ? ' playing' : ''}`} key={match.trackId}>
                           <div className="similar-track-header">
                             <button
                               type="button"

@@ -1,14 +1,23 @@
 # Project State
 
-Updated: 2026-02-05
-Phase: 2 of 6 (Analysis Engine) + Phase 4 audio work
-Progress: Phase 1 complete, Phase 2 ~60%, Phase 4 audio playback fixed
+Updated: 2026-02-08
+Phase: 2 of 6 (Analysis Engine) + Phase 4 playback + Phase 5 UI redesign
+Progress: Phase 1 complete, Phase 2 ~60%, Phase 4 audio playback fixed, UI polish in progress
 Status: Active development
 
 ## Current Focus
 - Phase 2: Analysis Engine & Caching (waveform/rhythm extraction remaining)
-- Phase 4: Audio playback debugging and verification complete for WSL
+- Phase 4: Audio playback stability (single shared audio element, UI throttle)
+- Phase 5: UI redesign polish (Track Details + Similar list)
 - Production packaging roadmap defined (Phase 7-8)
+
+## Recent Completions (2026-02-08)
+- ✅ **Playback Stability Pass**: Shared audio element + throttled UI updates to reduce stutter
+- ✅ **Track Details UI Polish**:
+  - Similar tracks list with seekable large waveforms + playhead needle
+  - Play/pause button state + live timer in Similar list
+  - Volume slider moved to Quick Preview; default volume 50%
+- ✅ **Quick Preview Enhancements**: Now Playing strip with timer/BPM/key
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files
@@ -35,15 +44,19 @@ Status: Active development
 - Baseline result rows now include plain-language component reasoning.
 - Validation panel supports severity filtering (all/error/warning).
 - **Audio playback working in WSL with comprehensive debugging**.
+- Playback stabilized with single shared audio element + UI update throttle.
+- Similar track cards support seekable waveform previews and playhead needle.
+- Quick Preview shows Now Playing strip (timer + BPM/key) and volume control.
 - Parser now warns when TRACK nodes include nested metadata blocks not yet extracted.
 
 ## Top Next Tasks
 1. Replace placeholder waveform/rhythm proxies with full Rekordbox waveform data extraction
 2. Add batch/memory safeguards and long-run stress tests for 12K+ libraries
 3. Parse selected nested TRACK metadata blocks (TEMPO/POSITION_MARK) into optional track features
-4. Add folder-level analysis summary cards (selected folder mix profile)
-5. Add integration test around keyboard shortcuts and severity filters
-6. Surface nested-metadata warnings with actionable remediation text in UI
+4. UI redesign Phase 05-05 final polish + QA pass for Track Details + Quick Preview
+5. Add folder-level analysis summary cards (selected folder mix profile)
+6. Add integration test around keyboard shortcuts and severity filters
+7. Surface nested-metadata warnings with actionable remediation text in UI
 
 ## Known Risks
 - Real-world Rekordbox XML variability still under-covered by fixtures.
@@ -63,7 +76,7 @@ Status: Active development
 
 ## Resume Anchor
 - Primary handoff: `HANDOFF.md`
-- Latest work: Audio playback fix (2026-02-05)
+- Latest work: Playback stability + Track Details UI polish (2026-02-08)
 - Implementation docs:
   - `AUDIO_FIX_IMPLEMENTATION.md` - Technical details
   - `IMPLEMENTATION_COMPLETE.md` - Testing guide

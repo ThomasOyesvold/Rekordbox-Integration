@@ -101,6 +101,10 @@ Plans:
   - Added play request guards to prevent stale async play attempts
   - Stopped overlapping playback when switching tracks quickly
   - Added volume control + test tone for verifying audio output
+- [x] UI verification polish (2026-02-08)
+  - Added Now Playing strip in Quick Preview with timer, BPM/key
+  - Added similar-track waveform playhead + seekable large waveform
+  - Moved volume controls to Quick Preview header; default volume 50%
 - [ ] TBD (remaining verification workflow features planned during phase planning)
 
 ### Phase 5: Approval & User Control
