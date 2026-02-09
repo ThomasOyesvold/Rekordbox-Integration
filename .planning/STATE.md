@@ -58,6 +58,7 @@ Status: Active development
   - Added yield/cap options + progress logging to phase2Stress script
 - ✅ **Phase 2 Safeguards (UI Controls)**:
   - Added analysis knobs for max pairs, pair cap, and yield cadence
+  - Main process now accepts analysis safeguard options
 
 ## Recent Completions (2026-02-05)
 - ✅ **WSL Audio Playback Fix**: Complete overhaul of path resolution for audio files
