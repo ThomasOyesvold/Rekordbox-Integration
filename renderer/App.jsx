@@ -747,6 +747,7 @@ export function App() {
   const [showTrackMeta, setShowTrackMeta] = useState(false);
   const [showTrackLocation, setShowTrackLocation] = useState(false);
   const [showTrackAnlzMeta, setShowTrackAnlzMeta] = useState(false);
+  const [showTrackNestedMeta, setShowTrackNestedMeta] = useState(false);
   const [showTrackPlaylists, setShowTrackPlaylists] = useState(false);
   const [error, setError] = useState('');
   const [progress, setProgress] = useParseProgress();
@@ -2903,6 +2904,14 @@ export function App() {
                 </button>
                 <button
                   type="button"
+                  className={showTrackNestedMeta ? '' : 'secondary'}
+                  style={{ padding: '6px 10px' }}
+                  onClick={() => setShowTrackNestedMeta((value) => !value)}
+                >
+                  {showTrackNestedMeta ? 'Hide Nested Meta' : 'Show Nested Meta'}
+                </button>
+                <button
+                  type="button"
                   className={showTrackPlaylists ? '' : 'secondary'}
                   style={{ padding: '6px 10px' }}
                   onClick={() => setShowTrackPlaylists((value) => !value)}
@@ -2954,6 +2963,46 @@ export function App() {
               <p style={{ marginTop: '8px' }}>
                 Location: {selectedTrack.location || '-'}
               </p>
+            ) : null}
+            {showTrackNestedMeta ? (
+              <>
+                <h4 style={{ margin: '12px 0 8px' }}>Nested Rekordbox Meta</h4>
+                <div className="meta">
+                  <span>Tempo Points: {selectedTrack.nestedTempoPoints?.length || 0}</span>
+                  <span>Position Marks: {selectedTrack.nestedPositionMarks?.length || 0}</span>
+                </div>
+                {selectedTrack.nestedTempoPoints?.length ? (
+                  <div style={{ marginTop: '6px' }}>
+                    <strong>Tempo (preview):</strong>{' '}
+                    {selectedTrack.nestedTempoPoints.slice(0, 4).map((point, index) => (
+                      <span key={`tempo-${index}`} style={{ marginLeft: index === 0 ? 0 : '6px' }}>
+                        {Number.isFinite(point.inizio) ? `${point.inizio}s` : '?'} /
+                        {Number.isFinite(point.bpm) ? ` ${point.bpm} BPM` : ' ? BPM'} /
+                        {Number.isFinite(point.battito) ? ` beat ${point.battito}` : ' beat ?'}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ marginTop: '6px', color: '#475569' }}>
+                    No nested TEMPO entries found for this track.
+                  </p>
+                )}
+                {selectedTrack.nestedPositionMarks?.length ? (
+                  <div style={{ marginTop: '6px' }}>
+                    <strong>Position Marks (preview):</strong>{' '}
+                    {selectedTrack.nestedPositionMarks.slice(0, 4).map((mark, index) => (
+                      <span key={`mark-${index}`} style={{ marginLeft: index === 0 ? 0 : '6px' }}>
+                        {mark.name || 'Mark'}@
+                        {Number.isFinite(mark.start) ? `${mark.start}s` : '?'}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ marginTop: '6px', color: '#475569' }}>
+                    No nested POSITION_MARK entries found for this track.
+                  </p>
+                )}
+              </>
             ) : null}
             {similarResults ? (
               <>

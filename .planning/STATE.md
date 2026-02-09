@@ -22,6 +22,8 @@ Status: Active development
   - `scripts/phase2Stress.js` with `maxPairs=2000`, `yieldEvery=1000`, `topLimit=50` on `rekordbox_backup.xml`
   - Parse 0.553s; Cold 46.704s; Warm 117.001s
   - Memory: RSS 51MB start → 191MB after parse → 268MB after cold → 341MB after warm
+- ✅ **Nested Track Meta Surface**:
+  - Track Details now exposes TEMPO + POSITION_MARK counts + previews
 
 ## Recent Completions (2026-02-08)
 - ✅ **Playback Stability Pass**: Shared audio element + throttled UI updates to reduce stutter
@@ -100,12 +102,12 @@ Status: Active development
 - Playback stabilized with single shared audio element + UI update throttle.
 - Similar track cards support seekable waveform previews and playhead needle.
 - Quick Preview shows Now Playing strip (timer + BPM/key) and volume control.
-- Parser now warns when TRACK nodes include nested metadata blocks not yet extracted.
+- Nested TRACK metadata (TEMPO/POSITION_MARK) is parsed and now visible in Track Details.
 
 ## Top Next Tasks
 1. Replace placeholder waveform/rhythm proxies with full Rekordbox waveform data extraction
 2. Run long-run stress tests for 12K+ libraries (Phase 2 safeguards validation)
-3. Parse selected nested TRACK metadata blocks (TEMPO/POSITION_MARK) into optional track features
+3. Parse selected nested TRACK metadata blocks (additional tags beyond TEMPO/POSITION_MARK)
 4. UI redesign Phase 05-05 final polish + QA pass for Track Details + Quick Preview
 5. Add folder-level analysis summary cards (selected folder mix profile)
 6. Add integration test around keyboard shortcuts and severity filters
