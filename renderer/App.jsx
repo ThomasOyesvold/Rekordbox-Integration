@@ -698,6 +698,9 @@ export function App() {
   const [analysisMaxPairs, setAnalysisMaxPairs] = useState(5000);
   const [analysisPairCap, setAnalysisPairCap] = useState(100000);
   const [analysisYieldEvery, setAnalysisYieldEvery] = useState(5000);
+  const [analysisMemoryLimitMb, setAnalysisMemoryLimitMb] = useState(1200);
+  const [analysisMemoryCheckEvery, setAnalysisMemoryCheckEvery] = useState(2000);
+  const [analysisCancelPending, setAnalysisCancelPending] = useState(false);
   const [similarResults, setSimilarResults] = useState(null);
   const [isFindingSimilar, setIsFindingSimilar] = useState(false);
   const [similarMinScore, setSimilarMinScore] = useState(0.6);
@@ -1265,13 +1268,35 @@ export function App() {
       const result = await bridgeApi.runBaselineAnalysis(tracks, xmlPath.trim(), selectedFolders, {
         maxPairs: analysisMaxPairs,
         maxPairsCap: analysisPairCap,
-        yieldEveryPairs: analysisYieldEvery
+        yieldEveryPairs: analysisYieldEvery,
+        memoryLimitMb: analysisMemoryLimitMb,
+        memoryCheckEveryPairs: analysisMemoryCheckEvery
       });
       setAnalysisResult(result);
     } catch (analysisError) {
       setError(analysisError.message || String(analysisError));
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const cancelAnalysis = async () => {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.cancelBaselineAnalysis) {
+      setError(DESKTOP_BRIDGE_ERROR);
+      return;
+    }
+
+    setAnalysisCancelPending(true);
+    try {
+      const result = await bridgeApi.cancelBaselineAnalysis();
+      if (!result?.canceled) {
+        setError('No baseline analysis is running.');
+      }
+    } catch (cancelError) {
+      setError(cancelError.message || String(cancelError));
+    } finally {
+      setAnalysisCancelPending(false);
     }
   };
 
@@ -2355,6 +2380,14 @@ export function App() {
                 <button type="button" onClick={runAnalysis} disabled={isParsing || isAnalyzing || tracks.length < 2}>
                   {isAnalyzing ? 'Analyzing...' : 'Run Baseline Analysis'}
                 </button>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={cancelAnalysis}
+                  disabled={!isAnalyzing || analysisCancelPending}
+                >
+                  {analysisCancelPending ? 'Canceling...' : 'Cancel Analysis'}
+                </button>
               </div>
               <div className="row" style={{ marginTop: '8px' }}>
                 <label>
@@ -2387,6 +2420,28 @@ export function App() {
                     step="500"
                     value={analysisYieldEvery}
                     onChange={(event) => setAnalysisYieldEvery(Number(event.target.value))}
+                    style={{ width: '120px', marginLeft: '6px' }}
+                  />
+                </label>
+                <label>
+                  Memory Limit (MB)
+                  <input
+                    type="number"
+                    min="0"
+                    step="100"
+                    value={analysisMemoryLimitMb}
+                    onChange={(event) => setAnalysisMemoryLimitMb(Number(event.target.value))}
+                    style={{ width: '140px', marginLeft: '6px' }}
+                  />
+                </label>
+                <label>
+                  Memory Check
+                  <input
+                    type="number"
+                    min="500"
+                    step="500"
+                    value={analysisMemoryCheckEvery}
+                    onChange={(event) => setAnalysisMemoryCheckEvery(Number(event.target.value))}
                     style={{ width: '120px', marginLeft: '6px' }}
                   />
                 </label>
@@ -2439,6 +2494,10 @@ export function App() {
                   </span>
                   <span>Computed: {analysisProgress.computed || 0}</span>
                   <span>Cache Hits: {analysisProgress.cacheHits || 0}</span>
+                  {Number.isFinite(analysisProgress.memoryMb)
+                    ? <span>Memory: {Math.round(analysisProgress.memoryMb)} MB</span>
+                    : null}
+                  {analysisProgress.aborted ? <span>Aborted ({analysisProgress.reason || 'unknown'})</span> : null}
                   {analysisProgress.done ? <span>Done</span> : null}
                 </div>
               ) : null}

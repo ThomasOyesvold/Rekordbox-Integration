@@ -28,6 +28,8 @@ const isSmokeMode = process.env.RBFA_SMOKE === '1';
 
 let mainWindow = null;
 let anlzBuildController = null;
+let analysisController = null;
+let analysisInFlight = false;
 let cachedLibraryTracks = [];
 
 function createWindow() {
@@ -192,24 +194,46 @@ ipcMain.handle('state:load', async () => loadState(statePath));
 ipcMain.handle('state:save', async (_event, patch) => saveState(statePath, patch));
 ipcMain.handle('imports:recent', async () => getRecentImports(10));
 ipcMain.handle('analysis:baseline', async (_event, payload) => {
+  if (analysisInFlight) {
+    throw new Error('Baseline analysis already running. Cancel before starting a new run.');
+  }
   const tracks = Array.isArray(payload?.tracks) ? payload.tracks : [];
   const maxPairs = Number(payload?.maxPairs);
   const maxPairsCap = Number(payload?.maxPairsCap);
   const yieldEveryPairs = Number(payload?.yieldEveryPairs);
-  return runBaselineAnalysis({
-    tracks,
-    sourceXmlPath: payload?.sourceXmlPath || null,
-    selectedFolders: Array.isArray(payload?.selectedFolders) ? payload.selectedFolders : [],
-    maxPairs: Number.isFinite(maxPairs) ? maxPairs : 5000,
-    maxPairsCap: Number.isFinite(maxPairsCap) ? maxPairsCap : 100000,
-    topLimit: 20,
-    yieldEveryPairs: Number.isFinite(yieldEveryPairs) ? yieldEveryPairs : 5000,
-    onProgress: (progress) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('analysis:progress', progress);
+  const memoryLimitMb = Number(payload?.memoryLimitMb);
+  const memoryCheckEveryPairs = Number(payload?.memoryCheckEveryPairs);
+  analysisController = new AbortController();
+  analysisInFlight = true;
+  try {
+    return await runBaselineAnalysis({
+      tracks,
+      sourceXmlPath: payload?.sourceXmlPath || null,
+      selectedFolders: Array.isArray(payload?.selectedFolders) ? payload.selectedFolders : [],
+      maxPairs: Number.isFinite(maxPairs) ? maxPairs : 5000,
+      maxPairsCap: Number.isFinite(maxPairsCap) ? maxPairsCap : 100000,
+      topLimit: 20,
+      yieldEveryPairs: Number.isFinite(yieldEveryPairs) ? yieldEveryPairs : 5000,
+      memoryLimitMb: Number.isFinite(memoryLimitMb) ? memoryLimitMb : 0,
+      memoryCheckEveryPairs: Number.isFinite(memoryCheckEveryPairs) ? memoryCheckEveryPairs : 2000,
+      abortSignal: analysisController.signal,
+      onProgress: (progress) => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('analysis:progress', progress);
+        }
       }
-    }
-  });
+    });
+  } finally {
+    analysisController = null;
+    analysisInFlight = false;
+  }
+});
+ipcMain.handle('analysis:cancel', async () => {
+  if (analysisController && !analysisController.signal.aborted) {
+    analysisController.abort();
+    return { canceled: true };
+  }
+  return { canceled: false };
 });
 ipcMain.handle('analysis:export', async (_event, payload) => {
   const format = payload?.format === 'json' ? 'json' : 'csv';

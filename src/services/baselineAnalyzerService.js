@@ -544,6 +544,21 @@ async function yieldToEventLoop() {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+function getMemoryUsageMb() {
+  if (typeof process?.memoryUsage !== 'function') {
+    return 0;
+  }
+  const usage = process.memoryUsage();
+  const rss = Number(usage?.rss || 0);
+  return rss / (1024 * 1024);
+}
+
+function buildAbortError(message) {
+  const error = new Error(message);
+  error.name = 'AbortError';
+  return error;
+}
+
 export async function runBaselineAnalysis({
   tracks,
   sourceXmlPath = null,
@@ -554,7 +569,10 @@ export async function runBaselineAnalysis({
   topLimit = 20,
   yieldEveryPairs = 5000,
   maxPairsCap = 100000,
-  onProgress = null
+  onProgress = null,
+  abortSignal = null,
+  memoryLimitMb = 0,
+  memoryCheckEveryPairs = 2000
 }) {
   const safeTracks = Array.isArray(tracks) ? tracks : [];
   const normalizedWeights = normalizeWeights(componentWeights);
@@ -573,6 +591,10 @@ export async function runBaselineAnalysis({
   const topMatches = [];
 
   try {
+    const memoryLimit = Number.isFinite(memoryLimitMb) ? Math.max(0, memoryLimitMb) : 0;
+    const memoryCheckEvery = Number.isFinite(memoryCheckEveryPairs)
+      ? Math.max(0, Math.floor(memoryCheckEveryPairs))
+      : 0;
     const safeCap = Number.isFinite(maxPairsCap) ? Math.max(0, Math.floor(maxPairsCap)) : Infinity;
     const requested = Number.isFinite(maxPairs) ? Math.max(0, maxPairs) : Infinity;
     const pairLimit = Math.min(requested, safeCap);
@@ -581,15 +603,48 @@ export async function runBaselineAnalysis({
       Math.max(0, (safeTracks.length * (safeTracks.length - 1)) / 2)
     );
     const yieldEvery = Number.isFinite(yieldEveryPairs) ? Math.max(0, Math.floor(yieldEveryPairs)) : 0;
+    const reportProgress = (extra = {}) => {
+      if (typeof onProgress === 'function') {
+        onProgress({
+          pairCount,
+          totalPairs,
+          cacheHits,
+          computed,
+          ...extra
+        });
+      }
+    };
+    const checkAbort = () => {
+      if (abortSignal?.aborted) {
+        reportProgress({ aborted: true, reason: 'cancelled', done: true });
+        throw buildAbortError('Baseline analysis canceled.');
+      }
+    };
+    const checkMemory = () => {
+      if (!memoryLimit || !memoryCheckEvery || pairCount % memoryCheckEvery !== 0) {
+        return;
+      }
+      const memoryMb = getMemoryUsageMb();
+      reportProgress({ memoryMb });
+      if (memoryMb > memoryLimit) {
+        reportProgress({ aborted: true, reason: 'memory', memoryMb, done: true });
+        const error = new Error(`Memory limit exceeded (${memoryMb.toFixed(0)} MB > ${memoryLimit} MB).`);
+        error.name = 'MemoryLimitError';
+        throw error;
+      }
+    };
 
     for (let i = 0; i < safeTracks.length; i += 1) {
+      checkAbort();
       const trackA = safeTracks[i];
       for (let j = i + 1; j < safeTracks.length; j += 1) {
+        checkAbort();
         if (pairCount >= pairLimit) {
           break;
         }
         const trackB = safeTracks[j];
         pairCount += 1;
+        checkMemory();
         const cached = getSimilarityFromCache({
           trackAId: trackA.id,
           trackBId: trackB.id,
@@ -641,14 +696,7 @@ export async function runBaselineAnalysis({
         updateTopMatches(topMatches, row, topLimit);
 
         if (yieldEvery > 0 && pairCount % yieldEvery === 0) {
-          if (typeof onProgress === 'function') {
-            onProgress({
-              pairCount,
-              totalPairs,
-              cacheHits,
-              computed
-            });
-          }
+          reportProgress();
           await yieldToEventLoop();
         }
       }
@@ -658,15 +706,7 @@ export async function runBaselineAnalysis({
       }
     }
 
-    if (typeof onProgress === 'function') {
-      onProgress({
-        pairCount,
-        totalPairs,
-        cacheHits,
-        computed,
-        done: true
-      });
-    }
+    reportProgress({ memoryMb: memoryLimit ? getMemoryUsageMb() : undefined, done: true });
     finishAnalysisRun(runId, 'completed', `pairs=${pairCount}, cacheHits=${cacheHits}, computed=${computed}`);
 
     return {

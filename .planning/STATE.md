@@ -1,6 +1,6 @@
 # Project State
 
-Updated: 2026-02-08
+Updated: 2026-02-09
 Phase: 2 of 6 (Analysis Engine) + Phase 4 playback + Phase 5 UI redesign
 Progress: Phase 1 complete, Phase 2 ~60%, Phase 4 audio playback fixed, UI polish in progress
 Status: Active development
@@ -10,6 +10,12 @@ Status: Active development
 - Phase 4: Audio playback stability (single shared audio element, UI throttle)
 - Phase 5: UI redesign polish (Track Details + Similar list)
 - Production packaging roadmap defined (Phase 7-8)
+
+## Recent Completions (2026-02-09)
+- ✅ **Phase 2 Safeguard Controls**:
+  - Added baseline analysis cancel button (IPC abort flow)
+  - Added memory limit abort (memory cap + check interval inputs)
+  - Progress now reports memory usage and abort reason
 
 ## Recent Completions (2026-02-08)
 - ✅ **Playback Stability Pass**: Shared audio element + throttled UI updates to reduce stutter
@@ -92,7 +98,7 @@ Status: Active development
 
 ## Top Next Tasks
 1. Replace placeholder waveform/rhythm proxies with full Rekordbox waveform data extraction
-2. Add batch/memory safeguards and long-run stress tests for 12K+ libraries
+2. Run long-run stress tests for 12K+ libraries (Phase 2 safeguards validation)
 3. Parse selected nested TRACK metadata blocks (TEMPO/POSITION_MARK) into optional track features
 4. UI redesign Phase 05-05 final polish + QA pass for Track Details + Quick Preview
 5. Add folder-level analysis summary cards (selected folder mix profile)

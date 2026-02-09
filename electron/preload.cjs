@@ -44,8 +44,11 @@ contextBridge.exposeInMainWorld('rbfa', {
     selectedFolders,
     maxPairs: options?.maxPairs,
     maxPairsCap: options?.maxPairsCap,
-    yieldEveryPairs: options?.yieldEveryPairs
+    yieldEveryPairs: options?.yieldEveryPairs,
+    memoryLimitMb: options?.memoryLimitMb,
+    memoryCheckEveryPairs: options?.memoryCheckEveryPairs
   }),
+  cancelBaselineAnalysis: () => ipcRenderer.invoke('analysis:cancel'),
   findSimilarTracks: (payload) => ipcRenderer.invoke('tracks:similar', payload),
   exportAnalysis: (payload) => ipcRenderer.invoke('analysis:export', payload),
   generatePlaylists: (payload) => ipcRenderer.invoke('playlists:cluster', payload),
