@@ -16,6 +16,8 @@ Status: Active development
   - Added baseline analysis cancel button (IPC abort flow)
   - Added memory limit abort (memory cap + check interval inputs)
   - Progress now reports memory usage and abort reason
+- ✅ **Smoke Check**:
+  - Verified memory abort + cancel abort via local node script (2026-02-09)
 
 ## Recent Completions (2026-02-08)
 - ✅ **Playback Stability Pass**: Shared audio element + throttled UI updates to reduce stutter
