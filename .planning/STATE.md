@@ -18,6 +18,10 @@ Status: Active development
   - Progress now reports memory usage and abort reason
 - ✅ **Smoke Check**:
   - Verified memory abort + cancel abort via local node script (2026-02-09)
+- ✅ **Phase 2 Stress Pass (Quick)**:
+  - `scripts/phase2Stress.js` with `maxPairs=2000`, `yieldEvery=1000`, `topLimit=50` on `rekordbox_backup.xml`
+  - Parse 0.553s; Cold 46.704s; Warm 117.001s
+  - Memory: RSS 51MB start → 191MB after parse → 268MB after cold → 341MB after warm
 
 ## Recent Completions (2026-02-08)
 - ✅ **Playback Stability Pass**: Shared audio element + throttled UI updates to reduce stutter
