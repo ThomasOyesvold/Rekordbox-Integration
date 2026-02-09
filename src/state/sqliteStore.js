@@ -114,6 +114,7 @@ export function initDatabase(dbFilePath) {
       height_max INTEGER NOT NULL,
       bins TEXT NOT NULL,
       rhythm_signature TEXT,
+      kick_signature TEXT,
       signature_version TEXT,
       updated_at TEXT NOT NULL
     );
@@ -135,6 +136,7 @@ export function initDatabase(dbFilePath) {
 
   ensureColumns('anlz_waveform_cache', [
     { name: 'rhythm_signature', type: 'TEXT' },
+    { name: 'kick_signature', type: 'TEXT' },
     { name: 'signature_version', type: 'TEXT' }
   ]);
 
@@ -404,9 +406,10 @@ export function saveAnlzWaveformSummary(entry) {
       height_max,
       bins,
       rhythm_signature,
+      kick_signature,
       signature_version,
       updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(ext_path) DO UPDATE SET
       sample_count = excluded.sample_count,
       duration_seconds = excluded.duration_seconds,
@@ -417,6 +420,7 @@ export function saveAnlzWaveformSummary(entry) {
       height_max = excluded.height_max,
       bins = excluded.bins,
       rhythm_signature = excluded.rhythm_signature,
+      kick_signature = excluded.kick_signature,
       signature_version = excluded.signature_version,
       updated_at = excluded.updated_at
   `);
@@ -424,6 +428,7 @@ export function saveAnlzWaveformSummary(entry) {
   const heights = Array.isArray(entry.bins) ? entry.bins : [];
   const colors = Array.isArray(entry.binColors) ? entry.binColors : [];
   const rhythmSignature = Array.isArray(entry.rhythmSignature) ? entry.rhythmSignature : null;
+  const kickSignature = Array.isArray(entry.kickSignature) ? entry.kickSignature : null;
   statement.run(
     String(entry.extPath),
     Number(entry.sampleCount) || 0,
@@ -438,6 +443,7 @@ export function saveAnlzWaveformSummary(entry) {
       colors
     }),
     rhythmSignature ? JSON.stringify(rhythmSignature) : null,
+    kickSignature ? JSON.stringify(kickSignature) : null,
     entry.signatureVersion ? String(entry.signatureVersion) : null,
     new Date().toISOString()
   );
@@ -458,6 +464,7 @@ export function getAnlzWaveformSummary(extPath) {
       height_max,
       bins,
       rhythm_signature,
+      kick_signature,
       signature_version,
       updated_at
     FROM anlz_waveform_cache
@@ -473,6 +480,7 @@ export function getAnlzWaveformSummary(extPath) {
   const bins = Array.isArray(parsedBins) ? parsedBins : (Array.isArray(parsedBins?.heights) ? parsedBins.heights : []);
   const binColors = Array.isArray(parsedBins?.colors) ? parsedBins.colors : [];
   const rhythmSignature = parseJson(row.rhythm_signature, null);
+  const kickSignature = parseJson(row.kick_signature, null);
 
   return {
     extPath: row.ext_path,
@@ -490,6 +498,7 @@ export function getAnlzWaveformSummary(extPath) {
     bins,
     binColors,
     rhythmSignature: Array.isArray(rhythmSignature) ? rhythmSignature : null,
+    kickSignature: Array.isArray(kickSignature) ? kickSignature : null,
     signatureVersion: row.signature_version || null,
     updatedAt: row.updated_at
   };

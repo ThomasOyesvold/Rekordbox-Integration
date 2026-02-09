@@ -270,6 +270,35 @@ function compareRhythmSignatures(trackA, trackB) {
   return clamp(dot, 0, 1);
 }
 
+function compareKickPatterns(trackA, trackB) {
+  const signatureA = Array.isArray(trackA?.anlzWaveform?.kickSignature)
+    ? trackA.anlzWaveform.kickSignature
+    : null;
+  const signatureB = Array.isArray(trackB?.anlzWaveform?.kickSignature)
+    ? trackB.anlzWaveform.kickSignature
+    : null;
+
+  if (!signatureA?.length || !signatureB?.length) {
+    return null;
+  }
+
+  const overlap = Math.min(signatureA.length, signatureB.length);
+  let dot = 0;
+  let magnitude = 0;
+  for (let index = 0; index < overlap; index += 1) {
+    const a = Number(signatureA[index]) || 0;
+    const b = Number(signatureB[index]) || 0;
+    dot += a * b;
+    magnitude += (a * a) + (b * b);
+  }
+
+  if (!magnitude) {
+    return 0.5;
+  }
+
+  return clamp((dot / Math.sqrt(magnitude)) ** 0.35);
+}
+
 function parseCamelot(raw) {
   if (typeof raw !== 'string') {
     return null;
@@ -421,13 +450,22 @@ export function computeRhythmScore(trackA, trackB) {
   const baseScore = clamp((bpmScore * 0.55) + (phraseScore * 0.3) + (tokenScore * 0.15));
   const nestedTempoScore = compareNestedTempoMaps(trackA, trackB);
   const rhythmSignatureScore = compareRhythmSignatures(trackA, trackB);
+  const kickScore = compareKickPatterns(trackA, trackB);
 
-  if (nestedTempoScore !== null && rhythmSignatureScore !== null) {
-    return clamp((baseScore * 0.25) + (nestedTempoScore * 0.35) + (rhythmSignatureScore * 0.4));
+  if (nestedTempoScore !== null && rhythmSignatureScore !== null && kickScore !== null) {
+    return clamp((baseScore * 0.2) + (nestedTempoScore * 0.25) + (rhythmSignatureScore * 0.3) + (kickScore * 0.25));
+  }
+
+  if (rhythmSignatureScore !== null && kickScore !== null) {
+    return clamp((baseScore * 0.3) + (rhythmSignatureScore * 0.4) + (kickScore * 0.3));
   }
 
   if (rhythmSignatureScore !== null) {
     return clamp((baseScore * 0.35) + (rhythmSignatureScore * 0.65));
+  }
+
+  if (kickScore !== null) {
+    return clamp((baseScore * 0.4) + (kickScore * 0.6));
   }
 
   if (nestedTempoScore !== null) {

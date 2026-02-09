@@ -188,6 +188,43 @@ test('baseline analyzer uses ANLZ waveform rhythm signature when available', () 
   assert.ok(rhythmClose > rhythmFar);
 });
 
+test('baseline analyzer uses kick pattern signature when available', () => {
+  const trackA = {
+    id: 'k1',
+    bpm: 128,
+    key: '8A',
+    durationSeconds: 360,
+    anlzWaveform: {
+      kickSignature: [0.6, 0.1, 0.4, 0.2, 0.5, 0.15, 0.3, 0.1]
+    }
+  };
+
+  const trackB = {
+    id: 'k2',
+    bpm: 128,
+    key: '8A',
+    durationSeconds: 362,
+    anlzWaveform: {
+      kickSignature: [0.58, 0.12, 0.41, 0.19, 0.52, 0.14, 0.29, 0.11]
+    }
+  };
+
+  const trackC = {
+    id: 'k3',
+    bpm: 128,
+    key: '8A',
+    durationSeconds: 360,
+    anlzWaveform: {
+      kickSignature: [0.05, 0.6, 0.1, 0.7, 0.12, 0.65, 0.08, 0.6]
+    }
+  };
+
+  const kickClose = computeRhythmScore(trackA, trackB);
+  const kickFar = computeRhythmScore(trackA, trackC);
+
+  assert.ok(kickClose > kickFar);
+});
+
 test('baseline analyzer prefers ANLZ waveform summaries when present', () => {
   const trackA = {
     id: 'a',

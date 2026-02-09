@@ -248,6 +248,27 @@ function summarizePwv5Payload(payload, options = {}) {
   const rhythmSignature = magnitude
     ? averagedRhythm.map((value) => Number((value / magnitude).toFixed(6)))
     : new Array(rhythmSegmentCount).fill(0);
+  const kickSegmentCountRaw = Number.isFinite(Number(options.kickSegmentCount))
+    ? Number(options.kickSegmentCount)
+    : 16;
+  const kickSegmentCount = Math.max(8, Math.min(64, Math.floor(kickSegmentCountRaw)));
+  const kickSegments = new Array(kickSegmentCount).fill(0);
+  const kickCounters = new Array(kickSegmentCount).fill(0);
+  for (let index = 0; index < averagedRhythm.length; index += 1) {
+    const kickIndex = Math.min(
+      kickSegmentCount - 1,
+      Math.floor((index / averagedRhythm.length) * kickSegmentCount)
+    );
+    kickSegments[kickIndex] += averagedRhythm[index];
+    kickCounters[kickIndex] += 1;
+  }
+  const kickAverages = kickSegments.map((value, index) => (
+    kickCounters[index] ? value / kickCounters[index] : 0
+  ));
+  const kickMagnitude = Math.sqrt(kickAverages.reduce((sum, value) => sum + (value * value), 0));
+  const kickSignature = kickMagnitude
+    ? kickAverages.map((value) => Number((value / kickMagnitude).toFixed(6)))
+    : new Array(kickSegmentCount).fill(0);
 
   return {
     sampleRate,
@@ -265,7 +286,9 @@ function summarizePwv5Payload(payload, options = {}) {
       max: maxHeight
     },
     rhythmSignature,
-    rhythmSegmentCount
+    rhythmSegmentCount,
+    kickSignature,
+    kickSegmentCount
   };
 }
 

@@ -55,6 +55,7 @@ test('ANLZ waveform service reuses SQLite cache between calls', async () => {
   assert.equal(first.parsedFromFile, 1);
   assert.ok(tracksFirst[0].anlzWaveform);
   assert.ok(Array.isArray(tracksFirst[0].anlzWaveform.rhythmSignature));
+  assert.ok(Array.isArray(tracksFirst[0].anlzWaveform.kickSignature));
 
   const tracksSecond = [{ id: 't1' }];
   const second = await attachAnlzWaveformSummaries(tracksSecond, { mappingPath: mapPath });

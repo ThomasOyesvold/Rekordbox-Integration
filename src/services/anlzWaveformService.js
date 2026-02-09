@@ -15,7 +15,8 @@ export async function attachAnlzWaveformSummaries(tracks, {
   maxTracks = Infinity,
   binCount = 96,
   rhythmSegmentCount = 64,
-  signatureVersion = 'pwv5-rhythm-v1'
+  kickSegmentCount = 16,
+  signatureVersion = 'pwv5-rhythm-v2'
 } = {}) {
   if (!mappingPath) {
     return { attached: 0, attempted: 0, missingMapping: 0 };
@@ -62,7 +63,8 @@ export async function attachAnlzWaveformSummaries(tracks, {
           summary = extractPwv5SummaryFromAnlz(data, {
             binCount,
             sampleRate: 150,
-            rhythmSegmentCount
+            rhythmSegmentCount,
+            kickSegmentCount
           });
           parsedFromFile += 1;
 
@@ -77,6 +79,7 @@ export async function attachAnlzWaveformSummaries(tracks, {
                 bins: summary.bins,
                 binColors: summary.binColors,
                 rhythmSignature: summary.rhythmSignature,
+                kickSignature: summary.kickSignature,
                 signatureVersion
               });
             } catch {
@@ -103,6 +106,7 @@ export async function attachAnlzWaveformSummaries(tracks, {
         bins: summary.bins,
         binColors: summary.binColors,
         rhythmSignature: summary.rhythmSignature,
+        kickSignature: summary.kickSignature,
         signatureVersion: summary.signatureVersion || signatureVersion
       };
       attached += 1;

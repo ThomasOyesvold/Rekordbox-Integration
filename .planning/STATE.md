@@ -2,7 +2,7 @@
 
 Updated: 2026-02-09
 Phase: 2 of 6 (Analysis Engine) + Phase 4 playback + Phase 5 UI redesign
-Progress: Phase 1 complete, Phase 2 ~60%, Phase 4 audio playback fixed, UI polish in progress
+Progress: Phase 1 complete, Phase 2 ~70%, Phase 4 audio playback fixed, UI polish in progress
 Status: Active development
 
 ## Current Focus
@@ -25,6 +25,9 @@ Status: Active development
 - ✅ **Nested Track Meta Surface**:
   - Track Details now exposes TEMPO + POSITION_MARK counts + previews
   - Added nested tempo/mark summaries (min/max/avg BPM, change counts, mark types)
+- ✅ **Rhythm/Kick Pattern Extraction**:
+  - Added kick-pattern signature derived from ANLZ waveform onset energy
+  - Baseline rhythm scoring now factors kick signature when available
 
 ## Recent Completions (2026-02-08)
 - ✅ **Playback Stability Pass**: Shared audio element + throttled UI updates to reduce stutter
@@ -97,6 +100,7 @@ Status: Active development
 - Track table supports keyboard shortcuts and fast focus workflow.
 - SQLite supports import history + analysis runs + similarity cache.
 - Baseline scoring pipeline is in place (BPM/key + extracted waveform/rhythm proxies).
+- Rhythm scoring now includes kick-pattern signature when ANLZ data is available.
 - Baseline result rows now include plain-language component reasoning.
 - Validation panel supports severity filtering (all/error/warning).
 - **Audio playback working in WSL with comprehensive debugging**.
