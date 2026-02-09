@@ -24,6 +24,7 @@ Status: Active development
   - Memory: RSS 51MB start → 191MB after parse → 268MB after cold → 341MB after warm
 - ✅ **Nested Track Meta Surface**:
   - Track Details now exposes TEMPO + POSITION_MARK counts + previews
+  - Added nested tempo/mark summaries (min/max/avg BPM, change counts, mark types)
 
 ## Recent Completions (2026-02-08)
 - ✅ **Playback Stability Pass**: Shared audio element + throttled UI updates to reduce stutter
@@ -102,7 +103,7 @@ Status: Active development
 - Playback stabilized with single shared audio element + UI update throttle.
 - Similar track cards support seekable waveform previews and playhead needle.
 - Quick Preview shows Now Playing strip (timer + BPM/key) and volume control.
-- Nested TRACK metadata (TEMPO/POSITION_MARK) is parsed and now visible in Track Details.
+- Nested TRACK metadata (TEMPO/POSITION_MARK) is parsed and now visible with summaries.
 
 ## Top Next Tasks
 1. Replace placeholder waveform/rhythm proxies with full Rekordbox waveform data extraction

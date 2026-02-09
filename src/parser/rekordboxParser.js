@@ -213,6 +213,46 @@ function parseCollection(xmlText, issues) {
       tempoMatch = nestedTempoRegex.exec(nestedBody);
     }
 
+    const nestedTempoSummary = (() => {
+      if (!nestedTempoPoints.length) {
+        return null;
+      }
+      const bpmValues = nestedTempoPoints
+        .map((point) => point.bpm)
+        .filter((value) => Number.isFinite(value));
+      const beatValues = nestedTempoPoints
+        .map((point) => point.battito)
+        .filter((value) => Number.isFinite(value));
+      const minBpm = bpmValues.length ? Math.min(...bpmValues) : null;
+      const maxBpm = bpmValues.length ? Math.max(...bpmValues) : null;
+      const avgBpm = bpmValues.length
+        ? bpmValues.reduce((sum, value) => sum + value, 0) / bpmValues.length
+        : null;
+      const avgBeat = beatValues.length
+        ? beatValues.reduce((sum, value) => sum + value, 0) / beatValues.length
+        : null;
+      let tempoChangeCount = 0;
+      for (let i = 1; i < nestedTempoPoints.length; i += 1) {
+        const prev = nestedTempoPoints[i - 1].bpm;
+        const next = nestedTempoPoints[i].bpm;
+        if (Number.isFinite(prev) && Number.isFinite(next) && Math.abs(prev - next) >= 0.1) {
+          tempoChangeCount += 1;
+        }
+      }
+      const distinctBpm = bpmValues.length
+        ? new Set(bpmValues.map((value) => Math.round(value * 10) / 10)).size
+        : 0;
+      return {
+        count: nestedTempoPoints.length,
+        minBpm,
+        maxBpm,
+        avgBpm,
+        avgBeat,
+        tempoChangeCount,
+        distinctBpm
+      };
+    })();
+
     const nestedPositionMarks = [];
     const nestedPositionRegex = /<POSITION_MARK\b([^>]*?)\/?>/gi;
     let positionMatch = nestedPositionRegex.exec(nestedBody);
@@ -232,6 +272,26 @@ function parseCollection(xmlText, issues) {
       positionMatch = nestedPositionRegex.exec(nestedBody);
     }
 
+    const nestedPositionSummary = (() => {
+      if (!nestedPositionMarks.length) {
+        return null;
+      }
+      const types = {};
+      let coloredCount = 0;
+      for (const mark of nestedPositionMarks) {
+        const typeKey = (mark.type || 'Unknown').toString();
+        types[typeKey] = (types[typeKey] || 0) + 1;
+        if (Number.isFinite(mark.color?.red) || Number.isFinite(mark.color?.green) || Number.isFinite(mark.color?.blue)) {
+          coloredCount += 1;
+        }
+      }
+      return {
+        count: nestedPositionMarks.length,
+        types,
+        coloredCount
+      };
+    })();
+
     tracks.push({
       id,
       trackId: attributes.TrackID || null,
@@ -245,7 +305,9 @@ function parseCollection(xmlText, issues) {
       bitrate: parseNumber(attributes.BitRate),
       location,
       nestedTempoPoints,
-      nestedPositionMarks
+      nestedTempoSummary,
+      nestedPositionMarks,
+      nestedPositionSummary
     });
 
     match = trackRegex.exec(collectionBody);

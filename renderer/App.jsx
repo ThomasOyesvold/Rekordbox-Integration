@@ -2971,6 +2971,25 @@ export function App() {
                   <span>Tempo Points: {selectedTrack.nestedTempoPoints?.length || 0}</span>
                   <span>Position Marks: {selectedTrack.nestedPositionMarks?.length || 0}</span>
                 </div>
+                {selectedTrack.nestedTempoSummary ? (
+                  <div className="meta" style={{ marginTop: '6px' }}>
+                    <span>Min BPM: {selectedTrack.nestedTempoSummary.minBpm?.toFixed?.(1) ?? '-'}</span>
+                    <span>Max BPM: {selectedTrack.nestedTempoSummary.maxBpm?.toFixed?.(1) ?? '-'}</span>
+                    <span>Avg BPM: {selectedTrack.nestedTempoSummary.avgBpm?.toFixed?.(1) ?? '-'}</span>
+                    <span>Distinct BPM: {selectedTrack.nestedTempoSummary.distinctBpm ?? 0}</span>
+                    <span>Tempo Changes: {selectedTrack.nestedTempoSummary.tempoChangeCount ?? 0}</span>
+                  </div>
+                ) : null}
+                {selectedTrack.nestedPositionSummary ? (
+                  <div className="meta" style={{ marginTop: '6px' }}>
+                    <span>Colored Marks: {selectedTrack.nestedPositionSummary.coloredCount ?? 0}</span>
+                    <span>
+                      Mark Types: {Object.entries(selectedTrack.nestedPositionSummary.types || {})
+                        .map(([key, value]) => `${key}:${value}`)
+                        .join(' ') || '-'}
+                    </span>
+                  </div>
+                ) : null}
                 {selectedTrack.nestedTempoPoints?.length ? (
                   <div style={{ marginTop: '6px' }}>
                     <strong>Tempo (preview):</strong>{' '}
