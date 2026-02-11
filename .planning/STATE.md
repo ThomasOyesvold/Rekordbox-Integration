@@ -20,6 +20,8 @@ Status: Active development
 - ✅ **Proxy Removal + Test Pass**:
   - Waveform/rhythm proxies removed; ANLZ/nested data now required for non-neutral scores
   - `npm test` green (13/13) on 2026-02-11
+- ✅ **Phase 3 Planning**:
+  - Created `03-playlist-generation` plan set (03-01..03-04)
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
@@ -132,12 +134,13 @@ Status: Active development
 - Nested TRACK metadata (TEMPO/POSITION_MARK) is parsed and now visible with summaries.
 
 ## Top Next Tasks
-1. Run long-run stress tests for 12K+ libraries (Phase 2 safeguards validation)
-2. Parse specific nested TRACK metadata blocks (e.g., hot cues/loops) if present in newer exports
-3. UI redesign Phase 05-05 final polish + QA pass for Track Details + Quick Preview
-4. Add folder-level analysis summary cards (selected folder mix profile)
-5. Add integration test around keyboard shortcuts and severity filters
-6. Surface nested-metadata warnings with actionable remediation text in UI
+1. Phase 3: implement 03-01 playlist generation foundations
+2. Run long-run stress tests for 12K+ libraries (Phase 2 safeguards validation)
+3. Parse specific nested TRACK metadata blocks (e.g., hot cues/loops) if present in newer exports
+4. UI redesign Phase 05-05 final polish + QA pass for Track Details + Quick Preview
+5. Add folder-level analysis summary cards (selected folder mix profile)
+6. Add integration test around keyboard shortcuts and severity filters
+7. Surface nested-metadata warnings with actionable remediation text in UI
 
 ## Known Risks
 - Real-world Rekordbox XML variability still under-covered by fixtures.
