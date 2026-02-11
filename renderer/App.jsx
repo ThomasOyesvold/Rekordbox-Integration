@@ -470,10 +470,16 @@ function ClusterDetails({
         <span>Tracks: {cluster.size}</span>
         <span>Avg Score: {cluster.avgScore.toFixed(3)}</span>
         <span>Confidence: {(cluster.confidence ?? 0).toFixed(3)}</span>
+        <span>Label: {cluster.confidenceLabel || 'mixed'}</span>
         <span>Ordered: {cluster.ordered ? 'Yes' : 'No'}</span>
         {cluster.summary?.bpm?.min !== null && cluster.summary?.bpm?.max !== null ? (
           <span>
             BPM Range: {cluster.summary.bpm.min.toFixed(1)}–{cluster.summary.bpm.max.toFixed(1)}
+          </span>
+        ) : null}
+        {cluster.warnings?.length ? (
+          <span style={{ color: '#f97316' }}>
+            {cluster.warnings.join(' · ')}
           </span>
         ) : null}
         <span>

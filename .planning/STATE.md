@@ -27,6 +27,11 @@ Status: Active development
   - Cluster summaries + reasons (BPM range, key focus, data coverage)
 - ✅ **Test Pass**:
   - `npm test` green (13/13) on 2026-02-11
+- ✅ **Playlist Flow Ordering + Confidence v2 (03-02)**:
+  - Confidence model now accounts for minScore and variance penalty
+  - Clusters now include labels + warnings for weak coverage/outliers
+- ✅ **Test Pass**:
+  - `npm test` green (13/13) on 2026-02-11
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
@@ -139,7 +144,7 @@ Status: Active development
 - Nested TRACK metadata (TEMPO/POSITION_MARK) is parsed and now visible with summaries.
 
 ## Top Next Tasks
-1. Phase 3: implement 03-02 flow ordering + confidence model
+1. Phase 3: implement 03-03 playlist suggestion UI enhancements
 2. Run long-run stress tests for 12K+ libraries (Phase 2 safeguards validation)
 3. Parse specific nested TRACK metadata blocks (e.g., hot cues/loops) if present in newer exports
 4. UI redesign Phase 05-05 final polish + QA pass for Track Details + Quick Preview

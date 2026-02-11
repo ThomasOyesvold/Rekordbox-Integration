@@ -155,8 +155,38 @@ function computeClusterConfidence(cluster) {
     : 0;
   const densityScore = clamp(density);
   const avgScore = clamp(cluster.avgScore || 0);
+  const minScore = clamp(cluster.minScore || 0);
+  const variancePenalty = Math.max(0, (avgScore - minScore) * 0.6);
 
-  return clamp((avgScore * 0.55) + (densityScore * 0.25) + (sizeScore * 0.2));
+  const base = (avgScore * 0.5) + (densityScore * 0.2) + (sizeScore * 0.2) + (minScore * 0.1);
+  return clamp(base - variancePenalty);
+}
+
+function buildClusterLabel(confidence) {
+  if (confidence >= 0.85) {
+    return 'strong';
+  }
+  if (confidence >= 0.7) {
+    return 'good';
+  }
+  if (confidence >= 0.55) {
+    return 'mixed';
+  }
+  return 'weak';
+}
+
+function buildClusterWarnings(cluster) {
+  const warnings = [];
+  if ((cluster.minScore ?? 1) < 0.55) {
+    warnings.push('Contains low-score outliers');
+  }
+  if ((cluster.summary?.coverage?.waveform?.count || 0) < (cluster.size || 0) * 0.4) {
+    warnings.push('Limited waveform coverage');
+  }
+  if ((cluster.summary?.coverage?.rhythm?.count || 0) < (cluster.size || 0) * 0.4) {
+    warnings.push('Limited rhythm coverage');
+  }
+  return warnings;
 }
 
 function getSimilarityScore(trackA, trackB, algorithmVersion, runId, cacheStats) {
@@ -374,6 +404,8 @@ export function generatePlaylistClusters({
 
     for (const cluster of clusters) {
       cluster.confidence = computeClusterConfidence(cluster);
+      cluster.confidenceLabel = buildClusterLabel(cluster.confidence);
+      cluster.warnings = buildClusterWarnings(cluster);
     }
 
     clusters.sort((a, b) => {

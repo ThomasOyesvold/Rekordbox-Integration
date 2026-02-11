@@ -34,6 +34,8 @@ test('playlist clustering groups similar tracks', async () => {
   assert.ok(first.confidence >= 0 && first.confidence <= 1);
   assert.ok(first.summary);
   assert.ok(Array.isArray(first.reasons));
+  assert.ok(typeof first.confidenceLabel === 'string');
+  assert.ok(Array.isArray(first.warnings));
 
   closeDatabase();
   await fs.rm(tempDir, { recursive: true, force: true });
