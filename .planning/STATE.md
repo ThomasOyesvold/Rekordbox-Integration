@@ -28,6 +28,8 @@ Status: Active development
 - ✅ **Rhythm/Kick Pattern Extraction**:
   - Added kick-pattern signature derived from ANLZ waveform onset energy
   - Baseline rhythm scoring now factors kick signature when available
+- ✅ **Test Pass**:
+  - `npm test` green (13/13) on 2026-02-11
 
 ## Recent Completions (2026-02-08)
 - ✅ **Playback Stability Pass**: Shared audio element + throttled UI updates to reduce stutter
