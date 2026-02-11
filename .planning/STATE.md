@@ -22,6 +22,10 @@ Status: Active development
   - `scripts/phase2Stress.js` with `maxPairs=2000`, `yieldEvery=1000`, `topLimit=50` on `rekordbox_backup.xml`
   - Parse 0.553s; Cold 46.704s; Warm 117.001s
   - Memory: RSS 51MB start → 191MB after parse → 268MB after cold → 341MB after warm
+- ✅ **Phase 2 Stress Pass (Long-Run Attempt)**:
+  - `scripts/phase2Stress.js` with `maxPairs=20000`, `yieldEvery=2000`, `topLimit=50` on `rekordbox_backup.xml`
+  - Timed out at 300s after reaching 18,000 pairs (90% of target)
+  - Memory snapshots: RSS ~51MB start → ~200MB after parse → ~277MB at 2k pairs → ~185MB around 8k–18k
 - ✅ **Nested Track Meta Surface**:
   - Track Details now exposes TEMPO + POSITION_MARK counts + previews
   - Added nested tempo/mark summaries (min/max/avg BPM, change counts, mark types)
