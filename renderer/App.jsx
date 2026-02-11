@@ -748,6 +748,7 @@ export function App() {
   const [clusterMinSize, setClusterMinSize] = useState(3);
   const [clusterMaxPairs, setClusterMaxPairs] = useState(15000);
   const [clusterStrictMode, setClusterStrictMode] = useState(true);
+  const [clusterPreset, setClusterPreset] = useState('balanced');
   const [isParsing, setIsParsing] = useState(false);
   const [usbAnlzPath, setUsbAnlzPath] = useState('');
   const [anlzBuildSummary, setAnlzBuildSummary] = useState(null);
@@ -1390,6 +1391,7 @@ export function App() {
         minClusterSize: Number(clusterMinSize),
         maxPairs: Number(clusterMaxPairs),
         strictMode: clusterStrictMode,
+        preset: clusterPreset,
         folderGroups
       });
       setPlaylistSuggestions(result);
@@ -1400,6 +1402,26 @@ export function App() {
       setError(clusterError.message || String(clusterError));
     } finally {
       setIsClustering(false);
+    }
+  };
+
+  const applyClusterPreset = (preset) => {
+    setClusterPreset(preset);
+    if (preset === 'conservative') {
+      setClusterThreshold(0.86);
+      setClusterMinSize(4);
+      setClusterMaxPairs(12000);
+      setClusterStrictMode(true);
+    } else if (preset === 'exploratory') {
+      setClusterThreshold(0.75);
+      setClusterMinSize(2);
+      setClusterMaxPairs(25000);
+      setClusterStrictMode(false);
+    } else {
+      setClusterThreshold(0.82);
+      setClusterMinSize(3);
+      setClusterMaxPairs(15000);
+      setClusterStrictMode(true);
     }
   };
 
@@ -3340,6 +3362,21 @@ export function App() {
           </button>
         </div>
         <div className="meta">
+          {playlistSuggestions?.result?.preset ? (
+            <span>Preset: {playlistSuggestions.result.preset}</span>
+          ) : null}
+          <label>
+            Preset
+            <select
+              value={clusterPreset}
+              onChange={(event) => applyClusterPreset(event.target.value)}
+              style={{ marginLeft: '6px' }}
+            >
+              <option value="conservative">Conservative</option>
+              <option value="balanced">Balanced</option>
+              <option value="exploratory">Exploratory</option>
+            </select>
+          </label>
           <label>
             Threshold
             <input

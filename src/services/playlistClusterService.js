@@ -279,15 +279,26 @@ export function generatePlaylistClusters({
   maxPairs = 15000,
   minClusterSize = 3,
   maxClusters = 25,
-  optimizeFlow = true
+  optimizeFlow = true,
+  preset = 'balanced'
 } = {}) {
   const safeTracks = Array.isArray(tracks) ? tracks : [];
   const trackIndexById = new Map(safeTracks.map((track, index) => [String(track.id), index]));
   const trackById = new Map(safeTracks.map((track) => [String(track.id), track]));
-  const baseThreshold = Math.max(0, Math.min(1, toNumber(similarityThreshold, 0.82)));
-  const threshold = strictMode ? clamp(baseThreshold + 0.03, 0, 0.98) : baseThreshold;
-  const pairLimit = Number.isFinite(maxPairs) ? Math.max(0, Math.floor(maxPairs)) : Infinity;
-  const minSize = Math.max(2, Math.floor(toNumber(minClusterSize, 3)));
+  const presetName = String(preset || 'balanced');
+  const presetConfig = presetName === 'conservative'
+    ? { threshold: 0.86, minSize: 4, maxPairs: 12000, strictMode: true }
+    : presetName === 'exploratory'
+      ? { threshold: 0.75, minSize: 2, maxPairs: 25000, strictMode: false }
+      : { threshold: 0.82, minSize: 3, maxPairs: 15000, strictMode: true };
+
+  const baseThreshold = Math.max(0, Math.min(1, toNumber(similarityThreshold, presetConfig.threshold)));
+  const strictValue = typeof strictMode === 'boolean' ? strictMode : presetConfig.strictMode;
+  const threshold = strictValue ? clamp(baseThreshold + 0.03, 0, 0.98) : baseThreshold;
+  const pairLimit = Number.isFinite(maxPairs)
+    ? Math.max(0, Math.floor(maxPairs))
+    : Math.max(0, Math.floor(presetConfig.maxPairs));
+  const minSize = Math.max(2, Math.floor(toNumber(minClusterSize, presetConfig.minSize)));
   const clusterLimit = Number.isFinite(maxClusters) ? Math.max(1, Math.floor(maxClusters)) : Infinity;
 
   upsertTrackSignatures(safeTracks);
@@ -441,6 +452,7 @@ export function generatePlaylistClusters({
       pairCount,
       cacheHits,
       computed,
+      preset: presetName,
       similarityThreshold: threshold,
       minClusterSize: minSize,
       clusters: limitedClusters

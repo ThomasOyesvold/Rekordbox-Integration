@@ -37,6 +37,11 @@ Status: Active development
   - Added quick Sample actions in cluster list rows
 - ✅ **Test Pass**:
   - `npm test` green (13/13) on 2026-02-11
+- ✅ **Conservative Clustering Presets (03-04)**:
+  - Added Conservative/Balanced/Exploratory presets (threshold/min size/max pairs/strict)
+  - Preset value returned in clustering results and shown in UI
+- ✅ **Test Pass**:
+  - `npm test` green (13/13) on 2026-02-11
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
@@ -149,7 +154,7 @@ Status: Active development
 - Nested TRACK metadata (TEMPO/POSITION_MARK) is parsed and now visible with summaries.
 
 ## Top Next Tasks
-1. Phase 3: implement 03-04 conservative clustering + tuning presets
+1. Phase 3: validate clustering presets on real library + tune thresholds
 2. Run long-run stress tests for 12K+ libraries (Phase 2 safeguards validation)
 3. Parse specific nested TRACK metadata blocks (e.g., hot cues/loops) if present in newer exports
 4. UI redesign Phase 05-05 final polish + QA pass for Track Details + Quick Preview

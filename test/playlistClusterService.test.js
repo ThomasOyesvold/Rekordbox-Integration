@@ -23,7 +23,8 @@ test('playlist clustering groups similar tracks', async () => {
     similarityThreshold: 0.75,
     strictMode: false,
     minClusterSize: 3,
-    maxPairs: 100
+    maxPairs: 100,
+    preset: 'exploratory'
   });
 
   assert.ok(result.clusters.length >= 1);
