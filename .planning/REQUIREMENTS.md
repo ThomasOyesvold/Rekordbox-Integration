@@ -23,7 +23,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **ANLY-03**: Read waveform RGB data from Rekordbox XML ✅
 - [x] **ANLY-04**: Implement BPM similarity analyzer (compatible BPM ranges for mixing) ✅
 - [x] **ANLY-05**: Implement key compatibility analyzer (Camelot Wheel harmonic mixing) ✅
-- [x] **ANLY-06**: Implement waveform pattern analyzer (energy curves, structure similarity) ✅
+- [x] **ANLY-06**: Implement waveform pattern analyzer (energy curves, structure similarity) ✅ (ANLZ PWV5 bins/colors)
 - [x] **ANLY-07**: Implement rhythm pattern analyzer (kick patterns, rhythmic structure) ✅
 - [ ] **ANLY-08**: Multi-factor flow analysis combines all analyzers with equal weighting
 - [x] **ANLY-09**: Cache similarity scores in SQLite to avoid reprocessing ✅

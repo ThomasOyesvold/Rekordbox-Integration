@@ -17,6 +17,9 @@ Status: Active development
   - Track Details surfaces the tag list for inspection
 - ✅ **Test Pass**:
   - `npm test` green (13/13) on 2026-02-11
+- ✅ **Proxy Removal + Test Pass**:
+  - Waveform/rhythm proxies removed; ANLZ/nested data now required for non-neutral scores
+  - `npm test` green (13/13) on 2026-02-11
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
@@ -39,6 +42,9 @@ Status: Active development
 - ✅ **Rhythm/Kick Pattern Extraction**:
   - Added kick-pattern signature derived from ANLZ waveform onset energy
   - Baseline rhythm scoring now factors kick signature when available
+- ✅ **Waveform/Rhythm Proxy Removal**:
+  - Waveform similarity now falls back to neutral (0.5) when ANLZ/nested marks are missing
+  - Rhythm similarity now requires nested tempo/kick/rhythm signatures; otherwise neutral
   - `npm test` green (13/13) on 2026-02-11
 
 ## Recent Completions (2026-02-08)
@@ -111,7 +117,7 @@ Status: Active development
 - Track table supports filter, sort, selection, and details.
 - Track table supports keyboard shortcuts and fast focus workflow.
 - SQLite supports import history + analysis runs + similarity cache.
-- Baseline scoring pipeline is in place (BPM/key + extracted waveform/rhythm proxies).
+- Baseline scoring pipeline is in place (BPM/key + ANLZ waveform/rhythm signatures).
 - Rhythm scoring now includes kick-pattern signature when ANLZ data is available.
 - Baseline result rows now include plain-language component reasoning.
 - Validation panel supports severity filtering (all/error/warning).
@@ -122,13 +128,12 @@ Status: Active development
 - Nested TRACK metadata (TEMPO/POSITION_MARK) is parsed and now visible with summaries.
 
 ## Top Next Tasks
-1. Replace placeholder waveform/rhythm proxies with full Rekordbox waveform data extraction
-2. Run long-run stress tests for 12K+ libraries (Phase 2 safeguards validation)
-3. Parse specific nested TRACK metadata blocks (e.g., hot cues/loops) if present in newer exports
-4. UI redesign Phase 05-05 final polish + QA pass for Track Details + Quick Preview
-5. Add folder-level analysis summary cards (selected folder mix profile)
-6. Add integration test around keyboard shortcuts and severity filters
-7. Surface nested-metadata warnings with actionable remediation text in UI
+1. Run long-run stress tests for 12K+ libraries (Phase 2 safeguards validation)
+2. Parse specific nested TRACK metadata blocks (e.g., hot cues/loops) if present in newer exports
+3. UI redesign Phase 05-05 final polish + QA pass for Track Details + Quick Preview
+4. Add folder-level analysis summary cards (selected folder mix profile)
+5. Add integration test around keyboard shortcuts and severity filters
+6. Surface nested-metadata warnings with actionable remediation text in UI
 
 ## Known Risks
 - Real-world Rekordbox XML variability still under-covered by fixtures.

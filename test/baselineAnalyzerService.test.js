@@ -18,9 +18,54 @@ import {
 } from '../src/services/baselineAnalyzerService.js';
 
 const SAMPLE_TRACKS = [
-  { id: '1', artist: 'A', title: 'One', bpm: 126, key: '8A', durationSeconds: 320, genre: 'Techno' },
-  { id: '2', artist: 'B', title: 'Two', bpm: 127, key: '8A', durationSeconds: 310, genre: 'Techno' },
-  { id: '3', artist: 'C', title: 'Three', bpm: 132, key: '11B', durationSeconds: 330, genre: 'House' }
+  {
+    id: '1',
+    artist: 'A',
+    title: 'One',
+    bpm: 126,
+    key: '8A',
+    durationSeconds: 320,
+    genre: 'Techno',
+    anlzWaveform: {
+      bins: [2, 4, 6, 8, 6, 4, 2],
+      avgColor: { red: 20, green: 40, blue: 200 },
+      durationSeconds: 320,
+      rhythmSignature: [0.2, 0.1, 0.35, 0.15, 0.2],
+      kickSignature: [0.3, 0.1, 0.4, 0.2]
+    }
+  },
+  {
+    id: '2',
+    artist: 'B',
+    title: 'Two',
+    bpm: 127,
+    key: '8A',
+    durationSeconds: 310,
+    genre: 'Techno',
+    anlzWaveform: {
+      bins: [2, 5, 6, 7, 6, 5, 2],
+      avgColor: { red: 21, green: 41, blue: 198 },
+      durationSeconds: 310,
+      rhythmSignature: [0.21, 0.11, 0.34, 0.14, 0.2],
+      kickSignature: [0.31, 0.09, 0.39, 0.21]
+    }
+  },
+  {
+    id: '3',
+    artist: 'C',
+    title: 'Three',
+    bpm: 132,
+    key: '11B',
+    durationSeconds: 330,
+    genre: 'House',
+    anlzWaveform: {
+      bins: [10, 9, 7, 5, 6, 8, 9],
+      avgColor: { red: 200, green: 80, blue: 40 },
+      durationSeconds: 330,
+      rhythmSignature: [0.05, 0.45, 0.1, 0.3, 0.1],
+      kickSignature: [0.05, 0.5, 0.1, 0.35]
+    }
+  }
 ];
 
 const NESTED_TRACKS = [

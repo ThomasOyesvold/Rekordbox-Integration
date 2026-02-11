@@ -398,31 +398,12 @@ export function computeWaveformScore(trackA, trackB) {
     return anlzScore;
   }
 
-  const durationA = asNumber(trackA.durationSeconds);
-  const durationB = asNumber(trackB.durationSeconds);
-  const bitrateA = asNumber(trackA.bitrate);
-  const bitrateB = asNumber(trackB.bitrate);
-  const beatsPerSecondA = asNumber(trackA.bpm) === null ? null : asNumber(trackA.bpm) / 60;
-  const beatsPerSecondB = asNumber(trackB.bpm) === null ? null : asNumber(trackB.bpm) / 60;
-  const tokenScore = jaccardScore(toTokenSet(trackA), toTokenSet(trackB));
-
-  const durationScore = durationA === null || durationB === null
-    ? 0.5
-    : distanceToScore(durationA - durationB, 45);
-  const bitrateScore = bitrateA === null || bitrateB === null
-    ? 0.5
-    : distanceToScore(bitrateA - bitrateB, 96);
-  const energyScore = beatsPerSecondA === null || beatsPerSecondB === null
-    ? 0.5
-    : distanceToScore(beatsPerSecondA - beatsPerSecondB, 0.35);
-
-  const baseScore = clamp((durationScore * 0.35) + (bitrateScore * 0.2) + (energyScore * 0.2) + (tokenScore * 0.25));
   const nestedScore = compareNestedWaveformMarks(trackA, trackB);
   if (nestedScore === null) {
-    return baseScore;
+    return 0.5;
   }
 
-  return clamp((baseScore * 0.55) + (nestedScore * 0.45));
+  return nestedScore;
 }
 
 function computePhraseAlignmentScore(trackA, trackB) {
@@ -446,11 +427,14 @@ function computePhraseAlignmentScore(trackA, trackB) {
 export function computeRhythmScore(trackA, trackB) {
   const bpmScore = computeBpmScore(trackA.bpm, trackB.bpm);
   const phraseScore = computePhraseAlignmentScore(trackA, trackB);
-  const tokenScore = jaccardScore(toTokenSet(trackA), toTokenSet(trackB));
-  const baseScore = clamp((bpmScore * 0.55) + (phraseScore * 0.3) + (tokenScore * 0.15));
+  const baseScore = clamp((bpmScore * 0.6) + (phraseScore * 0.4));
   const nestedTempoScore = compareNestedTempoMaps(trackA, trackB);
   const rhythmSignatureScore = compareRhythmSignatures(trackA, trackB);
   const kickScore = compareKickPatterns(trackA, trackB);
+
+  if (nestedTempoScore === null && rhythmSignatureScore === null && kickScore === null) {
+    return 0.5;
+  }
 
   if (nestedTempoScore !== null && rhythmSignatureScore !== null && kickScore !== null) {
     return clamp((baseScore * 0.2) + (nestedTempoScore * 0.25) + (rhythmSignatureScore * 0.3) + (kickScore * 0.25));
