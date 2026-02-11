@@ -3418,18 +3418,19 @@ export function App() {
                         {clusters.length ? (
                           <table className="track-table" style={{ marginTop: '10px' }}>
                             <thead>
-                              <tr>
-                                <th>Cluster</th>
-                                <th>Tracks</th>
-                                <th>Avg Score</th>
-                                <th>Confidence</th>
-                                <th>Ordered</th>
-                                <th>Status</th>
-                                <th>Top Tracks</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                                {clusters.map((cluster, index) => {
+                                    <tr>
+                                        <th>Cluster</th>
+                                        <th>Tracks</th>
+                                        <th>BPM Range</th>
+                                        <th>Key Focus</th>
+                                        <th>Avg Score</th>
+                                        <th>Confidence</th>
+                                        <th>Status</th>
+                                        <th>Top Tracks</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                              {clusters.map((cluster, index) => {
                                   const preview = cluster.trackIds.slice(0, 5).map((trackId) => {
                                     const track = trackIndexById.get(String(trackId));
                                     return track ? `${track.artist || ''} ${track.title || ''}`.trim() : trackId;
@@ -3445,9 +3446,16 @@ export function App() {
                                     <tr>
                                       <td>#{index + 1}</td>
                                       <td>{cluster.size}</td>
+                                      <td>
+                                        {cluster.summary?.bpm?.min !== null && cluster.summary?.bpm?.max !== null
+                                          ? `${cluster.summary.bpm.min.toFixed(1)}–${cluster.summary.bpm.max.toFixed(1)}`
+                                          : '-'}
+                                      </td>
+                                      <td>{cluster.summary?.key?.top?.key || '-'}</td>
                                       <td>{cluster.avgScore.toFixed(3)}</td>
-                                      <td>{(cluster.confidence ?? 0).toFixed(3)}</td>
-                                      <td>{cluster.ordered ? 'Yes' : 'No'}</td>
+                                      <td>
+                                        {(cluster.confidence ?? 0).toFixed(3)} {cluster.confidenceLabel ? `(${cluster.confidenceLabel})` : ''}
+                                      </td>
                                       <td>
                                         <div className={`status-pill status-${decision.status}`}>
                                           {decision.status}
@@ -3485,20 +3493,29 @@ export function App() {
                                         />
                                       </td>
                                       <td>
-                                        <button
-                                          type="button"
-                                          className="secondary"
-                                          onClick={() => setExpandedClusterKey(isExpanded ? null : clusterKey)}
-                                          style={{ marginRight: '8px' }}
-                                        >
-                                          {isExpanded ? 'Hide' : 'View'}
-                                        </button>
-                                        {preview.join(', ') || '-'}
+                                          <button
+                                            type="button"
+                                            className="secondary"
+                                            onClick={() => setExpandedClusterKey(isExpanded ? null : clusterKey)}
+                                            style={{ marginRight: '8px' }}
+                                          >
+                                            {isExpanded ? 'Hide' : 'View'}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="secondary"
+                                            onClick={() => startSampling(cluster, clusterKey)}
+                                            disabled={samplingState?.active}
+                                            style={{ marginRight: '8px' }}
+                                          >
+                                            Sample
+                                          </button>
+                                          {preview.join(', ') || '-'}
                                       </td>
                                     </tr>
                                     {isExpanded ? (
                                       <tr>
-                                        <td colSpan={7}>
+                                      <td colSpan={8}>
                                             <ClusterDetails
                                               cluster={cluster}
                                               trackIndexById={trackIndexById}
@@ -3548,9 +3565,10 @@ export function App() {
                       <tr>
                         <th>Cluster</th>
                         <th>Tracks</th>
+                        <th>BPM Range</th>
+                        <th>Key Focus</th>
                         <th>Avg Score</th>
                         <th>Confidence</th>
-                        <th>Ordered</th>
                         <th>Status</th>
                         <th>Top Tracks</th>
                       </tr>
@@ -3572,9 +3590,16 @@ export function App() {
                           <tr>
                             <td>#{index + 1}</td>
                             <td>{cluster.size}</td>
+                            <td>
+                              {cluster.summary?.bpm?.min !== null && cluster.summary?.bpm?.max !== null
+                                ? `${cluster.summary.bpm.min.toFixed(1)}–${cluster.summary.bpm.max.toFixed(1)}`
+                                : '-'}
+                            </td>
+                            <td>{cluster.summary?.key?.top?.key || '-'}</td>
                             <td>{cluster.avgScore.toFixed(3)}</td>
-                            <td>{(cluster.confidence ?? 0).toFixed(3)}</td>
-                            <td>{cluster.ordered ? 'Yes' : 'No'}</td>
+                            <td>
+                              {(cluster.confidence ?? 0).toFixed(3)} {cluster.confidenceLabel ? `(${cluster.confidenceLabel})` : ''}
+                            </td>
                             <td>
                               <div className={`status-pill status-${decision.status}`}>
                                 {decision.status}
@@ -3620,12 +3645,21 @@ export function App() {
                               >
                                 {isExpanded ? 'Hide' : 'View'}
                               </button>
+                              <button
+                                type="button"
+                                className="secondary"
+                                onClick={() => startSampling(cluster, clusterKey)}
+                                disabled={samplingState?.active}
+                                style={{ marginRight: '8px' }}
+                              >
+                                Sample
+                              </button>
                               {preview.join(', ') || '-'}
                             </td>
                           </tr>
                           {isExpanded ? (
                             <tr>
-                              <td colSpan={7}>
+                              <td colSpan={8}>
                                 <ClusterDetails
                                   cluster={cluster}
                                   trackIndexById={trackIndexById}
