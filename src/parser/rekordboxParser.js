@@ -292,6 +292,31 @@ function parseCollection(xmlText, issues) {
       };
     })();
 
+    const nestedTagSummary = (() => {
+      if (!nestedBody) {
+        return null;
+      }
+      const tagRegex = /<([A-Z0-9_:-]+)\b/gi;
+      const counts = {};
+      let total = 0;
+      let tagMatch = tagRegex.exec(nestedBody);
+      while (tagMatch) {
+        const tag = tagMatch[1].toUpperCase();
+        if (tag !== 'TEMPO' && tag !== 'POSITION_MARK') {
+          counts[tag] = (counts[tag] || 0) + 1;
+          total += 1;
+        }
+        tagMatch = tagRegex.exec(nestedBody);
+      }
+      if (!total) {
+        return null;
+      }
+      return {
+        total,
+        tags: counts
+      };
+    })();
+
     tracks.push({
       id,
       trackId: attributes.TrackID || null,
@@ -307,7 +332,8 @@ function parseCollection(xmlText, issues) {
       nestedTempoPoints,
       nestedTempoSummary,
       nestedPositionMarks,
-      nestedPositionSummary
+      nestedPositionSummary,
+      nestedTagSummary
     });
 
     match = trackRegex.exec(collectionBody);

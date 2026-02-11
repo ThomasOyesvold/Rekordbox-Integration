@@ -2990,6 +2990,16 @@ export function App() {
                     </span>
                   </div>
                 ) : null}
+                {selectedTrack.nestedTagSummary ? (
+                  <div className="meta" style={{ marginTop: '6px' }}>
+                    <span>Other Nested Tags: {selectedTrack.nestedTagSummary.total}</span>
+                    <span>
+                      Tags: {Object.entries(selectedTrack.nestedTagSummary.tags || {})
+                        .map(([key, value]) => `${key}:${value}`)
+                        .join(' ') || '-'}
+                    </span>
+                  </div>
+                ) : null}
                 {selectedTrack.nestedTempoPoints?.length ? (
                   <div style={{ marginTop: '6px' }}>
                     <strong>Tempo (preview):</strong>{' '}

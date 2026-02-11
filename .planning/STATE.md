@@ -1,6 +1,6 @@
 # Project State
 
-Updated: 2026-02-09
+Updated: 2026-02-11
 Phase: 2 of 6 (Analysis Engine) + Phase 4 playback + Phase 5 UI redesign
 Progress: Phase 1 complete, Phase 2 ~70%, Phase 4 audio playback fixed, UI polish in progress
 Status: Active development
@@ -10,6 +10,13 @@ Status: Active development
 - Phase 4: Audio playback stability (single shared audio element, UI throttle)
 - Phase 5: UI redesign polish (Track Details + Similar list)
 - Production packaging roadmap defined (Phase 7-8)
+
+## Recent Completions (2026-02-11)
+- ✅ **Nested Tag Discovery**:
+  - Parser now captures counts of additional nested tags beyond TEMPO/POSITION_MARK
+  - Track Details surfaces the tag list for inspection
+- ✅ **Test Pass**:
+  - `npm test` green (13/13) on 2026-02-11
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
@@ -32,7 +39,6 @@ Status: Active development
 - ✅ **Rhythm/Kick Pattern Extraction**:
   - Added kick-pattern signature derived from ANLZ waveform onset energy
   - Baseline rhythm scoring now factors kick signature when available
-- ✅ **Test Pass**:
   - `npm test` green (13/13) on 2026-02-11
 
 ## Recent Completions (2026-02-08)
@@ -118,7 +124,7 @@ Status: Active development
 ## Top Next Tasks
 1. Replace placeholder waveform/rhythm proxies with full Rekordbox waveform data extraction
 2. Run long-run stress tests for 12K+ libraries (Phase 2 safeguards validation)
-3. Parse selected nested TRACK metadata blocks (additional tags beyond TEMPO/POSITION_MARK)
+3. Parse specific nested TRACK metadata blocks (e.g., hot cues/loops) if present in newer exports
 4. UI redesign Phase 05-05 final polish + QA pass for Track Details + Quick Preview
 5. Add folder-level analysis summary cards (selected folder mix profile)
 6. Add integration test around keyboard shortcuts and severity filters

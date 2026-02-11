@@ -84,6 +84,8 @@ test('parseRekordboxXml parses nested track metadata blocks', async () => {
   assert.equal(library.tracks[0].nestedTempoPoints[0].bpm, 126);
   assert.equal(library.tracks[0].nestedPositionMarks.length, 1);
   assert.equal(library.tracks[0].nestedPositionMarks[0].name, 'Cue');
+  assert.equal(library.tracks[0].nestedTagSummary.total, 1);
+  assert.equal(library.tracks[0].nestedTagSummary.tags.CUE, 1);
 });
 
 test('parseRekordboxXml reports playlist node structure warnings', () => {
