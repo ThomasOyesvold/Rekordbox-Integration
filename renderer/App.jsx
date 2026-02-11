@@ -471,6 +471,11 @@ function ClusterDetails({
         <span>Avg Score: {cluster.avgScore.toFixed(3)}</span>
         <span>Confidence: {(cluster.confidence ?? 0).toFixed(3)}</span>
         <span>Ordered: {cluster.ordered ? 'Yes' : 'No'}</span>
+        {cluster.summary?.bpm?.min !== null && cluster.summary?.bpm?.max !== null ? (
+          <span>
+            BPM Range: {cluster.summary.bpm.min.toFixed(1)}–{cluster.summary.bpm.max.toFixed(1)}
+          </span>
+        ) : null}
         <span>
           Sample
           <input

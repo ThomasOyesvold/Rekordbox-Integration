@@ -22,6 +22,11 @@ Status: Active development
   - `npm test` green (13/13) on 2026-02-11
 - ✅ **Phase 3 Planning**:
   - Created `03-playlist-generation` plan set (03-01..03-04)
+- ✅ **Playlist Generation Foundations (03-01)**:
+  - Deterministic ordering with BPM/key adjacency tie-breaks
+  - Cluster summaries + reasons (BPM range, key focus, data coverage)
+- ✅ **Test Pass**:
+  - `npm test` green (13/13) on 2026-02-11
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
@@ -134,7 +139,7 @@ Status: Active development
 - Nested TRACK metadata (TEMPO/POSITION_MARK) is parsed and now visible with summaries.
 
 ## Top Next Tasks
-1. Phase 3: implement 03-01 playlist generation foundations
+1. Phase 3: implement 03-02 flow ordering + confidence model
 2. Run long-run stress tests for 12K+ libraries (Phase 2 safeguards validation)
 3. Parse specific nested TRACK metadata blocks (e.g., hot cues/loops) if present in newer exports
 4. UI redesign Phase 05-05 final polish + QA pass for Track Details + Quick Preview

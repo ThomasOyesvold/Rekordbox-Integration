@@ -1,4 +1,9 @@
-import { computeBaselineSimilarity, createAnalyzerVersion } from './baselineAnalyzerService.js';
+import {
+  computeBaselineSimilarity,
+  computeBpmScore,
+  computeKeyScore,
+  createAnalyzerVersion
+} from './baselineAnalyzerService.js';
 import {
   beginAnalysisRun,
   finishAnalysisRun,
@@ -55,6 +60,94 @@ function clamp(value, min = 0, max = 1) {
   return Math.max(min, Math.min(max, value));
 }
 
+function sortTracksDeterministically(tracks) {
+  return [...tracks].sort((a, b) => {
+    const bpmA = Number.isFinite(Number(a.bpm)) ? Number(a.bpm) : Infinity;
+    const bpmB = Number.isFinite(Number(b.bpm)) ? Number(b.bpm) : Infinity;
+    if (bpmA !== bpmB) {
+      return bpmA - bpmB;
+    }
+    const keyA = String(a.key || '').toUpperCase();
+    const keyB = String(b.key || '').toUpperCase();
+    if (keyA !== keyB) {
+      return keyA.localeCompare(keyB);
+    }
+    const titleA = String(a.title || '');
+    const titleB = String(b.title || '');
+    if (titleA !== titleB) {
+      return titleA.localeCompare(titleB);
+    }
+    return String(a.id).localeCompare(String(b.id));
+  });
+}
+
+function computeAdjacencyScore(trackA, trackB) {
+  const bpmScore = computeBpmScore(trackA.bpm, trackB.bpm);
+  const keyScore = computeKeyScore(trackA.key, trackB.key);
+  return clamp((bpmScore * 0.6) + (keyScore * 0.4));
+}
+
+function buildClusterSummary(trackIds, trackById) {
+  const tracks = trackIds.map((trackId) => trackById.get(String(trackId))).filter(Boolean);
+  const bpmValues = tracks.map((track) => Number(track.bpm)).filter((value) => Number.isFinite(value));
+  const bpmMin = bpmValues.length ? Math.min(...bpmValues) : null;
+  const bpmMax = bpmValues.length ? Math.max(...bpmValues) : null;
+  const bpmAvg = bpmValues.length ? bpmValues.reduce((sum, value) => sum + value, 0) / bpmValues.length : null;
+  const keyCounts = {};
+  let waveformCount = 0;
+  let rhythmCount = 0;
+  for (const track of tracks) {
+    const key = String(track.key || '').trim();
+    if (key) {
+      keyCounts[key] = (keyCounts[key] || 0) + 1;
+    }
+    if (track.anlzWaveform?.bins?.length) {
+      waveformCount += 1;
+    }
+    if (track.anlzWaveform?.rhythmSignature?.length || track.anlzWaveform?.kickSignature?.length || track.nestedTempoPoints?.length) {
+      rhythmCount += 1;
+    }
+  }
+
+  const topKey = Object.entries(keyCounts).sort((a, b) => b[1] - a[1])[0] || null;
+
+  return {
+    bpm: {
+      min: bpmMin,
+      max: bpmMax,
+      avg: bpmAvg
+    },
+    key: {
+      top: topKey ? { key: topKey[0], count: topKey[1] } : null,
+      counts: keyCounts
+    },
+    coverage: {
+      waveform: { count: waveformCount, total: tracks.length },
+      rhythm: { count: rhythmCount, total: tracks.length }
+    }
+  };
+}
+
+function buildClusterReasons(summary) {
+  if (!summary) {
+    return [];
+  }
+  const reasons = [];
+  if (Number.isFinite(summary.bpm?.min) && Number.isFinite(summary.bpm?.max)) {
+    reasons.push(`BPM ${summary.bpm.min.toFixed(1)}–${summary.bpm.max.toFixed(1)}`);
+  }
+  if (summary.key?.top?.key) {
+    reasons.push(`Key focus ${summary.key.top.key}`);
+  }
+  if (summary.coverage?.waveform?.total) {
+    reasons.push(`Waveform data ${summary.coverage.waveform.count}/${summary.coverage.waveform.total}`);
+  }
+  if (summary.coverage?.rhythm?.total) {
+    reasons.push(`Rhythm data ${summary.coverage.rhythm.count}/${summary.coverage.rhythm.total}`);
+  }
+  return reasons;
+}
+
 function computeClusterConfidence(cluster) {
   const sizeScore = 1 - Math.exp(-((cluster.size || 0) / 6));
   const density = cluster.size > 1
@@ -98,16 +191,19 @@ function orderClusterTracks({ trackIds, trackById, algorithmVersion, runId }) {
     return tracks.map((track) => String(track.id));
   }
 
-  let bestStart = tracks[0];
+  const sortedTracks = sortTracksDeterministically(tracks);
+  let bestStart = sortedTracks[0];
   let bestStartScore = -Infinity;
 
-  for (const candidate of tracks) {
+  for (const candidate of sortedTracks) {
     let total = 0;
-    for (const other of tracks) {
+    for (const other of sortedTracks) {
       if (candidate === other) {
         continue;
       }
-      total += getSimilarityScore(candidate, other, algorithmVersion, runId, cacheStats);
+      const similarity = getSimilarityScore(candidate, other, algorithmVersion, runId, cacheStats);
+      const adjacency = computeAdjacencyScore(candidate, other);
+      total += (similarity * 0.7) + (adjacency * 0.3);
     }
     if (total > bestStartScore) {
       bestStartScore = total;
@@ -115,7 +211,7 @@ function orderClusterTracks({ trackIds, trackById, algorithmVersion, runId }) {
     }
   }
 
-  const remaining = new Set(tracks);
+  const remaining = new Set(sortedTracks);
   remaining.delete(bestStart);
   const ordered = [bestStart];
 
@@ -123,8 +219,11 @@ function orderClusterTracks({ trackIds, trackById, algorithmVersion, runId }) {
     const last = ordered[ordered.length - 1];
     let bestNext = null;
     let bestScore = -Infinity;
-    for (const candidate of remaining) {
-      const score = getSimilarityScore(last, candidate, algorithmVersion, runId, cacheStats);
+    const remainingSorted = sortTracksDeterministically(Array.from(remaining));
+    for (const candidate of remainingSorted) {
+      const similarity = getSimilarityScore(last, candidate, algorithmVersion, runId, cacheStats);
+      const adjacency = computeAdjacencyScore(last, candidate);
+      const score = (similarity * 0.7) + (adjacency * 0.3);
       if (score > bestScore) {
         bestScore = score;
         bestNext = candidate;
@@ -245,10 +344,11 @@ export function generatePlaylistClusters({
         continue;
       }
       const root = dsu.find(index);
-      const stat = clusterStats.get(root) || { sum: 0, count: 0, max: 0 };
+      const stat = clusterStats.get(root) || { sum: 0, count: 0, max: 0, min: 1 };
       stat.sum += edge.score;
       stat.count += 1;
       stat.max = Math.max(stat.max, edge.score);
+      stat.min = Math.min(stat.min, edge.score);
       clusterStats.set(root, stat);
     }
 
@@ -257,16 +357,20 @@ export function generatePlaylistClusters({
       if (trackIds.length < minSize) {
         continue;
       }
-      const stats = clusterStats.get(root) || { sum: 0, count: 0, max: 0 };
-    clusters.push({
-      id: `cluster-${root}`,
-      trackIds,
-      size: trackIds.length,
-      edgeCount: stats.count,
-      avgScore: stats.count ? stats.sum / stats.count : 0,
-      maxScore: stats.max
-    });
-  }
+      const stats = clusterStats.get(root) || { sum: 0, count: 0, max: 0, min: 0 };
+      const summary = buildClusterSummary(trackIds, trackById);
+      clusters.push({
+        id: `cluster-${root}`,
+        trackIds,
+        size: trackIds.length,
+        edgeCount: stats.count,
+        avgScore: stats.count ? stats.sum / stats.count : 0,
+        maxScore: stats.max || 0,
+        minScore: stats.count ? stats.min : 0,
+        summary,
+        reasons: buildClusterReasons(summary)
+      });
+    }
 
     for (const cluster of clusters) {
       cluster.confidence = computeClusterConfidence(cluster);
