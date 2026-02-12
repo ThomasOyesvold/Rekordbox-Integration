@@ -62,6 +62,8 @@ Status: Active development
 - ✅ **Nested CUE Extraction**:
   - Added CUE parsing + summary (count, types, named cues) to nested metadata
   - Track Details now shows cue counts and previews
+- ✅ **Mix Profile Summary Cards**:
+  - Added BPM range, avg duration, key coverage, and genre count stat cards to summary section
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:

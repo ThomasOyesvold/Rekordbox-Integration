@@ -5,7 +5,7 @@ import { PlaylistCard } from './components/PlaylistCard';
 import { StatCard } from './components/StatCard';
 import { TrackTable } from './components/TrackTable';
 import { Toast, ToastContainer } from './components/ui/Toast';
-import { FolderOpen, ListMusic, Music2, Waves } from 'lucide-react';
+import { Activity, Clock, FolderOpen, KeyRound, ListMusic, Music2, Tags, Waves } from 'lucide-react';
 
 const DESKTOP_BRIDGE_ERROR = 'Desktop bridge unavailable. Relaunch from Electron (not browser-only mode).';
 const TRACK_COLUMN_ORDER = ['play', 'id', 'title', 'bpm', 'key', 'waveformPreview', 'genre', 'durationSeconds', 'artist', 'playlists'];
@@ -2549,6 +2549,26 @@ export function App() {
                       label="ANLZ Attached"
                     />
                   </div>
+                  {libraryStats ? (
+                    <div className="stat-grid" style={{ marginTop: '12px' }}>
+                      <StatCard
+                        icon={Activity}
+                        value={libraryStats.bpmMin !== null ? `${libraryStats.bpmMin} - ${libraryStats.bpmMax}` : '-'}
+                        label="BPM Range"
+                      />
+                      <StatCard
+                        icon={Clock}
+                        value={libraryStats.avgDuration !== null ? formatDuration(libraryStats.avgDuration) : '-'}
+                        label="Avg Duration"
+                      />
+                      <StatCard
+                        icon={KeyRound}
+                        value={`${Math.round(libraryStats.keyCoverage * 100)}%`}
+                        label="Key Coverage"
+                      />
+                      <StatCard icon={Tags} value={libraryStats.genreCount} label="Genres" />
+                    </div>
+                  ) : null}
                   <div className="meta" style={{ marginTop: '10px' }}>
                     <span>Selected Folders: {selectedFolders.length || 'All'}</span>
                     <span>ANLZ Map: {anlzMapPath.trim() ? 'Configured' : 'Not set'}</span>
