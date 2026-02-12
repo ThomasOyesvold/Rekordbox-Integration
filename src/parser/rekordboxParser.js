@@ -258,11 +258,29 @@ function parseCollection(xmlText, issues) {
     let positionMatch = nestedPositionRegex.exec(nestedBody);
     while (positionMatch) {
       const markAttributes = parseXmlAttributes(positionMatch[1] || '');
+      const start = parseNumber(markAttributes.Start);
+      const end = parseNumber(markAttributes.End);
+      const number = parseNumber(markAttributes.Num);
+      const type = markAttributes.Type || '';
+      const inferredKind = (() => {
+        if (Number.isFinite(end) && end > 0) {
+          return 'loop';
+        }
+        if (Number.isFinite(number) && number >= 0) {
+          return 'hotcue';
+        }
+        if (String(type) === '0') {
+          return 'memory';
+        }
+        return 'unknown';
+      })();
       nestedPositionMarks.push({
         name: markAttributes.Name || '',
-        type: markAttributes.Type || '',
-        start: parseNumber(markAttributes.Start),
-        number: parseNumber(markAttributes.Num),
+        type,
+        start,
+        end,
+        number,
+        inferredKind,
         color: {
           red: parseNumber(markAttributes.Red),
           green: parseNumber(markAttributes.Green),
@@ -277,10 +295,23 @@ function parseCollection(xmlText, issues) {
         return null;
       }
       const types = {};
+      const kinds = {};
+      let loopCount = 0;
+      let hotcueCount = 0;
+      let memoryCount = 0;
       let coloredCount = 0;
       for (const mark of nestedPositionMarks) {
         const typeKey = (mark.type || 'Unknown').toString();
         types[typeKey] = (types[typeKey] || 0) + 1;
+        const kindKey = (mark.inferredKind || 'unknown').toString();
+        kinds[kindKey] = (kinds[kindKey] || 0) + 1;
+        if (kindKey === 'loop') {
+          loopCount += 1;
+        } else if (kindKey === 'hotcue') {
+          hotcueCount += 1;
+        } else if (kindKey === 'memory') {
+          memoryCount += 1;
+        }
         if (Number.isFinite(mark.color?.red) || Number.isFinite(mark.color?.green) || Number.isFinite(mark.color?.blue)) {
           coloredCount += 1;
         }
@@ -288,6 +319,10 @@ function parseCollection(xmlText, issues) {
       return {
         count: nestedPositionMarks.length,
         types,
+        kinds,
+        loopCount,
+        hotcueCount,
+        memoryCount,
         coloredCount
       };
     })();

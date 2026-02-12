@@ -3016,8 +3016,16 @@ export function App() {
                 {selectedTrack.nestedPositionSummary ? (
                   <div className="meta" style={{ marginTop: '6px' }}>
                     <span>Colored Marks: {selectedTrack.nestedPositionSummary.coloredCount ?? 0}</span>
+                    <span>Hot Cues: {selectedTrack.nestedPositionSummary.hotcueCount ?? 0}</span>
+                    <span>Loops: {selectedTrack.nestedPositionSummary.loopCount ?? 0}</span>
+                    <span>Memory: {selectedTrack.nestedPositionSummary.memoryCount ?? 0}</span>
                     <span>
                       Mark Types: {Object.entries(selectedTrack.nestedPositionSummary.types || {})
+                        .map(([key, value]) => `${key}:${value}`)
+                        .join(' ') || '-'}
+                    </span>
+                    <span>
+                      Mark Kinds: {Object.entries(selectedTrack.nestedPositionSummary.kinds || {})
                         .map(([key, value]) => `${key}:${value}`)
                         .join(' ') || '-'}
                     </span>
@@ -3054,8 +3062,9 @@ export function App() {
                     <strong>Position Marks (preview):</strong>{' '}
                     {selectedTrack.nestedPositionMarks.slice(0, 4).map((mark, index) => (
                       <span key={`mark-${index}`} style={{ marginLeft: index === 0 ? 0 : '6px' }}>
-                        {mark.name || 'Mark'}@
+                        {mark.name || 'Mark'} ({mark.inferredKind || 'unknown'})@
                         {Number.isFinite(mark.start) ? `${mark.start}s` : '?'}
+                        {Number.isFinite(mark.end) ? `→${mark.end}s` : ''}
                       </span>
                     ))}
                   </div>
