@@ -70,6 +70,8 @@ Status: Active development
   - Added ripple feedback to Quick Preview + Track Table play buttons
 - ✅ **Settings Modal (Safeguards)**:
   - Moved analysis safeguard controls into a Settings modal opened from the header
+- ✅ **Validation Issues Modal**:
+  - Moved validation issue table into a modal to reduce clutter in the main flow
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:

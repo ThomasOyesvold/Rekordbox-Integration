@@ -757,7 +757,7 @@ export function App() {
   const [anlzBuildProgress, setAnlzBuildProgress] = useState(null);
   const [isBuildingAnlzMap, setIsBuildingAnlzMap] = useState(false);
   const [issueSeverityFilter, setIssueSeverityFilter] = useState('all');
-  const [showValidationIssues, setShowValidationIssues] = useState(false);
+  const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [showTrackMeta, setShowTrackMeta] = useState(false);
   const [showTrackLocation, setShowTrackLocation] = useState(false);
   const [showTrackAnlzMeta, setShowTrackAnlzMeta] = useState(false);
@@ -3205,51 +3205,19 @@ export function App() {
 
       {validationIssues.length > 0 ? (
         <div className="card">
-          <div className="row" style={{ justifyContent: 'space-between', marginBottom: showValidationIssues ? '8px' : '0' }}>
+          <div className="row" style={{ justifyContent: 'space-between', marginBottom: '8px' }}>
             <h3 style={{ margin: 0 }}>Validation Issues ({filteredIssues.length}/{validationIssues.length})</h3>
             <button
               type="button"
               className="secondary"
-              onClick={() => setShowValidationIssues((value) => !value)}
+              onClick={() => setIsValidationModalOpen(true)}
             >
-              {showValidationIssues ? 'Hide Issues' : 'Show Issues'}
+              View Issues
             </button>
           </div>
-          {showValidationIssues ? (
-            <>
-              <div className="row" style={{ marginBottom: '8px' }}>
-                <select value={issueSeverityFilter} onChange={(event) => setIssueSeverityFilter(event.target.value)}>
-                  <option value="all">All severities</option>
-                  <option value="error">Errors</option>
-                  <option value="warning">Warnings</option>
-                </select>
-              </div>
-              <table className="track-table">
-                <thead>
-                  <tr>
-                    <th>Severity</th>
-                    <th>Code</th>
-                    <th>Message</th>
-                    <th>Context</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredIssues.map((issue, index) => (
-                    <tr key={`${issue.code}-${index}`}>
-                      <td>{issue.severity}</td>
-                      <td>{issue.code}</td>
-                      <td>{issue.message}</td>
-                      <td>{Object.keys(issue.context || {}).length > 0 ? JSON.stringify(issue.context) : '-'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
-          ) : (
-            <p style={{ margin: '8px 0 0', color: '#475569' }}>
-              Hidden by default so library browsing stays in focus.
-            </p>
-          )}
+          <p style={{ margin: 0, color: '#475569' }}>
+            Kept in a modal so library browsing stays in focus.
+          </p>
         </div>
       ) : null}
 
@@ -3743,6 +3711,46 @@ export function App() {
             />
           ) : null}
         </ToastContainer>
+        <Modal
+          isOpen={isValidationModalOpen}
+          onClose={() => setIsValidationModalOpen(false)}
+          title={`Validation Issues (${filteredIssues.length}/${validationIssues.length})`}
+          footer={
+            <div className="row" style={{ justifyContent: 'flex-end' }}>
+              <button type="button" className="secondary" onClick={() => setIsValidationModalOpen(false)}>
+                Close
+              </button>
+            </div>
+          }
+        >
+          <div className="row" style={{ marginBottom: '8px' }}>
+            <select value={issueSeverityFilter} onChange={(event) => setIssueSeverityFilter(event.target.value)}>
+              <option value="all">All severities</option>
+              <option value="error">Errors</option>
+              <option value="warning">Warnings</option>
+            </select>
+          </div>
+          <table className="track-table">
+            <thead>
+              <tr>
+                <th>Severity</th>
+                <th>Code</th>
+                <th>Message</th>
+                <th>Context</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredIssues.map((issue, index) => (
+                <tr key={`${issue.code}-${index}`}>
+                  <td>{issue.severity}</td>
+                  <td>{issue.code}</td>
+                  <td>{issue.message}</td>
+                  <td>{Object.keys(issue.context || {}).length > 0 ? JSON.stringify(issue.context) : '-'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Modal>
         <Modal
           isOpen={isSettingsOpen}
           onClose={() => setIsSettingsOpen(false)}
