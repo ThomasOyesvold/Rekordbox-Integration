@@ -72,6 +72,9 @@ Status: Active development
   - Moved analysis safeguard controls into a Settings modal opened from the header
 - ✅ **Validation Issues Modal**:
   - Moved validation issue table into a modal to reduce clutter in the main flow
+- ✅ **UI Polish Pass (Track Table + Quick Preview)**:
+  - Refined Track Table header styling and hover states
+  - Added Quick Preview header framing and styled controls
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
