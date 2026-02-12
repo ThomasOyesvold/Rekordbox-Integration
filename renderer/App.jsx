@@ -1408,14 +1408,14 @@ export function App() {
   const applyClusterPreset = (preset) => {
     setClusterPreset(preset);
     if (preset === 'conservative') {
-      setClusterThreshold(0.86);
+      setClusterThreshold(0.88);
       setClusterMinSize(4);
       setClusterMaxPairs(12000);
       setClusterStrictMode(true);
     } else if (preset === 'exploratory') {
-      setClusterThreshold(0.75);
+      setClusterThreshold(0.72);
       setClusterMinSize(2);
-      setClusterMaxPairs(25000);
+      setClusterMaxPairs(40000);
       setClusterStrictMode(false);
     } else {
       setClusterThreshold(0.82);

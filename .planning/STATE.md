@@ -45,6 +45,11 @@ Status: Active development
 - ✅ **Preset Validation (Real Library)**:
   - Conservative/Balanced/Exploratory presets on `rekordbox_backup.xml` → 2 clusters each
   - Avg size 5.5, max size 7, 15k pairs (cache hit reuse after first run)
+- ✅ **Preset Tuning (Exploratory Boost)**:
+  - Conservative threshold 0.88, exploratory threshold 0.72
+  - Exploratory maxPairs increased to 40k
+- ✅ **Test Pass**:
+  - `npm test` green (13/13) on 2026-02-11
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:

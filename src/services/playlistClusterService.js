@@ -287,9 +287,9 @@ export function generatePlaylistClusters({
   const trackById = new Map(safeTracks.map((track) => [String(track.id), track]));
   const presetName = String(preset || 'balanced');
   const presetConfig = presetName === 'conservative'
-    ? { threshold: 0.86, minSize: 4, maxPairs: 12000, strictMode: true }
+    ? { threshold: 0.88, minSize: 4, maxPairs: 12000, strictMode: true }
     : presetName === 'exploratory'
-      ? { threshold: 0.75, minSize: 2, maxPairs: 25000, strictMode: false }
+      ? { threshold: 0.72, minSize: 2, maxPairs: 40000, strictMode: false }
       : { threshold: 0.82, minSize: 3, maxPairs: 15000, strictMode: true };
 
   const baseThreshold = Math.max(0, Math.min(1, toNumber(similarityThreshold, presetConfig.threshold)));
