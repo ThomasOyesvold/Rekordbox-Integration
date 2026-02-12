@@ -4,6 +4,7 @@ import { SetupWizard } from './components/SetupWizard';
 import { PlaylistCard } from './components/PlaylistCard';
 import { StatCard } from './components/StatCard';
 import { TrackTable } from './components/TrackTable';
+import { Modal } from './components/ui/Modal';
 import { Toast, ToastContainer } from './components/ui/Toast';
 import { Activity, Clock, FolderOpen, KeyRound, ListMusic, Music2, Tags, Waves } from 'lucide-react';
 
@@ -712,6 +713,7 @@ export function App() {
   const [analysisMemoryLimitMb, setAnalysisMemoryLimitMb] = useState(1200);
   const [analysisMemoryCheckEvery, setAnalysisMemoryCheckEvery] = useState(2000);
   const [analysisCancelPending, setAnalysisCancelPending] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [similarResults, setSimilarResults] = useState(null);
   const [isFindingSimilar, setIsFindingSimilar] = useState(false);
   const [similarMinScore, setSimilarMinScore] = useState(0.6);
@@ -2384,7 +2386,7 @@ export function App() {
 
   return (
     <div className="app-shell">
-      <AppHeader onSettingsClick={() => console.log('Settings')} />
+      <AppHeader onSettingsClick={() => setIsSettingsOpen(true)} />
 
       <main className="app-main">
         {!xmlPath.trim() ? (
@@ -2422,63 +2424,6 @@ export function App() {
                 >
                   {analysisCancelPending ? 'Canceling...' : 'Cancel Analysis'}
                 </button>
-              </div>
-              <div className="row" style={{ marginTop: '8px' }}>
-                <label>
-                  Max Pairs
-                  <input
-                    type="number"
-                    min="100"
-                    step="100"
-                    value={analysisMaxPairs}
-                    onChange={(event) => setAnalysisMaxPairs(Number(event.target.value))}
-                    style={{ width: '120px', marginLeft: '6px' }}
-                  />
-                </label>
-                <label>
-                  Pair Cap
-                  <input
-                    type="number"
-                    min="1000"
-                    step="1000"
-                    value={analysisPairCap}
-                    onChange={(event) => setAnalysisPairCap(Number(event.target.value))}
-                    style={{ width: '120px', marginLeft: '6px' }}
-                  />
-                </label>
-                <label>
-                  Yield Every
-                  <input
-                    type="number"
-                    min="500"
-                    step="500"
-                    value={analysisYieldEvery}
-                    onChange={(event) => setAnalysisYieldEvery(Number(event.target.value))}
-                    style={{ width: '120px', marginLeft: '6px' }}
-                  />
-                </label>
-                <label>
-                  Memory Limit (MB)
-                  <input
-                    type="number"
-                    min="0"
-                    step="100"
-                    value={analysisMemoryLimitMb}
-                    onChange={(event) => setAnalysisMemoryLimitMb(Number(event.target.value))}
-                    style={{ width: '140px', marginLeft: '6px' }}
-                  />
-                </label>
-                <label>
-                  Memory Check
-                  <input
-                    type="number"
-                    min="500"
-                    step="500"
-                    value={analysisMemoryCheckEvery}
-                    onChange={(event) => setAnalysisMemoryCheckEvery(Number(event.target.value))}
-                    style={{ width: '120px', marginLeft: '6px' }}
-                  />
-                </label>
               </div>
               <div className="row" style={{ marginTop: '8px' }}>
                 <input
@@ -3798,6 +3743,79 @@ export function App() {
             />
           ) : null}
         </ToastContainer>
+        <Modal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          title="Analysis Safeguards"
+          footer={
+            <div className="row" style={{ justifyContent: 'flex-end' }}>
+              <button type="button" className="secondary" onClick={() => setIsSettingsOpen(false)}>
+                Close
+              </button>
+            </div>
+          }
+        >
+          <p style={{ marginTop: 0 }}>
+            Tune long-run analysis safety limits without cluttering the main workspace.
+          </p>
+          <div className="row" style={{ marginTop: '12px', flexWrap: 'wrap', gap: '12px' }}>
+            <label>
+              Max Pairs
+              <input
+                type="number"
+                min="100"
+                step="100"
+                value={analysisMaxPairs}
+                onChange={(event) => setAnalysisMaxPairs(Number(event.target.value))}
+                style={{ width: '120px', marginLeft: '6px' }}
+              />
+            </label>
+            <label>
+              Pair Cap
+              <input
+                type="number"
+                min="1000"
+                step="1000"
+                value={analysisPairCap}
+                onChange={(event) => setAnalysisPairCap(Number(event.target.value))}
+                style={{ width: '120px', marginLeft: '6px' }}
+              />
+            </label>
+            <label>
+              Yield Every
+              <input
+                type="number"
+                min="500"
+                step="500"
+                value={analysisYieldEvery}
+                onChange={(event) => setAnalysisYieldEvery(Number(event.target.value))}
+                style={{ width: '120px', marginLeft: '6px' }}
+              />
+            </label>
+            <label>
+              Memory Limit (MB)
+              <input
+                type="number"
+                min="0"
+                step="100"
+                value={analysisMemoryLimitMb}
+                onChange={(event) => setAnalysisMemoryLimitMb(Number(event.target.value))}
+                style={{ width: '140px', marginLeft: '6px' }}
+              />
+            </label>
+            <label>
+              Memory Check
+              <input
+                type="number"
+                min="500"
+                step="500"
+                value={analysisMemoryCheckEvery}
+                onChange={(event) => setAnalysisMemoryCheckEvery(Number(event.target.value))}
+                style={{ width: '120px', marginLeft: '6px' }}
+              />
+            </label>
+          </div>
+        </Modal>
       </main>
     </div>
   );
