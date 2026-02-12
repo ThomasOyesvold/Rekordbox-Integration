@@ -327,6 +327,40 @@ function parseCollection(xmlText, issues) {
       };
     })();
 
+    const nestedCuePoints = [];
+    const nestedCueRegex = /<CUE\b([^>]*?)\/?>/gi;
+    let cueMatch = nestedCueRegex.exec(nestedBody);
+    while (cueMatch) {
+      const cueAttributes = parseXmlAttributes(cueMatch[1] || '');
+      nestedCuePoints.push({
+        name: cueAttributes.Name || '',
+        type: cueAttributes.Type || '',
+        start: parseNumber(cueAttributes.Start),
+        number: parseNumber(cueAttributes.Num)
+      });
+      cueMatch = nestedCueRegex.exec(nestedBody);
+    }
+
+    const nestedCueSummary = (() => {
+      if (!nestedCuePoints.length) {
+        return null;
+      }
+      const types = {};
+      let namedCount = 0;
+      for (const cue of nestedCuePoints) {
+        const typeKey = (cue.type || 'Unknown').toString();
+        types[typeKey] = (types[typeKey] || 0) + 1;
+        if (cue.name) {
+          namedCount += 1;
+        }
+      }
+      return {
+        count: nestedCuePoints.length,
+        types,
+        namedCount
+      };
+    })();
+
     const nestedTagSummary = (() => {
       if (!nestedBody) {
         return null;
@@ -337,7 +371,7 @@ function parseCollection(xmlText, issues) {
       let tagMatch = tagRegex.exec(nestedBody);
       while (tagMatch) {
         const tag = tagMatch[1].toUpperCase();
-        if (tag !== 'TEMPO' && tag !== 'POSITION_MARK') {
+        if (tag !== 'TEMPO' && tag !== 'POSITION_MARK' && tag !== 'CUE') {
           counts[tag] = (counts[tag] || 0) + 1;
           total += 1;
         }
@@ -368,6 +402,8 @@ function parseCollection(xmlText, issues) {
       nestedTempoSummary,
       nestedPositionMarks,
       nestedPositionSummary,
+      nestedCuePoints,
+      nestedCueSummary,
       nestedTagSummary
     });
 

@@ -59,6 +59,9 @@ Status: Active development
   - Track Details shows counts for loops/hot cues/memory + previews include kind + end time
 - ✅ **Nested Mark Fixture Coverage**:
   - Updated nested-track fixture/test to cover inferred loop + hot cue classification
+- ✅ **Nested CUE Extraction**:
+  - Added CUE parsing + summary (count, types, named cues) to nested metadata
+  - Track Details now shows cue counts and previews
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:

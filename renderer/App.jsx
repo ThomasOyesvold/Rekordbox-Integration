@@ -3003,6 +3003,7 @@ export function App() {
                 <div className="meta">
                   <span>Tempo Points: {selectedTrack.nestedTempoPoints?.length || 0}</span>
                   <span>Position Marks: {selectedTrack.nestedPositionMarks?.length || 0}</span>
+                  <span>Cue Points: {selectedTrack.nestedCuePoints?.length || 0}</span>
                 </div>
                 {selectedTrack.nestedTempoSummary ? (
                   <div className="meta" style={{ marginTop: '6px' }}>
@@ -3026,6 +3027,16 @@ export function App() {
                     </span>
                     <span>
                       Mark Kinds: {Object.entries(selectedTrack.nestedPositionSummary.kinds || {})
+                        .map(([key, value]) => `${key}:${value}`)
+                        .join(' ') || '-'}
+                    </span>
+                  </div>
+                ) : null}
+                {selectedTrack.nestedCueSummary ? (
+                  <div className="meta" style={{ marginTop: '6px' }}>
+                    <span>Named Cues: {selectedTrack.nestedCueSummary.namedCount ?? 0}</span>
+                    <span>
+                      Cue Types: {Object.entries(selectedTrack.nestedCueSummary.types || {})
                         .map(([key, value]) => `${key}:${value}`)
                         .join(' ') || '-'}
                     </span>
@@ -3071,6 +3082,21 @@ export function App() {
                 ) : (
                   <p style={{ marginTop: '6px', color: '#475569' }}>
                     No nested POSITION_MARK entries found for this track.
+                  </p>
+                )}
+                {selectedTrack.nestedCuePoints?.length ? (
+                  <div style={{ marginTop: '6px' }}>
+                    <strong>Cue Points (preview):</strong>{' '}
+                    {selectedTrack.nestedCuePoints.slice(0, 4).map((cue, index) => (
+                      <span key={`cue-${index}`} style={{ marginLeft: index === 0 ? 0 : '6px' }}>
+                        {cue.name || 'Cue'}@
+                        {Number.isFinite(cue.start) ? `${cue.start}s` : '?'}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ marginTop: '6px', color: '#475569' }}>
+                    No nested CUE entries found for this track.
                   </p>
                 )}
               </>
