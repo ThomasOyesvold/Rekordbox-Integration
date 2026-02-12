@@ -64,6 +64,8 @@ Status: Active development
   - Track Details now shows cue counts and previews
 - ✅ **Mix Profile Summary Cards**:
   - Added BPM range, avg duration, key coverage, and genre count stat cards to summary section
+- ✅ **Quick Preview Now Playing Styling**:
+  - Styled the Now Playing strip with gradient background, metadata pills, and clearer hierarchy
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
