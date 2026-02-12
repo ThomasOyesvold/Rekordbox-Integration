@@ -75,6 +75,9 @@ Status: Active development
 - ✅ **UI Polish Pass (Track Table + Quick Preview)**:
   - Refined Track Table header styling and hover states
   - Added Quick Preview header framing and styled controls
+- ✅ **Track Details Similar List Polish**:
+  - Reworked Similar cards with clearer left/right layout and meta pills
+  - Added play button styling + time/duration display
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:

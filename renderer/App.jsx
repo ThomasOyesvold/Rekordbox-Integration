@@ -3100,21 +3100,26 @@ export function App() {
                       return (
                         <div className={`similar-track-card${isPlaying ? ' playing' : ''}`} key={match.trackId}>
                           <div className="similar-track-header">
-                            <button
-                              type="button"
-                              className="secondary"
-                              onClick={() => togglePlayPause(track)}
-                            >
-                              {playback.status === 'playing' ? 'Pause' : 'Play'}
-                            </button>
-                            <div className="similar-track-info">
-                              <div className="similar-track-title">{title}</div>
-                              <div className="similar-track-artist">{artist}</div>
+                            <div className="similar-track-left">
+                              <button
+                                type="button"
+                                className="similar-track-button"
+                                onClick={() => togglePlayPause(track)}
+                              >
+                                {playback.status === 'playing' ? 'Pause' : 'Play'}
+                              </button>
+                              <div className="similar-track-info">
+                                <div className="similar-track-title">{title}</div>
+                                <div className="similar-track-artist">{artist}</div>
+                              </div>
                             </div>
                             <div className="similar-track-meta">
                               <span>{bpmLabel}</span>
                               <span>{keyValue}</span>
-                              <span>{formatClock(playback.currentTime || 0)}</span>
+                              <span>
+                                {formatClock(playback.currentTime || 0)}
+                                {duration ? ` / ${formatClock(duration)}` : ''}
+                              </span>
                             </div>
                           </div>
                           <div className="similar-waveform">

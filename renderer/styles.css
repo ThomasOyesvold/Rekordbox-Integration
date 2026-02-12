@@ -330,6 +330,40 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.similar-track-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 260px;
+  flex: 1;
+}
+
+.similar-track-button {
+  border: none;
+  border-radius: 999px;
+  padding: 6px 16px;
+  background: var(--accent-primary);
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.similar-track-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.35) 0%, transparent 65%);
+  opacity: 0;
+  transform: scale(0);
+}
+
+.similar-track-button:active::after {
+  animation: ripple 0.45s ease-out;
+}
+
 .similar-track-info {
   flex: 1;
   min-width: 220px;
@@ -350,6 +384,13 @@ button:disabled {
   color: var(--text-secondary);
   font-size: 0.85rem;
   white-space: nowrap;
+}
+
+.similar-track-meta span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.6);
 }
 
 .similar-waveform .waveform-preview {
