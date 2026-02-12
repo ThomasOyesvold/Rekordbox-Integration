@@ -50,6 +50,10 @@ Status: Active development
   - Exploratory maxPairs increased to 40k
 - ✅ **Test Pass**:
   - `npm test` green (13/13) on 2026-02-11
+- ✅ **Phase 2 Stress Pass (Extended Pairs Attempt)**:
+  - `scripts/phase2Stress.js` with `maxPairs=40000`, `yieldEvery=2000`, `topLimit=50` on `rekordbox_backup.xml`
+  - Cold run reached 40,000 pairs before timeout; warm run not completed within 10-minute cap
+  - Memory snapshots: RSS ~51MB start → ~196MB after parse → ~227MB after cold completion
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
