@@ -482,6 +482,21 @@ button:disabled {
   padding: 6px 10px;
   font-size: 0.85rem;
   border-radius: 6px;
+  position: relative;
+  overflow: hidden;
+}
+
+.playback-button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.35) 0%, transparent 65%);
+  opacity: 0;
+  transform: scale(0);
+}
+
+.playback-button:active::after {
+  animation: ripple 0.45s ease-out;
 }
 
 .playback-time {

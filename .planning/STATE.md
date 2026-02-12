@@ -66,6 +66,8 @@ Status: Active development
   - Added BPM range, avg duration, key coverage, and genre count stat cards to summary section
 - ✅ **Quick Preview Now Playing Styling**:
   - Styled the Now Playing strip with gradient background, metadata pills, and clearer hierarchy
+- ✅ **Playback Button Ripples**:
+  - Added ripple feedback to Quick Preview + Track Table play buttons
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
