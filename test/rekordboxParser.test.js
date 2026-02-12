@@ -82,8 +82,13 @@ test('parseRekordboxXml parses nested track metadata blocks', async () => {
   assert.equal(library.tracks.length, 1);
   assert.equal(library.tracks[0].nestedTempoPoints.length, 1);
   assert.equal(library.tracks[0].nestedTempoPoints[0].bpm, 126);
-  assert.equal(library.tracks[0].nestedPositionMarks.length, 1);
+  assert.equal(library.tracks[0].nestedPositionMarks.length, 2);
   assert.equal(library.tracks[0].nestedPositionMarks[0].name, 'Cue');
+  assert.equal(library.tracks[0].nestedPositionMarks[0].inferredKind, 'hotcue');
+  assert.equal(library.tracks[0].nestedPositionMarks[1].name, 'Loop');
+  assert.equal(library.tracks[0].nestedPositionMarks[1].inferredKind, 'loop');
+  assert.equal(library.tracks[0].nestedPositionSummary.loopCount, 1);
+  assert.equal(library.tracks[0].nestedPositionSummary.hotcueCount, 1);
   assert.equal(library.tracks[0].nestedTagSummary.total, 1);
   assert.equal(library.tracks[0].nestedTagSummary.tags.CUE, 1);
 });

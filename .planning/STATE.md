@@ -57,6 +57,8 @@ Status: Active development
 - ✅ **Nested Mark Classification (Position Marks)**:
   - POSITION_MARK parsing now captures `End` values and infers `loop/hotcue/memory` kinds
   - Track Details shows counts for loops/hot cues/memory + previews include kind + end time
+- ✅ **Nested Mark Fixture Coverage**:
+  - Updated nested-track fixture/test to cover inferred loop + hot cue classification
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
