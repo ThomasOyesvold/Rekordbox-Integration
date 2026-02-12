@@ -42,6 +42,9 @@ Status: Active development
   - Preset value returned in clustering results and shown in UI
 - ✅ **Test Pass**:
   - `npm test` green (13/13) on 2026-02-11
+- ✅ **Preset Validation (Real Library)**:
+  - Conservative/Balanced/Exploratory presets on `rekordbox_backup.xml` → 2 clusters each
+  - Avg size 5.5, max size 7, 15k pairs (cache hit reuse after first run)
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
@@ -154,7 +157,7 @@ Status: Active development
 - Nested TRACK metadata (TEMPO/POSITION_MARK) is parsed and now visible with summaries.
 
 ## Top Next Tasks
-1. Phase 3: validate clustering presets on real library + tune thresholds
+1. Phase 3: tune preset thresholds (raise exploratory pair cap or threshold) if clusters are too sparse
 2. Run long-run stress tests for 12K+ libraries (Phase 2 safeguards validation)
 3. Parse specific nested TRACK metadata blocks (e.g., hot cues/loops) if present in newer exports
 4. UI redesign Phase 05-05 final polish + QA pass for Track Details + Quick Preview
