@@ -82,6 +82,8 @@ Status: Active development
   - Added header layout with match stats chips and responsive alignment
 - ✅ **Track Details Toggle Pills**:
   - Replaced Track Details toggle buttons with compact pill toggles
+- ✅ **Find Similar Controls Polish**:
+  - Styled Find Similar button + parameter inputs as compact pills
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:

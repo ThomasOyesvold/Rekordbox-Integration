@@ -2913,15 +2913,16 @@ export function App() {
                   Playlists
                 </button>
               </div>
-              <div className="row">
+              <div className="row similar-controls">
                 <button
                   type="button"
+                  className="similar-primary"
                   onClick={runSimilarSearch}
                   disabled={isFindingSimilar || tracks.length < 2}
                 >
                   {isFindingSimilar ? 'Finding...' : 'Find Similar'}
                 </button>
-                <label style={{ marginLeft: '8px' }}>
+                <label>
                   Min Score
                   <input
                     type="number"
@@ -2933,7 +2934,7 @@ export function App() {
                     style={{ width: '90px', marginLeft: '6px' }}
                   />
                 </label>
-                <label style={{ marginLeft: '8px' }}>
+                <label>
                   Limit
                   <input
                     type="number"

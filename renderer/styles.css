@@ -272,6 +272,49 @@ button:disabled {
   box-shadow: 0 8px 20px rgba(59, 130, 246, 0.25);
 }
 
+.similar-controls {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.similar-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.similar-primary {
+  border: none;
+  border-radius: 999px;
+  padding: 6px 18px;
+  background: linear-gradient(120deg, #3b82f6, #60a5fa);
+  color: #ffffff;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.similar-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.35) 0%, transparent 65%);
+  opacity: 0;
+  transform: scale(0);
+}
+
+.similar-primary:active::after {
+  animation: ripple 0.45s ease-out;
+}
+
 @media (max-width: 1100px) {
   .pill-toggle-group {
     width: 100%;
