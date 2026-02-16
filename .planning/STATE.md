@@ -94,6 +94,8 @@ Status: Active development
   - Refined "no waveform" placeholder to match the rest of the UI
 - ✅ **Card Heading Polish**:
   - Standardized card h3/h4 styling for consistent hierarchy
+- ✅ **Global Button Hover Polish**:
+  - Added hover glow and secondary hover styling for consistent feedback
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
