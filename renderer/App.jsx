@@ -3069,12 +3069,13 @@ export function App() {
             ) : null}
             {similarResults ? (
               <>
-                <h4 style={{ margin: '12px 0 8px' }}>Similar Tracks</h4>
-                <div className="meta">
-                  <span>Matches: {similarMatches.length}</span>
-                  <span>Pairs: {similarResults.pairCount}</span>
-                  <span>Computed: {similarResults.computed}</span>
-                  <span>Cache Hits: {similarResults.cacheHits}</span>
+                <div className="similar-tracks-header">
+                  <h4>Similar Tracks</h4>
+                  <div className="similar-tracks-meta">
+                    <span>{similarMatches.length} matches</span>
+                    <span>{similarResults.pairCount} pairs</span>
+                    <span>{similarResults.cacheHits} cache hits</span>
+                  </div>
                 </div>
                 {similarMatches.length ? (
                   <div className="similar-track-list">

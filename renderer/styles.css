@@ -309,6 +309,32 @@ button:disabled {
   margin-top: 8px;
 }
 
+.similar-tracks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 12px 0 8px;
+}
+
+.similar-tracks-header h4 {
+  margin: 0;
+}
+
+.similar-tracks-meta {
+  display: flex;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.similar-tracks-meta span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.55);
+}
+
 .similar-track-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
@@ -396,6 +422,23 @@ button:disabled {
 .similar-waveform .waveform-preview {
   height: 90px;
   margin-top: 10px;
+  border-radius: 10px;
+}
+
+@media (max-width: 1024px) {
+  .similar-tracks-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .similar-track-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .similar-track-meta {
+    flex-wrap: wrap;
+  }
 }
 
 .now-playing {
