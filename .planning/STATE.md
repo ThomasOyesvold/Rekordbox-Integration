@@ -90,6 +90,8 @@ Status: Active development
   - Wrapped ANLZ meta details in a compact summary card with chips
 - ✅ **Source Playlists Styling**:
   - Styled playlist list as compact chips with consistent spacing
+- ✅ **Waveform Placeholder Styling**:
+  - Refined "no waveform" placeholder to match the rest of the UI
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:

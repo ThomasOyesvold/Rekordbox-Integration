@@ -650,11 +650,13 @@ button:disabled {
 
 .waveform-placeholder {
   margin-top: 10px;
-  padding: 16px;
-  border-radius: 8px;
-  border: 1px dashed var(--border-subtle);
+  padding: 18px;
+  border-radius: 10px;
+  border: 1px dashed rgba(148, 163, 184, 0.3);
   color: var(--text-tertiary);
   text-align: center;
+  font-size: 0.85rem;
+  background: rgba(15, 23, 42, 0.5);
 }
 
 .waveform-bin {
