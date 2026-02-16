@@ -84,6 +84,8 @@ Status: Active development
   - Replaced Track Details toggle buttons with compact pill toggles
 - ✅ **Find Similar Controls Polish**:
   - Styled Find Similar button + parameter inputs as compact pills
+- ✅ **Track Details Meta Chips**:
+  - Styled track meta summary (artist/title/BPM/key) as pill chips
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:

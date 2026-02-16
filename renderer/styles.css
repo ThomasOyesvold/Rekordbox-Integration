@@ -315,6 +315,14 @@ button:disabled {
   animation: ripple 0.45s ease-out;
 }
 
+.track-meta-chips span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.55);
+  font-size: 0.85rem;
+}
+
 @media (max-width: 1100px) {
   .pill-toggle-group {
     width: 100%;

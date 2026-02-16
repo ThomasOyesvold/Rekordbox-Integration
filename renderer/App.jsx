@@ -2947,7 +2947,7 @@ export function App() {
                 </label>
               </div>
             </div>
-            <div className="meta">
+            <div className="meta track-meta-chips">
               {showTrackMeta ? <span>ID: {selectedTrack.trackId || selectedTrack.id}</span> : null}
               <span>Artist: {selectedTrack.artist || '-'}</span>
               <span>Title: {selectedTrack.title || '-'}</span>
