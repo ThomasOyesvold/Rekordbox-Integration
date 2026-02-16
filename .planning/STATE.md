@@ -80,6 +80,8 @@ Status: Active development
   - Added play button styling + time/duration display
 - ✅ **Similar Tracks Header Polish**:
   - Added header layout with match stats chips and responsive alignment
+- ✅ **Track Details Toggle Pills**:
+  - Replaced Track Details toggle buttons with compact pill toggles
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:

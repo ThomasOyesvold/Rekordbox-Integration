@@ -2876,46 +2876,41 @@ export function App() {
         {selectedTrack ? (
           <div>
             <div className="row" style={{ marginBottom: '8px', justifyContent: 'space-between' }}>
-              <div className="row">
+              <div className="pill-toggle-group">
                 <button
                   type="button"
-                  className={showTrackMeta ? '' : 'secondary'}
-                  style={{ padding: '6px 10px' }}
+                  className={`pill-toggle${showTrackMeta ? ' active' : ''}`}
                   onClick={() => setShowTrackMeta((value) => !value)}
                 >
-                  {showTrackMeta ? 'Hide ID' : 'Show ID'}
+                  ID
                 </button>
                 <button
                   type="button"
-                  className={showTrackLocation ? '' : 'secondary'}
-                  style={{ padding: '6px 10px' }}
+                  className={`pill-toggle${showTrackLocation ? ' active' : ''}`}
                   onClick={() => setShowTrackLocation((value) => !value)}
                 >
-                  {showTrackLocation ? 'Hide Location' : 'Show Location'}
+                  Location
                 </button>
                 <button
                   type="button"
-                  className={showTrackAnlzMeta ? '' : 'secondary'}
-                  style={{ padding: '6px 10px' }}
+                  className={`pill-toggle${showTrackAnlzMeta ? ' active' : ''}`}
                   onClick={() => setShowTrackAnlzMeta((value) => !value)}
                 >
-                  {showTrackAnlzMeta ? 'Hide ANLZ Meta' : 'Show ANLZ Meta'}
+                  ANLZ Meta
                 </button>
                 <button
                   type="button"
-                  className={showTrackNestedMeta ? '' : 'secondary'}
-                  style={{ padding: '6px 10px' }}
+                  className={`pill-toggle${showTrackNestedMeta ? ' active' : ''}`}
                   onClick={() => setShowTrackNestedMeta((value) => !value)}
                 >
-                  {showTrackNestedMeta ? 'Hide Nested Meta' : 'Show Nested Meta'}
+                  Nested Meta
                 </button>
                 <button
                   type="button"
-                  className={showTrackPlaylists ? '' : 'secondary'}
-                  style={{ padding: '6px 10px' }}
+                  className={`pill-toggle${showTrackPlaylists ? ' active' : ''}`}
                   onClick={() => setShowTrackPlaylists((value) => !value)}
                 >
-                  {showTrackPlaylists ? 'Hide Playlists' : 'Show Playlists'}
+                  Playlists
                 </button>
               </div>
               <div className="row">
