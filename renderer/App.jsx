@@ -3152,7 +3152,7 @@ export function App() {
                 {selectedTrack.anlzWaveform ? (
                   <div>
                     {showTrackAnlzMeta ? (
-                      <>
+                      <div className="anlz-summary">
                         <div className="meta">
                           <span>Source: {selectedTrack.anlzWaveform.source || 'anlz-pwv5'}</span>
                           <span>Samples: {selectedTrack.anlzWaveform.sampleCount || 0}</span>
@@ -3170,7 +3170,7 @@ export function App() {
                         <p style={{ marginTop: '8px' }}>
                           EXT Path: {selectedTrack.anlzWaveform.extPath || '-'}
                         </p>
-                      </>
+                      </div>
                     ) : null}
                     <WaveformPreview waveform={selectedTrack.anlzWaveform} />
                     {showTrackAnlzMeta ? (

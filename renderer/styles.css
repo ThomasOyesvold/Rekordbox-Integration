@@ -390,6 +390,26 @@ button:disabled {
   position: relative;
 }
 
+.anlz-summary {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.anlz-summary .meta {
+  margin-top: 0;
+}
+
+.anlz-summary .meta span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.6);
+  font-size: 0.8rem;
+}
+
 .similar-track-list {
   display: grid;
   gap: 12px;

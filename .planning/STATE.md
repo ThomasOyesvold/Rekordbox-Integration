@@ -86,6 +86,8 @@ Status: Active development
   - Styled Find Similar button + parameter inputs as compact pills
 - ✅ **Track Details Meta Chips**:
   - Styled track meta summary (artist/title/BPM/key) as pill chips
+- ✅ **ANLZ Summary Card Styling**:
+  - Wrapped ANLZ meta details in a compact summary card with chips
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
