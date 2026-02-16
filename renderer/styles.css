@@ -41,6 +41,18 @@ body {
   box-shadow: var(--shadow-md);
 }
 
+.card h3 {
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.card h4 {
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
 .onboarding h3 {
   margin: 0 0 6px;
 }

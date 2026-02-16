@@ -92,6 +92,8 @@ Status: Active development
   - Styled playlist list as compact chips with consistent spacing
 - ✅ **Waveform Placeholder Styling**:
   - Refined "no waveform" placeholder to match the rest of the UI
+- ✅ **Card Heading Polish**:
+  - Standardized card h3/h4 styling for consistent hierarchy
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
