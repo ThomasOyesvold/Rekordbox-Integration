@@ -96,6 +96,8 @@ Status: Active development
   - Standardized card h3/h4 styling for consistent hierarchy
 - ✅ **Global Button Hover Polish**:
   - Added hover glow and secondary hover styling for consistent feedback
+- ✅ **Input Focus Polish**:
+  - Added focus ring + consistent styling for number inputs and selects
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
