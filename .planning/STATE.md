@@ -104,6 +104,8 @@ Status: Active development
   - Added subtle zebra stripes to track table rows for readability
 - ✅ **Sampling Controls Polish**:
   - Styled sampling controls with compact inputs and pill action buttons
+- ✅ **Playback Cell Styling**:
+  - Added pill styling for per-row timers in track tables
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:

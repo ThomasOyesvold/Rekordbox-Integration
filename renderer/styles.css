@@ -809,6 +809,10 @@ button:disabled {
   overflow: hidden;
 }
 
+.playback-button:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
 .playback-button::after {
   content: '';
   position: absolute;
@@ -825,6 +829,11 @@ button:disabled {
 .playback-time {
   font-size: 0.78rem;
   color: #475569;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  padding: 2px 6px;
+  width: fit-content;
 }
 
 .playback-error {
