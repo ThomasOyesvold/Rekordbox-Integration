@@ -267,6 +267,10 @@ button:disabled {
   letter-spacing: 0.08em;
 }
 
+.track-table tbody tr:nth-child(even) {
+  background: rgba(148, 163, 184, 0.03);
+}
+
 .track-table.compact th,
 .track-table.compact td {
   padding: 5px 8px;
