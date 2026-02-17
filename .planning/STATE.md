@@ -102,6 +102,8 @@ Status: Active development
   - Standardized meta rows to display as chips for a cleaner scan
 - ✅ **Track Table Zebra Striping**:
   - Added subtle zebra stripes to track table rows for readability
+- ✅ **Sampling Controls Polish**:
+  - Styled sampling controls with compact inputs and pill action buttons
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:

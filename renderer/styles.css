@@ -695,6 +695,30 @@ button:disabled {
   border-color: rgba(16, 185, 129, 0.4);
 }
 
+.sampling-meta {
+  gap: 10px;
+}
+
+.sampling-meta .sampling-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.55);
+  font-size: 0.85rem;
+}
+
+.sampling-meta input[type="number"] {
+  padding: 4px 6px;
+}
+
+.sampling-meta .sampling-action button {
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
 .card.sampling-active {
   border-color: rgba(59, 130, 246, 0.4);
 }

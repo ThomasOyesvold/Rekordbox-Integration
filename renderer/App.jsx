@@ -467,7 +467,7 @@ function ClusterDetails({
 
   return (
     <div>
-      <div className="meta" style={{ marginBottom: '8px' }}>
+      <div className="meta sampling-meta" style={{ marginBottom: '8px' }}>
         <span>Tracks: {cluster.size}</span>
         <span>Avg Score: {cluster.avgScore.toFixed(3)}</span>
         <span>Confidence: {(cluster.confidence ?? 0).toFixed(3)}</span>
@@ -483,7 +483,7 @@ function ClusterDetails({
             {cluster.warnings.join(' · ')}
           </span>
         ) : null}
-        <span>
+        <span className="sampling-input">
           Sample
           <input
             type="number"
@@ -495,7 +495,7 @@ function ClusterDetails({
             style={{ width: '70px', marginLeft: '6px' }}
           />
         </span>
-        <span>
+        <span className="sampling-input">
           Cooldown
           <input
             type="number"
@@ -513,7 +513,7 @@ function ClusterDetails({
             style={{ width: '70px', marginLeft: '6px' }}
           />
         </span>
-        <span>
+        <span className="sampling-action">
           <button
             type="button"
             className="secondary"
@@ -523,7 +523,7 @@ function ClusterDetails({
             {samplingState?.active ? 'Sampling…' : 'Sample Playlist'}
           </button>
         </span>
-        <span>
+        <span className="sampling-action">
           <button
             type="button"
             className="secondary"
@@ -533,7 +533,7 @@ function ClusterDetails({
             Stop Sample
           </button>
         </span>
-        <span>
+        <span className="sampling-action">
           <button
             type="button"
             className="secondary"
@@ -543,7 +543,7 @@ function ClusterDetails({
             Skip
           </button>
         </span>
-        <span>
+        <span className="sampling-action">
           <button
             type="button"
             className="secondary"
