@@ -108,6 +108,25 @@ Plans:
   - Moved volume controls to Quick Preview header; default volume 50%
 - [ ] TBD (remaining verification workflow features planned during phase planning)
 
+### Phase 06: Seamless Library Loading
+**Goal**: App restores parsed library instantly on launch; waveforms load automatically without any manual mapping steps
+**Depends on**: Phase 4 (ANLZ waveform extraction already works; SQLite infrastructure exists)
+**Requirements**: LOAD-01, LOAD-02, LOAD-03, LOAD-04
+**Success Criteria** (what must be TRUE):
+  1. App opens with library already loaded — no re-parse required on subsequent launches
+  2. User clicks "Refresh Library" to re-parse only when they've added new Rekordbox tracks
+  3. Stale indicator shows clearly when XML file has changed since last parse
+  4. USBANLZ folder auto-detected on first launch from standard Rekordbox install paths (Windows/WSL/macOS)
+  5. Waveforms build automatically during parse — no "Build ANLZ Map" button, no user-visible JSON files
+  6. Subsequent parses are fast — cached mapping and SQLite waveform cache used automatically
+
+Plans:
+- [ ] 06-01: Library state persistence (SQLite cache, load on mount, Refresh Library)
+- [ ] 06-02: ANLZ seamless integration (auto-detect, integrated build, remove manual button)
+- [ ] 06-03: SetupWizard ANLZ section, AppHeader refresh controls, three-stage parse progress
+
+---
+
 ### Phase 5: Approval & User Control
 **Goal**: User can approve or reject suggested playlists with meaningful names and understand why tracks were grouped together
 **Depends on**: Phase 4
@@ -148,6 +167,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Analysis Engine & Caching | 5/6 | In progress | Baseline analyzer, SQLite cache, export, analysis UI |
 | 3. Playlist Generation | 0/TBD | Not started | - |
 | 4. Verification Workflow & Playback | 2/TBD | Partial | WSL audio playback fixed + rapid switching guard |
+| 06. Seamless Library Loading | 0/3 | Not started | Library persistence + ANLZ auto-detect planned |
 | 5. Approval & User Control | 0/TBD | Not started | - |
 | 6. Export & Integration | 0/TBD | Not started | - |
 
