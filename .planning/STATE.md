@@ -98,6 +98,8 @@ Status: Active development
   - Added hover glow and secondary hover styling for consistent feedback
 - ✅ **Input Focus Polish**:
   - Added focus ring + consistent styling for number inputs and selects
+- ✅ **Meta Chip Consistency**:
+  - Standardized meta rows to display as chips for a cleaner scan
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
