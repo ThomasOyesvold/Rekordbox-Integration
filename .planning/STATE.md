@@ -110,6 +110,10 @@ Status: Active development
   - Added SQLite `library_state` cache with save/load/clear IPC handlers
   - App restores cached tracks/folders/summary on launch + stale indicator
   - Added "Refresh Library" button to clear cache and re-parse
+- ✅ **Auto ANLZ Mapping (Phase 06-02)**:
+  - Added USBANLZ auto-detect handler (WSL/Windows/macOS paths)
+  - Parsing now auto-builds mapping into userData and attaches waveforms
+  - Removed manual ANLZ map input/build UI; parse shows waveform build stage
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:

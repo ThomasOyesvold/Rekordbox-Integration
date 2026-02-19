@@ -14,8 +14,10 @@ contextBridge.exposeInMainWorld('rbfa', {
     xmlPath,
     selectedFolders,
     anlzMapPath: options?.anlzMapPath || null,
+    usbAnlzPath: options?.usbAnlzPath || null,
     anlzMaxTracks: options?.anlzMaxTracks
   }),
+  detectAnlzPath: () => ipcRenderer.invoke('anlz:detectPath'),
   buildAnlzMapping: (tracks, usbAnlzPath, outPath) => ipcRenderer.invoke('anlz:buildMapping', {
     tracks,
     usbAnlzPath,
@@ -28,6 +30,14 @@ contextBridge.exposeInMainWorld('rbfa', {
 
     return () => {
       ipcRenderer.removeListener('anlz:progress', wrapped);
+    };
+  },
+  onAnlzBuildProgress: (listener) => {
+    const wrapped = (_event, value) => listener(value);
+    ipcRenderer.on('anlz:buildProgress', wrapped);
+
+    return () => {
+      ipcRenderer.removeListener('anlz:buildProgress', wrapped);
     };
   },
   onAnalysisProgress: (listener) => {

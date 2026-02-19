@@ -1,6 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import {
@@ -115,6 +116,7 @@ ipcMain.handle('library:parse', async (_event, payload) => {
   const xmlPath = payload?.xmlPath;
   const selectedFolders = Array.isArray(payload?.selectedFolders) ? payload.selectedFolders : [];
   const anlzMapPath = typeof payload?.anlzMapPath === 'string' ? payload.anlzMapPath.trim() : '';
+  const usbAnlzPath = typeof payload?.usbAnlzPath === 'string' ? payload.usbAnlzPath.trim() : '';
   const anlzMaxTracksRaw = Number(payload?.anlzMaxTracks);
   const anlzMaxTracks = Number.isFinite(anlzMaxTracksRaw) && anlzMaxTracksRaw > 0
     ? Math.floor(anlzMaxTracksRaw)
@@ -142,7 +144,49 @@ ipcMain.handle('library:parse', async (_event, payload) => {
   cachedLibraryTracks = filteredTracks;
   let anlzAttach = null;
   let anlzAttachError = null;
-  if (anlzMapPath) {
+  if (usbAnlzPath) {
+    const internalMappingPath = path.join(app.getPath('userData'), 'anlz-mapping.json');
+    let needsRebuild = true;
+
+    try {
+      const existing = JSON.parse(fsSync.readFileSync(internalMappingPath, 'utf8'));
+      const savedPath = existing?.usbAnlzPath || '';
+      const savedCount = existing?.stats?.totalTracks || 0;
+      const currentCount = filteredTracks.length;
+      const countDrift = Math.abs(currentCount - savedCount) / Math.max(currentCount, 1);
+      needsRebuild = savedPath !== usbAnlzPath || countDrift > 0.1;
+    } catch {
+      needsRebuild = true;
+    }
+
+    if (needsRebuild) {
+      if (anlzBuildController) {
+        anlzBuildController.abort();
+      }
+      anlzBuildController = new AbortController();
+
+      await buildAnlzMapping({
+        tracks: filteredTracks,
+        usbAnlzPath,
+        outPath: internalMappingPath,
+        signal: anlzBuildController.signal,
+        onProgress: (progress) => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('anlz:buildProgress', { ...progress, stage: 'build' });
+          }
+        }
+      });
+    }
+
+    try {
+      anlzAttach = await attachAnlzWaveformSummaries(filteredTracks, {
+        mappingPath: internalMappingPath,
+        maxTracks: anlzMaxTracks
+      });
+    } catch (error) {
+      anlzAttachError = error.message || String(error);
+    }
+  } else if (anlzMapPath) {
     try {
       anlzAttach = await attachAnlzWaveformSummaries(filteredTracks, {
         mappingPath: anlzMapPath,
@@ -213,6 +257,50 @@ ipcMain.handle('anlz:cancelBuild', async () => {
     return { canceled: true };
   }
   return { canceled: false };
+});
+
+ipcMain.handle('anlz:detectPath', async () => {
+  const candidates = [];
+
+  if (process.platform === 'win32' && process.env.APPDATA) {
+    candidates.push(
+      path.join(process.env.APPDATA, 'Pioneer', 'rekordbox', 'share', 'PIONEER', 'USBANLZ')
+    );
+  }
+
+  if (process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP) {
+    try {
+      const users = fsSync.readdirSync('/mnt/c/Users');
+      for (const user of users) {
+        if (user.startsWith('.') || user === 'Public' || user === 'Default') {
+          continue;
+        }
+        candidates.push(
+          `/mnt/c/Users/${user}/AppData/Roaming/Pioneer/rekordbox/share/PIONEER/USBANLZ`
+        );
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (process.platform === 'darwin') {
+    candidates.push(
+      path.join(os.homedir(), 'Library', 'Application Support', 'rekordbox', 'share', 'PIONEER', 'USBANLZ')
+    );
+  }
+
+  for (const candidate of candidates) {
+    try {
+      if (fsSync.existsSync(candidate)) {
+        return { path: candidate, detected: true };
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return { path: null, detected: false };
 });
 
 ipcMain.handle('state:load', async () => loadState(statePath));

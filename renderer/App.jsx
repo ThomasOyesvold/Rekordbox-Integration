@@ -715,7 +715,6 @@ function ClusterDetails({
 
 export function App() {
   const [xmlPath, setXmlPath] = useState('');
-  const [anlzMapPath, setAnlzMapPath] = useState('');
   const [folders, setFolders] = useState([]);
   const [folderTree, setFolderTree] = useState(null);
   const [selectedFolders, setSelectedFolders] = useState([]);
@@ -785,9 +784,7 @@ export function App() {
   const [clusterPreset, setClusterPreset] = useState('balanced');
   const [isParsing, setIsParsing] = useState(false);
   const [usbAnlzPath, setUsbAnlzPath] = useState('');
-  const [anlzBuildSummary, setAnlzBuildSummary] = useState(null);
-  const [anlzBuildProgress, setAnlzBuildProgress] = useState(null);
-  const [isBuildingAnlzMap, setIsBuildingAnlzMap] = useState(false);
+  const [anlzDetected, setAnlzDetected] = useState(false);
   const [issueSeverityFilter, setIssueSeverityFilter] = useState('all');
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [showTrackMeta, setShowTrackMeta] = useState(false);
@@ -797,6 +794,7 @@ export function App() {
   const [showTrackPlaylists, setShowTrackPlaylists] = useState(false);
   const [error, setError] = useState('');
   const [progress, setProgress] = useParseProgress();
+  const [parseStage, setParseStage] = useState('');
   const trackFilterInputRef = useRef(null);
   const tableViewportRef = useRef(null);
   const sharedAudioRef = useRef(null);
@@ -1015,10 +1013,6 @@ export function App() {
           setXmlPath(state.lastLibraryPath);
         }
 
-        if (typeof state?.anlzMapPath === 'string') {
-          setAnlzMapPath(state.anlzMapPath);
-        }
-
         if (typeof state?.usbAnlzPath === 'string') {
           setUsbAnlzPath(state.usbAnlzPath);
         }
@@ -1060,6 +1054,20 @@ export function App() {
         // best-effort state load
       }
 
+      if (!state?.usbAnlzPath) {
+        try {
+          const detected = await bridgeApi.detectAnlzPath?.();
+          if (detected?.path) {
+            setUsbAnlzPath(detected.path);
+            setAnlzDetected(true);
+          }
+        } catch {
+          // best-effort auto-detect
+        }
+      } else {
+        setAnlzDetected(false);
+      }
+
       try {
         const libraryCache = await bridgeApi.loadLibraryState?.();
         if (libraryCache?.found && libraryCache.tracks?.length > 0) {
@@ -1094,19 +1102,6 @@ export function App() {
     };
 
     load();
-  }, []);
-
-  useEffect(() => {
-    const bridgeApi = getBridgeApi();
-    if (!bridgeApi?.onAnlzProgress) {
-      return undefined;
-    }
-
-    const dispose = bridgeApi.onAnlzProgress((progress) => {
-      setAnlzBuildProgress(progress || null);
-    });
-
-    return () => dispose();
   }, []);
 
   useEffect(() => {
@@ -1207,64 +1202,6 @@ export function App() {
     setError('Loaded import settings from history. Click Parse Library to reload.');
   };
 
-  const buildAnlzMap = async () => {
-    const bridgeApi = getBridgeApi();
-    if (!bridgeApi?.buildAnlzMapping) {
-      setError(DESKTOP_BRIDGE_ERROR);
-      return;
-    }
-
-    if (!usbAnlzPath.trim()) {
-      setError('Choose the Rekordbox USBANLZ folder first.');
-      return;
-    }
-
-    if (!tracks.length) {
-      setError('Parse your library first so we know which tracks to map.');
-      return;
-    }
-
-    setIsBuildingAnlzMap(true);
-    setError('');
-    setAnlzBuildSummary(null);
-    setAnlzBuildProgress({ stage: 'parse-ext', scanned: 0, total: 0 });
-
-    try {
-      const result = await bridgeApi.buildAnlzMapping(tracks, usbAnlzPath.trim(), anlzMapPath.trim());
-      if (result?.outPath) {
-        setAnlzMapPath(result.outPath);
-      }
-      if (result?.stats) {
-        setAnlzBuildSummary(result.stats);
-      }
-
-      await bridgeApi.saveState({
-        usbAnlzPath: usbAnlzPath.trim(),
-        anlzMapPath: result?.outPath || anlzMapPath.trim()
-      });
-    } catch (buildError) {
-      const message = buildError?.message || String(buildError);
-      if (message.toLowerCase().includes('canceled')) {
-        setError('ANLZ mapping canceled.');
-      } else {
-        setError(message);
-      }
-    } finally {
-      setIsBuildingAnlzMap(false);
-      setAnlzBuildProgress(null);
-    }
-  };
-
-  const cancelAnlzMapBuild = async () => {
-    const bridgeApi = getBridgeApi();
-    if (!bridgeApi?.cancelAnlzMapping) {
-      return;
-    }
-    await bridgeApi.cancelAnlzMapping();
-    setAnlzBuildProgress(null);
-    setIsBuildingAnlzMap(false);
-  };
-
   const parse = async () => {
     const bridgeApi = getBridgeApi();
     if (!bridgeApi?.parseLibrary) {
@@ -1283,10 +1220,18 @@ export function App() {
     setValidationIssues([]);
     setAnlzAttachSummary(null);
     setProgress(0);
+    setParseStage('Parsing XML...');
+    const unsubscribeAnlzProgress = bridgeApi.onAnlzBuildProgress?.((progress) => {
+      const scanned = Number(progress?.scanned || 0);
+      const total = Number(progress?.total || 0);
+      if (total > 0) {
+        setParseStage(`Building waveform index: ${scanned.toLocaleString()} / ${total.toLocaleString()} files...`);
+      }
+    });
 
     try {
       const result = await bridgeApi.parseLibrary(xmlPath.trim(), selectedFolders, {
-        anlzMapPath: anlzMapPath.trim(),
+        usbAnlzPath: usbAnlzPath.trim(),
         anlzMaxTracks: 5000
       });
       setFolders(result.folders || []);
@@ -1313,7 +1258,6 @@ export function App() {
       await bridgeApi.saveState({
         lastLibraryPath: xmlPath.trim(),
         selectedFolders,
-        anlzMapPath: anlzMapPath.trim(),
         usbAnlzPath: usbAnlzPath.trim()
       });
       try {
@@ -1341,6 +1285,10 @@ export function App() {
       setValidationIssues(parsedError.issues);
     } finally {
       setIsParsing(false);
+      setParseStage('');
+      if (typeof unsubscribeAnlzProgress === 'function') {
+        unsubscribeAnlzProgress();
+      }
     }
   };
 
@@ -2539,44 +2487,14 @@ export function App() {
               <div className="row" style={{ marginTop: '8px' }}>
                 <input
                   type="text"
-                  placeholder="Optional ANLZ map path (.planning/anlz-track-map.json)"
-                  value={anlzMapPath}
-                  onChange={(event) => setAnlzMapPath(event.target.value)}
-                />
-              </div>
-              <div className="row" style={{ marginTop: '8px' }}>
-                <input
-                  type="text"
                   placeholder="Rekordbox USBANLZ folder (e.g., PIONEER/USBANLZ)"
                   value={usbAnlzPath}
                   onChange={(event) => setUsbAnlzPath(event.target.value)}
                 />
-                <button type="button" className="secondary" onClick={pickUsbAnlzFolder} disabled={isBuildingAnlzMap}>
+                <button type="button" className="secondary" onClick={pickUsbAnlzFolder}>
                   Browse USBANLZ
                 </button>
-                <button
-                  type="button"
-                  onClick={buildAnlzMap}
-                  disabled={isBuildingAnlzMap || !tracks.length}
-                >
-                  {isBuildingAnlzMap ? 'Building...' : 'Build ANLZ Map'}
-                </button>
-                {isBuildingAnlzMap ? (
-                  <button type="button" className="secondary" onClick={cancelAnlzMapBuild}>
-                    Cancel
-                  </button>
-                ) : null}
               </div>
-              {anlzBuildProgress ? (
-                <div className="meta" style={{ marginTop: '6px' }}>
-                  <span>
-                    ANLZ Progress: {anlzBuildProgress.scanned || 0}/{anlzBuildProgress.total || 0} EXT files
-                  </span>
-                  <span>Parsed: {anlzBuildProgress.parsedCount || 0}</span>
-                  <span>Errors: {anlzBuildProgress.parseErrors || 0}</span>
-                  <span>Missing PPTH: {anlzBuildProgress.missingPpth || 0}</span>
-                </div>
-              ) : null}
               {analysisProgress ? (
                 <div className="meta" style={{ marginTop: '6px' }}>
                   <span>
@@ -2592,6 +2510,7 @@ export function App() {
                 </div>
               ) : null}
               {progress !== null && isParsing ? <p className="progress">Parsing in background: {progress}%</p> : null}
+              {isParsing && parseStage ? <p className="parse-stage-label">{parseStage}</p> : null}
               {error ? <p style={{ color: '#be123c', margin: '8px 0 0' }}>{error}</p> : null}
               {summary ? (
                 <>
@@ -2627,12 +2546,7 @@ export function App() {
                   ) : null}
                   <div className="meta" style={{ marginTop: '10px' }}>
                     <span>Selected Folders: {selectedFolders.length || 'All'}</span>
-                    <span>ANLZ Map: {anlzMapPath.trim() ? 'Configured' : 'Not set'}</span>
-                    {anlzBuildSummary ? (
-                      <span>
-                        ANLZ Matched: {anlzBuildSummary.matchedTracks || 0}/{anlzBuildSummary.totalTracks || 0}
-                      </span>
-                    ) : null}
+                    <span>Waveforms: {usbAnlzPath.trim() ? 'Auto' : 'Not configured'}</span>
                   </div>
                 </>
               ) : null}
@@ -3292,7 +3206,7 @@ export function App() {
                   </div>
                 ) : (
                   <p style={{ marginTop: '4px' }}>
-                    No ANLZ waveform attached for this track. Set ANLZ map path and parse again.
+                    No ANLZ waveform attached for this track. Set your USBANLZ folder and parse again.
                   </p>
                 )}
               </>

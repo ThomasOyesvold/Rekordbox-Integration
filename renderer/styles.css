@@ -219,6 +219,13 @@ button:disabled {
   font-size: 0.85rem;
 }
 
+.parse-stage-label {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
 .anlz-summary .meta span,
 .track-meta-chips span,
 .similar-tracks-meta span,
