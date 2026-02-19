@@ -114,6 +114,10 @@ Status: Active development
   - Added USBANLZ auto-detect handler (WSL/Windows/macOS paths)
   - Parsing now auto-builds mapping into userData and attaches waveforms
   - Removed manual ANLZ map input/build UI; parse shows waveform build stage
+- ✅ **Seamless Library UX (Phase 06-03)**:
+  - SetupWizard now shows Waveform Data section with auto-detect badge + browse button
+  - App header shows Refresh Library button + stale warning indicator
+  - Parse progress shows stage label during waveform index build
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:

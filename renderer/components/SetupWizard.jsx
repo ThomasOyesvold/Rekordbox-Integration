@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FolderOpen, Loader2, Upload } from 'lucide-react';
+import { Activity, FolderOpen, Loader2, Upload } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Card, CardContent, CardHeader } from './ui/Card';
 import './SetupWizard.css';
@@ -24,7 +24,14 @@ function toRecentLabel(row) {
   return parts[parts.length - 1] || normalized;
 }
 
-export function SetupWizard({ onFileSelect, isLoading, recentImports = [] }) {
+export function SetupWizard({
+  onFileSelect,
+  isLoading,
+  recentImports = [],
+  usbAnlzPath = '',
+  anlzDetected = false,
+  onPickAnlzFolder
+}) {
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -112,6 +119,36 @@ export function SetupWizard({ onFileSelect, isLoading, recentImports = [] }) {
             onChange={handleFileInput}
             style={{ display: 'none' }}
           />
+
+          <div className="anlz-section">
+            <div className="anlz-section-header">
+              <Activity size={14} />
+              <span>Waveform Data</span>
+              {anlzDetected && usbAnlzPath ? (
+                <span className="anlz-badge-detected">Auto-detected</span>
+              ) : null}
+            </div>
+            <p className="anlz-hint">
+              Point to your Rekordbox USBANLZ folder to load waveform colors automatically.
+            </p>
+            <div className="anlz-path-row">
+              <div className="anlz-path-display">
+                {usbAnlzPath ? (
+                  <span className="anlz-path-value">{usbAnlzPath}</span>
+                ) : (
+                  <span className="anlz-path-empty">No folder selected — waveforms will be skipped</span>
+                )}
+              </div>
+              <Button variant="secondary" size="sm" onClick={onPickAnlzFolder}>
+                Browse
+              </Button>
+            </div>
+            {usbAnlzPath ? (
+              <p className="anlz-ready-hint">
+                Waveforms will build automatically when you parse.
+              </p>
+            ) : null}
+          </div>
 
           {recentImports.length > 0 ? (
             <div className="recent-imports">

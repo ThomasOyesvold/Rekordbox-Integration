@@ -2430,7 +2430,13 @@ export function App() {
 
   return (
     <div className="app-shell">
-      <AppHeader onSettingsClick={() => setIsSettingsOpen(true)} />
+      <AppHeader
+        onSettingsClick={() => setIsSettingsOpen(true)}
+        hasLibrary={tracks.length > 0}
+        isStale={libraryCacheInfo?.stale ?? false}
+        isRefreshing={isParsing}
+        onRefresh={refreshLibrary}
+      />
 
       <main className="app-main">
         {!xmlPath.trim() ? (
@@ -2438,6 +2444,9 @@ export function App() {
             onFileSelect={handleWizardFileSelect}
             isLoading={isParsing}
             recentImports={recentImports}
+            usbAnlzPath={usbAnlzPath}
+            anlzDetected={anlzDetected}
+            onPickAnlzFolder={pickUsbAnlzFolder}
           />
         ) : (
           <div className="app-content">

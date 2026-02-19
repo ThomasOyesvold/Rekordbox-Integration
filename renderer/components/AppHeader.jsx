@@ -1,8 +1,14 @@
-import { Settings } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Settings } from 'lucide-react';
 import { IconButton } from './ui/Button';
 import './AppHeader.css';
 
-export function AppHeader({ onSettingsClick }) {
+export function AppHeader({
+  onSettingsClick,
+  hasLibrary = false,
+  isStale = false,
+  isRefreshing = false,
+  onRefresh
+}) {
   return (
     <header className="app-header">
       <div className="header-left">
@@ -27,6 +33,26 @@ export function AppHeader({ onSettingsClick }) {
         </div>
       </div>
       <div className="header-right">
+        {hasLibrary ? (
+          <div className="header-library-status">
+            {isStale ? (
+              <div className="stale-indicator">
+                <AlertTriangle size={14} />
+                <span>Library may be outdated</span>
+              </div>
+            ) : null}
+            <button
+              type="button"
+              className={`refresh-btn ${isRefreshing ? 'refreshing' : ''}`}
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              title="Re-parse library for new tracks"
+            >
+              <RefreshCw size={16} className={isRefreshing ? 'spin' : ''} />
+              <span>Refresh Library</span>
+            </button>
+          </div>
+        ) : null}
         <IconButton icon={<Settings size={20} />} onClick={onSettingsClick} aria-label="Settings" />
       </div>
     </header>
