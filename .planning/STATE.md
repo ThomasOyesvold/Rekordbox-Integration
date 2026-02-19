@@ -121,6 +121,9 @@ Status: Active development
 - ✅ **Roadmap Sync**:
   - Marked Phase 2 safeguards/stress tests complete in ROADMAP
   - Marked Phase 3 03-01 foundations complete in ROADMAP
+- ✅ **PlaylistView Refactor (Phase 04-01)**:
+  - Extracted Playlist Suggestions UI into `PlaylistView.jsx`
+  - App.jsx now passes clustering + playback props to the new component
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
