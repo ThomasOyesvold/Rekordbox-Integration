@@ -118,6 +118,9 @@ Status: Active development
   - SetupWizard now shows Waveform Data section with auto-detect badge + browse button
   - App header shows Refresh Library button + stale warning indicator
   - Parse progress shows stage label during waveform index build
+- ✅ **Roadmap Sync**:
+  - Marked Phase 2 safeguards/stress tests complete in ROADMAP
+  - Marked Phase 3 03-01 foundations complete in ROADMAP
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:
