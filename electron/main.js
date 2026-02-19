@@ -27,10 +27,35 @@ const dbPath = path.resolve(app.getPath('userData'), 'rbfa.db');
 const isSmokeMode = process.env.RBFA_SMOKE === '1';
 
 let mainWindow = null;
+let db = null;
 let anlzBuildController = null;
 let analysisController = null;
 let analysisInFlight = false;
 let cachedLibraryTracks = [];
+
+function ensureLibraryStateTable(dbInstance) {
+  dbInstance.exec(`
+    CREATE TABLE IF NOT EXISTS library_state (
+      id INTEGER PRIMARY KEY,
+      xml_path TEXT NOT NULL,
+      xml_mtime INTEGER NOT NULL,
+      parsed_at TEXT NOT NULL,
+      tracks_json TEXT NOT NULL,
+      folders_json TEXT NOT NULL,
+      summary_json TEXT NOT NULL,
+      selected_folders_json TEXT NOT NULL DEFAULT '[]',
+      track_count INTEGER NOT NULL DEFAULT 0
+    )
+  `);
+}
+
+function getDb() {
+  if (!db) {
+    db = initDatabase(dbPath);
+    ensureLibraryStateTable(db);
+  }
+  return db;
+}
 
 function createWindow() {
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;
@@ -192,6 +217,93 @@ ipcMain.handle('anlz:cancelBuild', async () => {
 
 ipcMain.handle('state:load', async () => loadState(statePath));
 ipcMain.handle('state:save', async (_event, patch) => saveState(statePath, patch));
+ipcMain.handle('library:saveState', async (_event, payload) => {
+  const database = getDb();
+  const {
+    xmlPath,
+    xmlMtime,
+    parsedAt,
+    tracks,
+    folders,
+    summary,
+    selectedFolders
+  } = payload || {};
+
+  if (!xmlPath) {
+    throw new Error('Missing xmlPath for library cache.');
+  }
+
+  let mtime = xmlMtime;
+  if (!mtime) {
+    try {
+      const stat = fsSync.statSync(xmlPath);
+      mtime = stat.mtimeMs;
+    } catch {
+      mtime = 0;
+    }
+  }
+
+  database.prepare(`
+    INSERT OR REPLACE INTO library_state
+      (id, xml_path, xml_mtime, parsed_at, tracks_json, folders_json, summary_json, selected_folders_json, track_count)
+    VALUES
+      (1, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    xmlPath,
+    mtime,
+    parsedAt || new Date().toISOString(),
+    JSON.stringify(tracks || []),
+    JSON.stringify(folders || []),
+    JSON.stringify(summary || null),
+    JSON.stringify(selectedFolders || []),
+    Array.isArray(tracks) ? tracks.length : 0
+  );
+
+  return { saved: true };
+});
+ipcMain.handle('library:loadState', async () => {
+  const database = getDb();
+  const row = database.prepare('SELECT * FROM library_state WHERE id = 1').get();
+  if (!row) {
+    return { found: false };
+  }
+
+  const xmlPath = row.xml_path;
+  try {
+    const stat = fsSync.statSync(xmlPath);
+    const currentMtime = stat.mtimeMs;
+    const stale = currentMtime !== row.xml_mtime;
+
+    return {
+      found: true,
+      stale,
+      xmlPath,
+      parsedAt: row.parsed_at,
+      trackCount: row.track_count,
+      tracks: JSON.parse(row.tracks_json),
+      folders: JSON.parse(row.folders_json),
+      summary: JSON.parse(row.summary_json),
+      selectedFolders: JSON.parse(row.selected_folders_json)
+    };
+  } catch {
+    return {
+      found: true,
+      stale: true,
+      xmlPath,
+      parsedAt: row.parsed_at,
+      trackCount: row.track_count,
+      tracks: [],
+      folders: [],
+      summary: null,
+      selectedFolders: []
+    };
+  }
+});
+ipcMain.handle('library:clearState', async () => {
+  const database = getDb();
+  database.prepare('DELETE FROM library_state WHERE id = 1').run();
+  return { cleared: true };
+});
 ipcMain.handle('imports:recent', async () => getRecentImports(10));
 ipcMain.handle('analysis:baseline', async (_event, payload) => {
   if (analysisInFlight) {
@@ -585,7 +697,7 @@ async function runSmokeTest() {
 }
 
 app.whenReady().then(() => {
-  initDatabase(dbPath);
+  getDb();
   createWindow();
 
   if (isSmokeMode && mainWindow) {

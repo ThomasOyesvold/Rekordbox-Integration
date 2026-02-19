@@ -1,6 +1,6 @@
 # Project State
 
-Updated: 2026-02-11
+Updated: 2026-02-19
 Phase: 2 of 6 (Analysis Engine) + Phase 4 playback + Phase 5 UI redesign
 Progress: Phase 1 complete, Phase 2 ~70%, Phase 4 audio playback fixed, UI polish in progress
 Status: Active development
@@ -106,6 +106,10 @@ Status: Active development
   - Styled sampling controls with compact inputs and pill action buttons
 - ✅ **Playback Cell Styling**:
   - Added pill styling for per-row timers in track tables
+- ✅ **Library Cache (Phase 06-01)**:
+  - Added SQLite `library_state` cache with save/load/clear IPC handlers
+  - App restores cached tracks/folders/summary on launch + stale indicator
+  - Added "Refresh Library" button to clear cache and re-parse
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:

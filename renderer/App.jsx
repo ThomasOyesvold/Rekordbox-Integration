@@ -7,6 +7,7 @@ import { TrackTable } from './components/TrackTable';
 import { Modal } from './components/ui/Modal';
 import { Toast, ToastContainer } from './components/ui/Toast';
 import { Activity, Clock, FolderOpen, KeyRound, ListMusic, Music2, Tags, Waves } from 'lucide-react';
+import { buildFolderTree } from '../src/services/libraryService.js';
 
 const DESKTOP_BRIDGE_ERROR = 'Desktop bridge unavailable. Relaunch from Electron (not browser-only mode).';
 const TRACK_COLUMN_ORDER = ['play', 'id', 'title', 'bpm', 'key', 'waveformPreview', 'genre', 'durationSeconds', 'artist', 'playlists'];
@@ -118,6 +119,36 @@ function formatDuration(seconds) {
   const minutes = Math.floor(totalSeconds / 60);
   const remainingSeconds = totalSeconds % 60;
   return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`;
+}
+
+function formatRelativeDate(value) {
+  if (!value) {
+    return 'unknown';
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return 'unknown';
+  }
+
+  const deltaMs = Date.now() - parsed.getTime();
+  const deltaSeconds = Math.floor(deltaMs / 1000);
+  if (deltaSeconds < 60) {
+    return 'just now';
+  }
+
+  const deltaMinutes = Math.floor(deltaSeconds / 60);
+  if (deltaMinutes < 60) {
+    return `${deltaMinutes}m ago`;
+  }
+
+  const deltaHours = Math.floor(deltaMinutes / 60);
+  if (deltaHours < 24) {
+    return `${deltaHours}h ago`;
+  }
+
+  const deltaDays = Math.floor(deltaHours / 24);
+  return `${deltaDays}d ago`;
 }
 
 function formatBinPreview(bins, maxItems = 20) {
@@ -702,6 +733,7 @@ export function App() {
   const [tableScrollTop, setTableScrollTop] = useState(0);
   const [recentImports, setRecentImports] = useState([]);
   const [summary, setSummary] = useState(null);
+  const [libraryCacheInfo, setLibraryCacheInfo] = useState(null);
   const [anlzAttachSummary, setAnlzAttachSummary] = useState(null);
   const [validationIssues, setValidationIssues] = useState([]);
   const [analysisResult, setAnalysisResult] = useState(null);
@@ -976,61 +1008,92 @@ export function App() {
       return;
     }
 
-    bridgeApi.loadState().then((state) => {
-      if (state?.lastLibraryPath) {
-        setXmlPath(state.lastLibraryPath);
+    const load = async () => {
+      try {
+        const state = await bridgeApi.loadState();
+        if (state?.lastLibraryPath) {
+          setXmlPath(state.lastLibraryPath);
+        }
+
+        if (typeof state?.anlzMapPath === 'string') {
+          setAnlzMapPath(state.anlzMapPath);
+        }
+
+        if (typeof state?.usbAnlzPath === 'string') {
+          setUsbAnlzPath(state.usbAnlzPath);
+        }
+
+        if (Array.isArray(state?.selectedFolders)) {
+          setSelectedFolders(state.selectedFolders);
+        }
+
+        if (state?.playlistDecisionsByContext && typeof state.playlistDecisionsByContext === 'object') {
+          setPlaylistDecisionsByContext(state.playlistDecisionsByContext);
+        } else if (state?.playlistDecisions && typeof state.playlistDecisions === 'object') {
+          setPlaylistDecisionsByContext({ legacy: state.playlistDecisions });
+        }
+
+        if (typeof state?.tableSortBy === 'string') {
+          setSortBy(state.tableSortBy);
+        }
+
+        if (state?.tableSortDirection === 'asc' || state?.tableSortDirection === 'desc') {
+          setSortDirection(state.tableSortDirection);
+        }
+
+        const normalizedColumns = normalizeVisibleTrackColumns(state?.visibleTrackColumns);
+        const looksLegacy =
+          normalizedColumns.id &&
+          normalizedColumns.playlists &&
+          !normalizedColumns.waveformPreview;
+        setVisibleTrackColumns(looksLegacy ? DEFAULT_VISIBLE_TRACK_COLUMNS : normalizedColumns);
+
+        if (state?.tableDensity === 'compact' || state?.tableDensity === 'cozy') {
+          setTableDensity(state.tableDensity);
+        }
+
+        const parsedPageSize = Number(state?.tablePageSize);
+        if (PAGE_SIZE_OPTIONS.includes(parsedPageSize)) {
+          setPageSize(parsedPageSize);
+        }
+      } catch {
+        // best-effort state load
       }
 
-      if (typeof state?.anlzMapPath === 'string') {
-        setAnlzMapPath(state.anlzMapPath);
+      try {
+        const libraryCache = await bridgeApi.loadLibraryState?.();
+        if (libraryCache?.found && libraryCache.tracks?.length > 0) {
+          setTracks(libraryCache.tracks);
+          setFolders(libraryCache.folders || []);
+          const tree = buildFolderTree(libraryCache.folders || []);
+          setFolderTree(tree);
+          if (tree?.children?.length) {
+            setExpandedFolders(new Set(tree.children.map((node) => node.path)));
+          }
+          setSummary(libraryCache.summary || null);
+          setSelectedFolders(libraryCache.selectedFolders || []);
+          setTrackPlaylistIndex({});
+          setSelectedTrackId(libraryCache.tracks?.[0]?.id ?? null);
+          setXmlPath(libraryCache.xmlPath || '');
+          setLibraryCacheInfo({
+            parsedAt: libraryCache.parsedAt,
+            stale: libraryCache.stale,
+            trackCount: libraryCache.trackCount
+          });
+        }
+      } catch {
+        // best-effort cache load
       }
 
-      if (typeof state?.usbAnlzPath === 'string') {
-        setUsbAnlzPath(state.usbAnlzPath);
+      try {
+        const rows = await bridgeApi.getRecentImports();
+        setRecentImports(Array.isArray(rows) ? rows : []);
+      } catch {
+        // best-effort import history load
       }
+    };
 
-      if (Array.isArray(state?.selectedFolders)) {
-        setSelectedFolders(state.selectedFolders);
-      }
-
-      if (state?.playlistDecisionsByContext && typeof state.playlistDecisionsByContext === 'object') {
-        setPlaylistDecisionsByContext(state.playlistDecisionsByContext);
-      } else if (state?.playlistDecisions && typeof state.playlistDecisions === 'object') {
-        setPlaylistDecisionsByContext({ legacy: state.playlistDecisions });
-      }
-
-      if (typeof state?.tableSortBy === 'string') {
-        setSortBy(state.tableSortBy);
-      }
-
-      if (state?.tableSortDirection === 'asc' || state?.tableSortDirection === 'desc') {
-        setSortDirection(state.tableSortDirection);
-      }
-
-      const normalizedColumns = normalizeVisibleTrackColumns(state?.visibleTrackColumns);
-      const looksLegacy =
-        normalizedColumns.id &&
-        normalizedColumns.playlists &&
-        !normalizedColumns.waveformPreview;
-      setVisibleTrackColumns(looksLegacy ? DEFAULT_VISIBLE_TRACK_COLUMNS : normalizedColumns);
-
-      if (state?.tableDensity === 'compact' || state?.tableDensity === 'cozy') {
-        setTableDensity(state.tableDensity);
-      }
-
-      const parsedPageSize = Number(state?.tablePageSize);
-      if (PAGE_SIZE_OPTIONS.includes(parsedPageSize)) {
-        setPageSize(parsedPageSize);
-      }
-    }).catch(() => {
-      // best-effort state load
-    });
-
-    bridgeApi.getRecentImports().then((rows) => {
-      setRecentImports(Array.isArray(rows) ? rows : []);
-    }).catch(() => {
-      // best-effort import history load
-    });
+    load();
   }, []);
 
   useEffect(() => {
@@ -1253,6 +1316,23 @@ export function App() {
         anlzMapPath: anlzMapPath.trim(),
         usbAnlzPath: usbAnlzPath.trim()
       });
+      try {
+        await bridgeApi.saveLibraryState?.({
+          xmlPath: xmlPath.trim(),
+          parsedAt: result.parsedAt,
+          tracks: result.filteredTracks || [],
+          folders: result.folders || [],
+          summary: result.summary || null,
+          selectedFolders
+        });
+        setLibraryCacheInfo({
+          parsedAt: result.parsedAt || new Date().toISOString(),
+          stale: false,
+          trackCount: (result.filteredTracks || []).length
+        });
+      } catch (cacheError) {
+        console.warn('[rbfa] library cache save failed', cacheError);
+      }
       const rows = await bridgeApi.getRecentImports();
       setRecentImports(Array.isArray(rows) ? rows : []);
     } catch (parseError) {
@@ -1261,6 +1341,22 @@ export function App() {
       setValidationIssues(parsedError.issues);
     } finally {
       setIsParsing(false);
+    }
+  };
+
+  const refreshLibrary = async () => {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.clearLibraryState) {
+      setError(DESKTOP_BRIDGE_ERROR);
+      return;
+    }
+
+    try {
+      await bridgeApi.clearLibraryState();
+      setLibraryCacheInfo(null);
+      await parse();
+    } catch (refreshError) {
+      setError(refreshError?.message || String(refreshError));
     }
   };
 
@@ -2425,6 +2521,21 @@ export function App() {
                   {analysisCancelPending ? 'Canceling...' : 'Cancel Analysis'}
                 </button>
               </div>
+              {libraryCacheInfo ? (
+                <div className="library-cache-status">
+                  <span className={libraryCacheInfo.stale ? 'cache-stale' : 'cache-fresh'}>
+                    {libraryCacheInfo.stale
+                      ? 'Library may be outdated'
+                      : `Loaded from cache · ${formatRelativeDate(libraryCacheInfo.parsedAt)}`}
+                  </span>
+                  <span className="cache-count">
+                    {libraryCacheInfo.trackCount?.toLocaleString?.() || 0} tracks cached
+                  </span>
+                  <button type="button" className="secondary" onClick={refreshLibrary} disabled={isParsing}>
+                    Refresh Library
+                  </button>
+                </div>
+              ) : null}
               <div className="row" style={{ marginTop: '8px' }}>
                 <input
                   type="text"
