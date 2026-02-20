@@ -91,7 +91,7 @@ Plans:
   4. Audio playback supports common DJ formats (MP3, FLAC, WAV, AAC) with responsive controls
   5. Audio playback works on WSL development environment with proper path mapping (C:/ → /mnt/c/)
   6. File verification shows clear error messages (file not found, permission denied, format unsupported)
-**Plans**: TBD
+**Plans**:
 
 Plans:
 - [x] Fix WSL playback path mapping with comprehensive debugging (2026-02-05)
@@ -109,7 +109,10 @@ Plans:
   - Added Now Playing strip in Quick Preview with timer, BPM/key
   - Added similar-track waveform playhead + seekable large waveform
   - Moved volume controls to Quick Preview header; default volume 50%
-- [ ] TBD (remaining verification workflow features planned during phase planning)
+- [x] Phase 4 planning docs created (`.planning/phases/04-verification-workflow-and-playback`)
+- [x] Implement 04-01 playlist visualization + PlaylistView component
+- [x] Implement 04-02 WaveformPlayer integration + seekable waveform
+- [x] Implement 04-03 sampling workflow + RandomSampler component
 
 ### Phase 06: Seamless Library Loading
 **Goal**: App restores parsed library instantly on launch; waveforms load automatically without any manual mapping steps

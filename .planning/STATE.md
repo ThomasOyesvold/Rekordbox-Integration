@@ -136,6 +136,8 @@ Status: Active development
   - Added RandomSampler component for sampling controls + progress
   - Sampling now uses Fisher-Yates shuffle for unbiased track selection
   - Default sample size set to 15 (configurable 10-20)
+- ✅ **Phase 4 Roadmap Sync**:
+  - Marked 04-01, 04-02, 04-03 as complete in ROADMAP
 - ✅ **Phase 3 Completion Sync**:
   - 03-02 flow ordering + confidence model verified in clustering service
   - 03-03 playlist suggestion UI + actions complete
