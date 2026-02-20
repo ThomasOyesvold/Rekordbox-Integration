@@ -468,6 +468,7 @@ function ClusterDetails({
         title: '',
         bpm: null,
         key: '',
+        genre: '',
         waveform: null,
         durationSeconds: null
       };
@@ -480,6 +481,7 @@ function ClusterDetails({
       title: track.title || '',
       bpm: track.bpm,
       key: track.key || '',
+      genre: track.genre || '',
       waveform: track.anlzWaveform,
       durationSeconds: track.durationSeconds
     };
@@ -642,6 +644,8 @@ function ClusterDetails({
             <th>Title</th>
             <th>BPM</th>
             <th>Key</th>
+            <th>Genre</th>
+            <th>Duration</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -693,6 +697,8 @@ function ClusterDetails({
               <td>{row.title || '-'}</td>
               <td>{row.bpm ?? '-'}</td>
               <td>{row.key || '-'}</td>
+              <td>{row.genre || '-'}</td>
+              <td>{formatDuration(row.durationSeconds)}</td>
               <td>
                 <button
                   type="button"

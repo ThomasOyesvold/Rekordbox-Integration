@@ -127,6 +127,8 @@ Status: Active development
 - ✅ **Playlist Suggestion Quick Actions (03-03)**:
   - Added "Find Similar" action per cluster (anchors to first track)
   - Centralized playlist suggestion rendering in PlaylistView
+- ✅ **PlaylistView Metadata Coverage**:
+  - Cluster track list now includes genre + duration columns alongside waveforms
 - ✅ **Phase 3 Completion Sync**:
   - 03-02 flow ordering + confidence model verified in clustering service
   - 03-03 playlist suggestion UI + actions complete
