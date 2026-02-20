@@ -128,11 +128,27 @@ export function initDatabase(dbFilePath) {
     );
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS approved_playlists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      context_key TEXT NOT NULL,
+      cluster_key TEXT NOT NULL,
+      status TEXT NOT NULL,
+      name TEXT,
+      track_ids_json TEXT NOT NULL,
+      summary_json TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (context_key, cluster_key)
+    );
+  `);
+
   db.exec('CREATE INDEX IF NOT EXISTS idx_import_history_parsed_at ON import_history(parsed_at DESC);');
   db.exec('CREATE INDEX IF NOT EXISTS idx_analysis_runs_created_at ON analysis_runs(created_at DESC);');
   db.exec('CREATE INDEX IF NOT EXISTS idx_track_similarity_computed_at ON track_similarity(computed_at DESC);');
   db.exec('CREATE INDEX IF NOT EXISTS idx_anlz_waveform_cache_updated_at ON anlz_waveform_cache(updated_at DESC);');
   db.exec('CREATE INDEX IF NOT EXISTS idx_app_state_updated_at ON app_state(updated_at DESC);');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_approved_playlists_updated_at ON approved_playlists(updated_at DESC);');
 
   ensureColumns('anlz_waveform_cache', [
     { name: 'rhythm_signature', type: 'TEXT' },
@@ -198,6 +214,75 @@ export function getRecentImports(limit = 10) {
     folderCount: row.folder_count,
     selectedFolders: parseJson(row.selected_folders, [])
   }));
+}
+
+export function upsertApprovedPlaylist(entry) {
+  assertDb();
+
+  const now = new Date().toISOString();
+  const statement = db.prepare(`
+    INSERT INTO approved_playlists (
+      context_key,
+      cluster_key,
+      status,
+      name,
+      track_ids_json,
+      summary_json,
+      created_at,
+      updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(context_key, cluster_key) DO UPDATE SET
+      status = excluded.status,
+      name = excluded.name,
+      track_ids_json = excluded.track_ids_json,
+      summary_json = excluded.summary_json,
+      updated_at = excluded.updated_at
+  `);
+
+  statement.run(
+    entry.contextKey,
+    entry.clusterKey,
+    entry.status,
+    entry.name || null,
+    JSON.stringify(entry.trackIds || []),
+    JSON.stringify(entry.summary || null),
+    now,
+    now
+  );
+}
+
+export function getApprovedPlaylists(limit = 200) {
+  assertDb();
+
+  const statement = db.prepare(`
+    SELECT id, context_key, cluster_key, status, name, track_ids_json, summary_json, created_at, updated_at
+    FROM approved_playlists
+    ORDER BY updated_at DESC
+    LIMIT ?
+  `);
+
+  return statement.all(limit).map((row) => ({
+    id: row.id,
+    contextKey: row.context_key,
+    clusterKey: row.cluster_key,
+    status: row.status,
+    name: row.name,
+    trackIds: parseJson(row.track_ids_json, []),
+    summary: parseJson(row.summary_json, null),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  }));
+}
+
+export function removeApprovedPlaylist(contextKey, clusterKey) {
+  assertDb();
+
+  const statement = db.prepare(`
+    DELETE FROM approved_playlists
+    WHERE context_key = ? AND cluster_key = ?
+  `);
+
+  statement.run(contextKey, clusterKey);
 }
 
 export function createAnalysisRun(entry) {

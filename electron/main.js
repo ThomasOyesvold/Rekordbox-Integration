@@ -14,7 +14,14 @@ import {
 import { runBaselineAnalysis } from '../src/services/baselineAnalyzerService.js';
 import { buildAnalysisCsv, buildAnalysisJson } from '../src/services/analysisExportService.js';
 import { startBackgroundParse } from '../src/services/parseService.js';
-import { getRecentImports, initDatabase, saveImportHistory } from '../src/state/sqliteStore.js';
+import {
+  getApprovedPlaylists,
+  getRecentImports,
+  initDatabase,
+  removeApprovedPlaylist,
+  saveImportHistory,
+  upsertApprovedPlaylist
+} from '../src/state/sqliteStore.js';
 import { loadState, saveState } from '../src/state/stateStore.js';
 import { attachAnlzWaveformSummaries } from '../src/services/anlzWaveformService.js';
 import { buildAnlzMapping } from '../src/services/anlzMappingService.js';
@@ -473,6 +480,35 @@ ipcMain.handle('analysis:export', async (_event, payload) => {
     filePath: selection.filePath,
     format
   };
+});
+
+ipcMain.handle('playlists:saveApproval', async (_event, payload) => {
+  if (!payload?.contextKey || !payload?.clusterKey) {
+    throw new Error('Missing approval identifiers.');
+  }
+  upsertApprovedPlaylist({
+    contextKey: payload.contextKey,
+    clusterKey: payload.clusterKey,
+    status: payload.status || 'pending',
+    name: payload.name || '',
+    trackIds: Array.isArray(payload.trackIds) ? payload.trackIds : [],
+    summary: payload.summary || null
+  });
+  return { saved: true };
+});
+
+ipcMain.handle('playlists:listApprovals', async (_event, payload) => {
+  const limit = Number(payload?.limit);
+  const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(500, limit)) : 200;
+  return getApprovedPlaylists(safeLimit);
+});
+
+ipcMain.handle('playlists:deleteApproval', async (_event, payload) => {
+  if (!payload?.contextKey || !payload?.clusterKey) {
+    throw new Error('Missing approval identifiers.');
+  }
+  removeApprovedPlaylist(payload.contextKey, payload.clusterKey);
+  return { deleted: true };
 });
 
 ipcMain.handle('tracks:similar', async (_event, payload) => {

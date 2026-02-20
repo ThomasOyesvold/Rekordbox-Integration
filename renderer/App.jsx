@@ -658,6 +658,7 @@ export function App() {
   const [similarMinScore, setSimilarMinScore] = useState(0.6);
   const [similarLimit, setSimilarLimit] = useState(12);
   const [playlistSuggestions, setPlaylistSuggestions] = useState(null);
+  const [approvedPlaylists, setApprovedPlaylists] = useState([]);
   const [sampleSize, setSampleSize] = useState(15);
   const [samplingState, setSamplingState] = useState({
     active: false,
@@ -1006,6 +1007,13 @@ export function App() {
         setRecentImports(Array.isArray(rows) ? rows : []);
       } catch {
         // best-effort import history load
+      }
+
+      try {
+        const approvals = await bridgeApi.listPlaylistApprovals?.({ limit: 200 });
+        setApprovedPlaylists(Array.isArray(approvals) ? approvals : []);
+      } catch {
+        // best-effort approvals load
       }
     };
 
@@ -1738,6 +1746,72 @@ export function App() {
     return `${artist} — ${title}`;
   };
 
+  const findClusterByKey = (clusterKey) => {
+    if (!playlistSuggestions) {
+      return null;
+    }
+    if (playlistSuggestions.mode === 'grouped') {
+      const groups = playlistSuggestions.groups || [];
+      for (const group of groups) {
+        const clusters = group.result?.clusters || [];
+        for (const cluster of clusters) {
+          const candidateKey = `${group.name}-${cluster.id || ''}`;
+          if (candidateKey === clusterKey) {
+            return cluster;
+          }
+        }
+      }
+    }
+    const clusters = playlistSuggestions.result?.clusters || [];
+    for (const cluster of clusters) {
+      const candidateKey = `all-${cluster.id || ''}`;
+      if (candidateKey === clusterKey) {
+        return cluster;
+      }
+    }
+    return null;
+  };
+
+  const refreshApprovals = async () => {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.listPlaylistApprovals) {
+      return;
+    }
+    try {
+      const approvals = await bridgeApi.listPlaylistApprovals({ limit: 200 });
+      setApprovedPlaylists(Array.isArray(approvals) ? approvals : []);
+    } catch {
+      // best-effort
+    }
+  };
+
+  const persistApproval = (clusterKey, decision) => {
+    if (!decisionContextKey) {
+      return;
+    }
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.savePlaylistApproval || !bridgeApi?.deletePlaylistApproval) {
+      return;
+    }
+
+    if (decision.status === 'pending') {
+      bridgeApi.deletePlaylistApproval({ contextKey: decisionContextKey, clusterKey })
+        .then(refreshApprovals)
+        .catch(() => {});
+      return;
+    }
+
+    const cluster = findClusterByKey(clusterKey);
+    bridgeApi.savePlaylistApproval({
+      contextKey: decisionContextKey,
+      clusterKey,
+      status: decision.status,
+      name: decision.name || '',
+      trackIds: cluster?.trackIds || [],
+      summary: cluster?.summary || null
+    }).then(refreshApprovals).catch(() => {});
+  };
+
   const persistClusterDecisions = (nextDecisions) => {
     if (!decisionContextKey) {
       return;
@@ -1767,6 +1841,7 @@ export function App() {
         }
       };
       persistClusterDecisions(next);
+      persistApproval(clusterKey, next[clusterKey]);
       return next;
     });
   };
@@ -3370,6 +3445,35 @@ export function App() {
         skipSample={skipSample}
         resumeSampling={resumeSampling}
       />
+
+      {approvedPlaylists.length ? (
+        <div className="card">
+          <h3>Approved Playlists</h3>
+          <div className="meta">
+            <span>{approvedPlaylists.length} saved</span>
+          </div>
+          <table className="track-table" style={{ marginTop: '10px' }}>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Tracks</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {approvedPlaylists.map((row) => (
+                <tr key={`${row.contextKey}-${row.clusterKey}`}>
+                  <td>{row.name || row.clusterKey}</td>
+                  <td>{row.status}</td>
+                  <td>{row.trackIds?.length || 0}</td>
+                  <td>{formatRelativeDate(row.updatedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
         <ToastContainer>
           {samplingToast ? (
             <Toast
