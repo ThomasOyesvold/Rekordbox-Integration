@@ -76,6 +76,9 @@ Plans:
 Plans:
 - [x] Phase 3 planning docs created (`.planning/phases/03-playlist-generation`)
 - [x] Implement 03-01 playlist generation foundations
+- [x] Implement 03-02 flow ordering + confidence model
+- [x] Implement 03-03 playlist suggestion UI
+- [x] Implement 03-04 conservative clustering presets + tuning
 
 ### Phase 4: Verification Workflow & Playback
 **Goal**: User can visually and aurally verify suggested playlists through waveform visualization and random sampling playback before approval
