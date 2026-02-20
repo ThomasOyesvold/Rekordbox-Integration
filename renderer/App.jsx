@@ -153,6 +153,26 @@ function formatRelativeDate(value) {
   return `${deltaDays}d ago`;
 }
 
+function buildApprovalReasons(summary) {
+  if (!summary) {
+    return '-';
+  }
+  const reasons = [];
+  if (Number.isFinite(summary.bpm?.min) && Number.isFinite(summary.bpm?.max)) {
+    reasons.push(`BPM ${summary.bpm.min.toFixed(1)}–${summary.bpm.max.toFixed(1)}`);
+  }
+  if (summary.key?.top?.key) {
+    reasons.push(`Key focus ${summary.key.top.key}`);
+  }
+  if (summary.coverage?.waveform?.total) {
+    reasons.push(`Waveform ${summary.coverage.waveform.count}/${summary.coverage.waveform.total}`);
+  }
+  if (summary.coverage?.rhythm?.total) {
+    reasons.push(`Rhythm ${summary.coverage.rhythm.count}/${summary.coverage.rhythm.total}`);
+  }
+  return reasons.length ? reasons.join(' · ') : '-';
+}
+
 function formatBinPreview(bins, maxItems = 20) {
   if (!Array.isArray(bins) || bins.length === 0) {
     return '-';
@@ -3458,6 +3478,7 @@ export function App() {
                 <th>Name</th>
                 <th>Status</th>
                 <th>Tracks</th>
+                <th>Why</th>
                 <th>Updated</th>
               </tr>
             </thead>
@@ -3467,6 +3488,7 @@ export function App() {
                   <td>{row.name || row.clusterKey}</td>
                   <td>{row.status}</td>
                   <td>{row.trackIds?.length || 0}</td>
+                  <td>{buildApprovalReasons(row.summary)}</td>
                   <td>{formatRelativeDate(row.updatedAt)}</td>
                 </tr>
               ))}

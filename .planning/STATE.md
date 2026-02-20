@@ -141,6 +141,8 @@ Status: Active development
 - ✅ **Approval Persistence (Phase 05)**:
   - Added SQLite persistence for playlist approvals (status, name, trackIds)
   - Approved Playlists panel shows saved approvals with last-updated date
+- ✅ **Approval Explanations (Phase 05)**:
+  - Approved Playlists panel now shows BPM/key/coverage reasons for grouping
 - ✅ **Phase 3 Completion Sync**:
   - 03-02 flow ordering + confidence model verified in clustering service
   - 03-03 playlist suggestion UI + actions complete
