@@ -150,6 +150,8 @@ Status: Active development
 - ✅ **M3U Export (Phase 06)**:
   - Added M3U export for approved playlists with absolute/relative path modes
   - Export uses saved approvals and current library track locations
+- ✅ **Phase 6 Roadmap Sync**:
+  - Marked M3U export task complete in ROADMAP
 - ✅ **Phase 3 Completion Sync**:
   - 03-02 flow ordering + confidence model verified in clustering service
   - 03-03 playlist suggestion UI + actions complete

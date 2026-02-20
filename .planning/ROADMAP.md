@@ -159,10 +159,10 @@ Plans:
   3. Approved playlists persist in SQLite across sessions (user can view saved playlists anytime)
   4. User can re-export or view details of previously saved playlists
   5. Exported M3U files load correctly in Rekordbox, Serato, and Traktor without errors
-**Plans**: TBD
+**Plans**:
 
 Plans:
-- [ ] TBD (planned during phase planning)
+- [x] Add M3U export for approved playlists (absolute/relative path modes)
 
 ## Progress
 
