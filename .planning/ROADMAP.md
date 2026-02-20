@@ -142,10 +142,12 @@ Plans:
   2. User can name approved playlists based on perceived vibe (e.g., "Deep Techno 125-128", "Melodic Progressive")
   3. User can see transparent explanations for why tracks were grouped (BPM range, key compatibility, waveform similarity scores)
   4. When analyzing new folders, system suggests additions to existing saved playlists (incremental analysis, not full re-analysis)
-**Plans**: TBD
+**Plans**:
 
 Plans:
-- [ ] TBD (planned during phase planning)
+- [x] Approval persistence + UI (approve/reject/name with saved list)
+- [x] Transparent explanations for approvals (BPM/key/waveform/rhythm)
+- [x] Incremental suggestions for new folders (overlap recommendations)
 
 ### Phase 6: Export & Integration
 **Goal**: User can export approved playlists as M3U files that load correctly in Rekordbox and other DJ software
