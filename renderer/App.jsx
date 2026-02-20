@@ -173,6 +173,74 @@ function buildApprovalReasons(summary) {
   return reasons.length ? reasons.join(' · ') : '-';
 }
 
+function buildAdditionSuggestions(approved, playlistSuggestions) {
+  if (!Array.isArray(approved) || !approved.length || !playlistSuggestions) {
+    return [];
+  }
+
+  const clusters = [];
+  if (playlistSuggestions.mode === 'grouped') {
+    const groups = playlistSuggestions.groups || [];
+    for (const group of groups) {
+      const list = group.result?.clusters || [];
+      for (const cluster of list) {
+        clusters.push({
+          id: `${group.name}-${cluster.id || ''}`,
+          name: group.name || 'Group',
+          trackIds: cluster.trackIds || []
+        });
+      }
+    }
+  } else {
+    const list = playlistSuggestions.result?.clusters || [];
+    for (const cluster of list) {
+      clusters.push({
+        id: `all-${cluster.id || ''}`,
+        name: 'All',
+        trackIds: cluster.trackIds || []
+      });
+    }
+  }
+
+  const suggestions = [];
+  for (const approval of approved) {
+    const approvedIds = new Set((approval.trackIds || []).map((id) => String(id)));
+    if (!approvedIds.size) {
+      continue;
+    }
+    for (const cluster of clusters) {
+      const clusterIds = (cluster.trackIds || []).map((id) => String(id));
+      if (!clusterIds.length) {
+        continue;
+      }
+      let overlap = 0;
+      for (const id of clusterIds) {
+        if (approvedIds.has(id)) {
+          overlap += 1;
+        }
+      }
+      const ratio = overlap / Math.max(clusterIds.length, 1);
+      if (overlap >= 3 || ratio >= 0.3) {
+        suggestions.push({
+          approvalId: approval.id,
+          approvalName: approval.name || approval.clusterKey,
+          clusterId: cluster.id,
+          clusterGroup: cluster.name,
+          overlap,
+          ratio
+        });
+      }
+    }
+  }
+
+  return suggestions.sort((a, b) => {
+    if (b.overlap !== a.overlap) {
+      return b.overlap - a.overlap;
+    }
+    return b.ratio - a.ratio;
+  });
+}
+
 function formatBinPreview(bins, maxItems = 20) {
   if (!Array.isArray(bins) || bins.length === 0) {
     return '-';
@@ -2302,6 +2370,10 @@ export function App() {
     return trackIndexById.get(String(activeTrackId)) || null;
   }, [activeTrackId, trackIndexById]);
 
+  const additionSuggestions = useMemo(() => {
+    return buildAdditionSuggestions(approvedPlaylists, playlistSuggestions);
+  }, [approvedPlaylists, playlistSuggestions]);
+
   const similarMatches = useMemo(() => {
     if (!Array.isArray(similarResults?.matches)) {
       return [];
@@ -3490,6 +3562,35 @@ export function App() {
                   <td>{row.trackIds?.length || 0}</td>
                   <td>{buildApprovalReasons(row.summary)}</td>
                   <td>{formatRelativeDate(row.updatedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      {additionSuggestions.length ? (
+        <div className="card">
+          <h3>Suggested Additions</h3>
+          <p style={{ marginTop: '4px', color: 'var(--text-secondary)' }}>
+            Based on overlap between new clusters and your saved approvals.
+          </p>
+          <table className="track-table" style={{ marginTop: '10px' }}>
+            <thead>
+              <tr>
+                <th>Approved Playlist</th>
+                <th>Cluster</th>
+                <th>Overlap</th>
+              </tr>
+            </thead>
+            <tbody>
+              {additionSuggestions.map((item) => (
+                <tr key={`${item.approvalId}-${item.clusterId}`}>
+                  <td>{item.approvalName}</td>
+                  <td>{item.clusterId}</td>
+                  <td>
+                    {item.overlap} tracks ({Math.round(item.ratio * 100)}%)
+                  </td>
                 </tr>
               ))}
             </tbody>

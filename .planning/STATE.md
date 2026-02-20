@@ -143,6 +143,8 @@ Status: Active development
   - Approved Playlists panel shows saved approvals with last-updated date
 - ✅ **Approval Explanations (Phase 05)**:
   - Approved Playlists panel now shows BPM/key/coverage reasons for grouping
+- ✅ **Incremental Suggestions (Phase 05)**:
+  - Added Suggested Additions panel based on overlap between new clusters and saved approvals
 - ✅ **Phase 3 Completion Sync**:
   - 03-02 flow ordering + confidence model verified in clustering service
   - 03-03 playlist suggestion UI + actions complete
