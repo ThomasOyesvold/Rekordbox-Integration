@@ -129,6 +129,9 @@ Status: Active development
   - Centralized playlist suggestion rendering in PlaylistView
 - ✅ **PlaylistView Metadata Coverage**:
   - Cluster track list now includes genre + duration columns alongside waveforms
+- ✅ **WaveformPlayer Integration (04-02)**:
+  - Track Details uses WaveformPlayer with live play/pause + seekable waveform
+  - Playback errors now surface inline beneath the waveform
 - ✅ **Phase 3 Completion Sync**:
   - 03-02 flow ordering + confidence model verified in clustering service
   - 03-03 playlist suggestion UI + actions complete

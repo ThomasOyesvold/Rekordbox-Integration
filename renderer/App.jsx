@@ -4,6 +4,7 @@ import { SetupWizard } from './components/SetupWizard';
 import { PlaylistView } from './components/PlaylistView';
 import { StatCard } from './components/StatCard';
 import { TrackTable } from './components/TrackTable';
+import { WaveformPlayer } from './components/WaveformPlayer';
 import { Modal } from './components/ui/Modal';
 import { Toast, ToastContainer } from './components/ui/Toast';
 import { Activity, Clock, FolderOpen, KeyRound, ListMusic, Music2, Tags, Waves } from 'lucide-react';
@@ -1560,6 +1561,16 @@ export function App() {
   const selectedTrack = useMemo(() => {
     return tracks.find((track) => track.id === selectedTrackId) || null;
   }, [tracks, selectedTrackId]);
+  const selectedTrackIdValue = selectedTrack ? getTrackId(selectedTrack) : '';
+  const selectedTrackPlayback = selectedTrackIdValue
+    ? getPlaybackState(selectedTrackIdValue)
+    : { status: 'idle', currentTime: 0, duration: 0, loading: false, error: '' };
+  const selectedTrackDuration = Number(
+    selectedTrack?.durationSeconds
+      || selectedTrack?.anlzWaveform?.durationSeconds
+      || selectedTrackPlayback.duration
+      || 0
+  );
 
   useEffect(() => {
     setSimilarResults(null);
@@ -3222,7 +3233,30 @@ export function App() {
                         </p>
                       </div>
                     ) : null}
-                    <WaveformPreview waveform={selectedTrack.anlzWaveform} />
+                    <WaveformPlayer
+                      isPlaying={selectedTrackPlayback.status === 'playing'}
+                      currentTime={selectedTrackPlayback.currentTime || 0}
+                      duration={selectedTrackDuration}
+                      onTogglePlay={() => togglePlayPause(selectedTrack)}
+                    >
+                      <WaveformPreview
+                        waveform={selectedTrack.anlzWaveform}
+                        progress={selectedTrackDuration > 0
+                          ? (selectedTrackPlayback.currentTime || 0) / selectedTrackDuration
+                          : 0}
+                        onSeek={(ratio) => {
+                          if (!selectedTrackDuration) {
+                            return;
+                          }
+                          playTrack(selectedTrack, ratio * selectedTrackDuration);
+                        }}
+                      />
+                    </WaveformPlayer>
+                    {selectedTrackPlayback.status === 'error' ? (
+                      <p style={{ marginTop: '6px', color: '#b91c1c' }}>
+                        {selectedTrackPlayback.error || 'Audio failed to load.'}
+                      </p>
+                    ) : null}
                     {showTrackAnlzMeta ? (
                       <p style={{ marginTop: '4px', color: '#334155' }}>
                         Envelope bins (preview): {formatBinPreview(selectedTrack.anlzWaveform.bins)}
