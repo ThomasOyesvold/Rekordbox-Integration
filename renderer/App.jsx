@@ -747,6 +747,7 @@ export function App() {
   const [similarLimit, setSimilarLimit] = useState(12);
   const [playlistSuggestions, setPlaylistSuggestions] = useState(null);
   const [approvedPlaylists, setApprovedPlaylists] = useState([]);
+  const [exportPathMode, setExportPathMode] = useState('absolute');
   const [sampleSize, setSampleSize] = useState(15);
   const [samplingState, setSamplingState] = useState({
     active: false,
@@ -1898,6 +1899,34 @@ export function App() {
       trackIds: cluster?.trackIds || [],
       summary: cluster?.summary || null
     }).then(refreshApprovals).catch(() => {});
+  };
+
+  const exportApprovedPlaylist = async (approval) => {
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.exportPlaylistM3U) {
+      setError(DESKTOP_BRIDGE_ERROR);
+      return;
+    }
+    const trackIds = Array.isArray(approval.trackIds) ? approval.trackIds : [];
+    const tracksToExport = trackIds
+      .map((trackId) => trackIndexById.get(String(trackId)))
+      .filter(Boolean);
+    if (!tracksToExport.length) {
+      setError('No tracks available for export. Load the library first.');
+      return;
+    }
+    try {
+      const result = await bridgeApi.exportPlaylistM3U({
+        playlistName: approval.name || approval.clusterKey,
+        tracks: tracksToExport,
+        pathMode: exportPathMode
+      });
+      if (!result?.canceled && result?.filePath) {
+        setError(`Exported M3U to ${result.filePath}`);
+      }
+    } catch (exportError) {
+      setError(exportError.message || String(exportError));
+    }
   };
 
   const persistClusterDecisions = (nextDecisions) => {
@@ -3540,7 +3569,20 @@ export function App() {
 
       {approvedPlaylists.length ? (
         <div className="card">
-          <h3>Approved Playlists</h3>
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <h3>Approved Playlists</h3>
+            <label>
+              Path Mode
+              <select
+                value={exportPathMode}
+                onChange={(event) => setExportPathMode(event.target.value)}
+                style={{ marginLeft: '6px' }}
+              >
+                <option value="absolute">Absolute</option>
+                <option value="relative">Relative</option>
+              </select>
+            </label>
+          </div>
           <div className="meta">
             <span>{approvedPlaylists.length} saved</span>
           </div>
@@ -3552,6 +3594,7 @@ export function App() {
                 <th>Tracks</th>
                 <th>Why</th>
                 <th>Updated</th>
+                <th>Export</th>
               </tr>
             </thead>
             <tbody>
@@ -3562,6 +3605,15 @@ export function App() {
                   <td>{row.trackIds?.length || 0}</td>
                   <td>{buildApprovalReasons(row.summary)}</td>
                   <td>{formatRelativeDate(row.updatedAt)}</td>
+                  <td>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => exportApprovedPlaylist(row)}
+                    >
+                      Export
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

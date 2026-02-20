@@ -482,6 +482,64 @@ ipcMain.handle('analysis:export', async (_event, payload) => {
   };
 });
 
+ipcMain.handle('playlists:exportM3U', async (_event, payload) => {
+  const playlistName = String(payload?.playlistName || 'playlist');
+  const tracks = Array.isArray(payload?.tracks) ? payload.tracks : [];
+  const pathMode = payload?.pathMode === 'relative' ? 'relative' : 'absolute';
+
+  if (!tracks.length) {
+    throw new Error('No tracks available to export.');
+  }
+
+  const safeName = playlistName.replace(/[^\w\s-]+/g, '').trim() || 'playlist';
+  const suggestedPath = path.resolve(
+    app.getPath('documents'),
+    `${safeName}.m3u`
+  );
+
+  const selection = await dialog.showSaveDialog(mainWindow, {
+    title: 'Export playlist as M3U',
+    defaultPath: suggestedPath,
+    filters: [{ name: 'M3U Playlist', extensions: ['m3u'] }]
+  });
+
+  if (selection.canceled || !selection.filePath) {
+    return { canceled: true };
+  }
+
+  const baseDir = path.dirname(selection.filePath);
+  const lines = ['#EXTM3U'];
+
+  for (const track of tracks) {
+    const artist = String(track.artist || '').replace(/\s+/g, ' ').trim();
+    const title = String(track.title || '').replace(/\s+/g, ' ').trim();
+    const duration = Number.isFinite(Number(track.durationSeconds))
+      ? Math.max(0, Math.floor(Number(track.durationSeconds)))
+      : -1;
+    const label = [artist, title].filter(Boolean).join(' - ') || 'Unknown';
+    lines.push(`#EXTINF:${duration},${label}`);
+
+    const rawLocation = track.location || track.Location || track.LOCATION || '';
+    const absPath = resolveAudioLocationPath(rawLocation);
+    if (!absPath) {
+      continue;
+    }
+
+    let outputPath = absPath;
+    if (pathMode === 'relative') {
+      const relative = path.relative(baseDir, absPath);
+      if (relative && !relative.startsWith('..') && !path.isAbsolute(relative)) {
+        outputPath = relative;
+      }
+    }
+    lines.push(outputPath);
+  }
+
+  await fs.writeFile(selection.filePath, `${lines.join('\n')}\n`, 'utf8');
+
+  return { canceled: false, filePath: selection.filePath };
+});
+
 ipcMain.handle('playlists:saveApproval', async (_event, payload) => {
   if (!payload?.contextKey || !payload?.clusterKey) {
     throw new Error('Missing approval identifiers.');
@@ -661,6 +719,19 @@ function findExistingParent(pathToCheck, maxDepth = 5) {
   }
 
   return '';
+}
+
+function resolveAudioLocationPath(rawPath) {
+  if (!rawPath) {
+    return '';
+  }
+  let fsPath = normalizeRawLocation(rawPath);
+  if ((process.platform === 'linux' || isWsl) && /^[A-Za-z]:\//.test(fsPath)) {
+    const driveLetter = fsPath[0].toLowerCase();
+    const rest = fsPath.slice(2);
+    fsPath = `/mnt/${driveLetter}${rest}`;
+  }
+  return fsPath;
 }
 
 // File verification handlers for audio playback debugging

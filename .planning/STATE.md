@@ -147,6 +147,9 @@ Status: Active development
   - Added Suggested Additions panel based on overlap between new clusters and saved approvals
 - ✅ **Phase 5 Roadmap Sync**:
   - Marked approval persistence, explanations, and incremental suggestions complete in ROADMAP
+- ✅ **M3U Export (Phase 06)**:
+  - Added M3U export for approved playlists with absolute/relative path modes
+  - Export uses saved approvals and current library track locations
 - ✅ **Phase 3 Completion Sync**:
   - 03-02 flow ordering + confidence model verified in clustering service
   - 03-03 playlist suggestion UI + actions complete

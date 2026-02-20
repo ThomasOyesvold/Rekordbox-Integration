@@ -62,6 +62,7 @@ contextBridge.exposeInMainWorld('rbfa', {
   findSimilarTracks: (payload) => ipcRenderer.invoke('tracks:similar', payload),
   exportAnalysis: (payload) => ipcRenderer.invoke('analysis:export', payload),
   generatePlaylists: (payload) => ipcRenderer.invoke('playlists:cluster', payload),
+  exportPlaylistM3U: (payload) => ipcRenderer.invoke('playlists:exportM3U', payload),
   savePlaylistApproval: (payload) => ipcRenderer.invoke('playlists:saveApproval', payload),
   listPlaylistApprovals: (payload) => ipcRenderer.invoke('playlists:listApprovals', payload),
   deletePlaylistApproval: (payload) => ipcRenderer.invoke('playlists:deleteApproval', payload),
