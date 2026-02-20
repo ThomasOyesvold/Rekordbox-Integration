@@ -17,7 +17,10 @@
     "smoke:electron:safe": "npm run build:renderer && RBFA_SMOKE=1 ELECTRON_DISABLE_SANDBOX=1 electron .",
     "start:electron": "electron .",
     "start:electron:safe": "ELECTRON_DISABLE_GPU=1 electron .",
-    "test": "node --test"
+    "test": "node --test",
+    "build:win": "npm run build:renderer && electron-builder --win",
+    "build:win:portable": "npm run build:renderer && electron-builder --win portable",
+    "publish:win": "npm run build:renderer && electron-builder --win --publish always"
   },
   "dependencies": {
     "framer-motion": "latest",
@@ -29,6 +32,47 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.0",
     "electron": "^37.2.0",
+    "electron-builder": "^24.13.3",
     "vite": "^7.1.4"
+  },
+  "build": {
+    "appId": "com.rekordbox-flow-analyzer.app",
+    "productName": "Rekordbox Flow Analyzer",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources",
+        "to": "resources",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Rekordbox Flow Analyzer"
+    }
   }
 }

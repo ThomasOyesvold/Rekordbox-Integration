@@ -152,6 +152,9 @@ Status: Active development
   - Export uses saved approvals and current library track locations
 - ✅ **Phase 6 Roadmap Sync**:
   - Marked M3U export task complete in ROADMAP
+- ✅ **Phase 7 Build Setup (Step 1)**:
+  - Added electron-builder config + Windows build scripts in package.json
+  - Created build/ and resources/ placeholders for packaging assets
 - ✅ **Phase 3 Completion Sync**:
   - 03-02 flow ordering + confidence model verified in clustering service
   - 03-03 playlist suggestion UI + actions complete
