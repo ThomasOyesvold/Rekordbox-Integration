@@ -132,6 +132,10 @@ Status: Active development
 - ✅ **WaveformPlayer Integration (04-02)**:
   - Track Details uses WaveformPlayer with live play/pause + seekable waveform
   - Playback errors now surface inline beneath the waveform
+- ✅ **Sampling Workflow Refactor (04-03)**:
+  - Added RandomSampler component for sampling controls + progress
+  - Sampling now uses Fisher-Yates shuffle for unbiased track selection
+  - Default sample size set to 15 (configurable 10-20)
 - ✅ **Phase 3 Completion Sync**:
   - 03-02 flow ordering + confidence model verified in clustering service
   - 03-03 playlist suggestion UI + actions complete

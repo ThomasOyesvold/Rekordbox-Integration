@@ -5,6 +5,7 @@ import { PlaylistView } from './components/PlaylistView';
 import { StatCard } from './components/StatCard';
 import { TrackTable } from './components/TrackTable';
 import { WaveformPlayer } from './components/WaveformPlayer';
+import { RandomSampler } from './components/RandomSampler';
 import { Modal } from './components/ui/Modal';
 import { Toast, ToastContainer } from './components/ui/Toast';
 import { Activity, Clock, FolderOpen, KeyRound, ListMusic, Music2, Tags, Waves } from 'lucide-react';
@@ -456,7 +457,14 @@ function ClusterDetails({
   samplingState,
   sampleSize,
   onSampleSizeChange,
-  disablePlay
+  disablePlay,
+  samplingPaused,
+  samplingFinished,
+  samplingCountdown,
+  samplingElapsedLabel,
+  samplingCooldownSeconds,
+  onCooldownChange,
+  getSamplingTrackLabel
 }) {
   const [focusedWaveformId, setFocusedWaveformId] = useState(null);
   const trackRows = cluster.trackIds.map((trackId) => {
@@ -501,131 +509,24 @@ function ClusterDetails({
 
   return (
     <div>
-      <div className="meta sampling-meta" style={{ marginBottom: '8px' }}>
-        <span>Tracks: {cluster.size}</span>
-        <span>Avg Score: {cluster.avgScore.toFixed(3)}</span>
-        <span>Confidence: {(cluster.confidence ?? 0).toFixed(3)}</span>
-        <span>Label: {cluster.confidenceLabel || 'mixed'}</span>
-        <span>Ordered: {cluster.ordered ? 'Yes' : 'No'}</span>
-        {cluster.summary?.bpm?.min !== null && cluster.summary?.bpm?.max !== null ? (
-          <span>
-            BPM Range: {cluster.summary.bpm.min.toFixed(1)}–{cluster.summary.bpm.max.toFixed(1)}
-          </span>
-        ) : null}
-        {cluster.warnings?.length ? (
-          <span style={{ color: '#f97316' }}>
-            {cluster.warnings.join(' · ')}
-          </span>
-        ) : null}
-        <span className="sampling-input">
-          Sample
-          <input
-            type="number"
-            min="10"
-            max="20"
-            step="1"
-            value={sampleSize}
-            onChange={(event) => onSampleSizeChange?.(event.target.value)}
-            style={{ width: '70px', marginLeft: '6px' }}
-          />
-        </span>
-        <span className="sampling-input">
-          Cooldown
-          <input
-            type="number"
-            min="0"
-            max="2"
-            step="0.1"
-            value={(samplingCooldownMsRef.current || 0) / 1000}
-            onChange={(event) => {
-              const seconds = Number(event.target.value);
-              if (!Number.isFinite(seconds)) {
-                return;
-              }
-              samplingCooldownMsRef.current = Math.max(0, Math.min(2, seconds)) * 1000;
-            }}
-            style={{ width: '70px', marginLeft: '6px' }}
-          />
-        </span>
-        <span className="sampling-action">
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => onStartSample?.(cluster, clusterKey)}
-            disabled={!cluster.trackIds.length || samplingState?.active}
-          >
-            {samplingState?.active ? 'Sampling…' : 'Sample Playlist'}
-          </button>
-        </span>
-        <span className="sampling-action">
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => onStopSample?.()}
-            disabled={!samplingState?.active}
-          >
-            Stop Sample
-          </button>
-        </span>
-        <span className="sampling-action">
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => onSkipSample?.()}
-            disabled={!samplingState?.active}
-          >
-            Skip
-          </button>
-        </span>
-        <span className="sampling-action">
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => onResumeSample?.()}
-            disabled={!samplingState?.active || !samplingPausedRef.current}
-          >
-            Resume
-          </button>
-        </span>
-        {samplingState?.active ? (
-          <span className={`sampling-badge${samplingPausedRef.current ? ' paused' : ''}`}>
-            {samplingPausedRef.current ? 'Paused' : 'Sampling'}
-          </span>
-        ) : null}
-        {!samplingState?.active && samplingFinished ? (
-          <span className="sampling-badge finished">Finished</span>
-        ) : null}
-        {samplingState?.active ? (
-          <span className="sampling-track-label">{getSamplingTrackLabel()}</span>
-        ) : null}
-        {samplingState?.active ? (
-          <span>
-            {samplingState.currentIndex + 1}/{samplingState.total}
-          </span>
-        ) : null}
-        {samplingState?.active ? (
-          <span>
-            Next in {samplingCountdown ?? '--'}s
-          </span>
-        ) : null}
-        {samplingState?.active ? (
-          <span>
-            Elapsed {formatClock(samplingElapsed)}
-          </span>
-        ) : null}
-      </div>
-      {samplingState?.active ? (
-        <div className="sampling-progress" aria-label="Sampling progress">
-          <div
-            className="sampling-progress-bar"
-            style={{
-              width: `${samplingState.total > 0
-                ? Math.min(100, Math.max(0, ((samplingState.currentIndex + 1) / samplingState.total) * 100))
-                : 0}%`
-            }}
-          />
-        </div>
-      ) : null}
+      <RandomSampler
+        cluster={cluster}
+        clusterKey={clusterKey}
+        samplingState={samplingState}
+        sampleSize={sampleSize}
+        onSampleSizeChange={onSampleSizeChange}
+        samplingCooldownSeconds={samplingCooldownSeconds}
+        onCooldownChange={onCooldownChange}
+        onStartSample={onStartSample}
+        onStopSample={onStopSample}
+        onSkipSample={onSkipSample}
+        onResumeSample={onResumeSample}
+        samplingPaused={samplingPaused}
+        samplingFinished={samplingFinished}
+        samplingCountdown={samplingCountdown}
+        samplingElapsedLabel={samplingElapsedLabel}
+        getSamplingTrackLabel={getSamplingTrackLabel}
+      />
       {focusedRow ? (
         <div className="cluster-waveform">
           <div className="meta" style={{ marginBottom: '6px' }}>
@@ -757,7 +658,7 @@ export function App() {
   const [similarMinScore, setSimilarMinScore] = useState(0.6);
   const [similarLimit, setSimilarLimit] = useState(12);
   const [playlistSuggestions, setPlaylistSuggestions] = useState(null);
-  const [sampleSize, setSampleSize] = useState(12);
+  const [sampleSize, setSampleSize] = useState(15);
   const [samplingState, setSamplingState] = useState({
     active: false,
     clusterKey: null,
@@ -1791,10 +1692,31 @@ export function App() {
   const handleSampleSizeChange = (value) => {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) {
-      setSampleSize(12);
+      setSampleSize(15);
       return;
     }
     setSampleSize(Math.max(10, Math.min(20, Math.floor(parsed))));
+  };
+
+  const handleSamplingCooldownChange = (value) => {
+    const seconds = Number(value);
+    if (!Number.isFinite(seconds)) {
+      return;
+    }
+    samplingCooldownMsRef.current = Math.max(0, Math.min(2, seconds)) * 1000;
+  };
+
+  const selectRandomTracks = (trackIds, count) => {
+    const shuffled = [...trackIds];
+    let currentIndex = shuffled.length;
+    while (currentIndex > 0) {
+      const randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex -= 1;
+      const temp = shuffled[currentIndex];
+      shuffled[currentIndex] = shuffled[randomIndex];
+      shuffled[randomIndex] = temp;
+    }
+    return shuffled.slice(0, Math.min(count, shuffled.length));
   };
 
   const getClusterDecision = (clusterKey) => {
@@ -1900,7 +1822,7 @@ export function App() {
     setSamplingFinished(false);
     samplingSessionRef.current += 1;
     samplingAdvanceRef.current = { trackId: null, index: null };
-    const queue = candidates.slice(0, Math.min(limit, candidates.length));
+    const queue = selectRandomTracks(candidates, limit);
     stopAllPlayback();
     setSamplingState({
       active: true,
@@ -3430,6 +3352,13 @@ export function App() {
         updateClusterDecision={updateClusterDecision}
         onFindSimilar={runSimilarSearchForTrack}
         samplingState={samplingState}
+        samplingPaused={samplingPausedRef.current}
+        samplingFinished={samplingFinished}
+        samplingCountdown={samplingCountdown}
+        samplingElapsedLabel={formatClock(samplingElapsed)}
+        samplingCooldownSeconds={(samplingCooldownMsRef.current || 0) / 1000}
+        onCooldownChange={handleSamplingCooldownChange}
+        getSamplingTrackLabel={getSamplingTrackLabel}
         setSelectedTrackId={setSelectedTrackId}
         togglePlayPause={togglePlayPause}
         seekFromWaveform={seekFromWaveform}

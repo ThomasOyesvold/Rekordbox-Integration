@@ -27,6 +27,13 @@ export function PlaylistView({
   updateClusterDecision,
   onFindSimilar,
   samplingState,
+  samplingPaused,
+  samplingFinished,
+  samplingCountdown,
+  samplingElapsedLabel,
+  samplingCooldownSeconds,
+  onCooldownChange,
+  getSamplingTrackLabel,
   setSelectedTrackId,
   togglePlayPause,
   seekFromWaveform,
@@ -170,6 +177,13 @@ export function PlaylistView({
                         samplingState={clusterSamplingState}
                         sampleSize={sampleSize}
                         onSampleSizeChange={handleSampleSizeChange}
+                        samplingPaused={samplingPaused}
+                        samplingFinished={samplingFinished}
+                        samplingCountdown={samplingCountdown}
+                        samplingElapsedLabel={samplingElapsedLabel}
+                        samplingCooldownSeconds={samplingCooldownSeconds}
+                        onCooldownChange={onCooldownChange}
+                        getSamplingTrackLabel={getSamplingTrackLabel}
                         disablePlay={samplingState?.active}
                       />
                     </td>
