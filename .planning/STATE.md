@@ -124,6 +124,9 @@ Status: Active development
 - ✅ **PlaylistView Refactor (Phase 04-01)**:
   - Extracted Playlist Suggestions UI into `PlaylistView.jsx`
   - App.jsx now passes clustering + playback props to the new component
+- ✅ **Playlist Suggestion Quick Actions (03-03)**:
+  - Added "Find Similar" action per cluster (anchors to first track)
+  - Centralized playlist suggestion rendering in PlaylistView
 
 ## Recent Completions (2026-02-09)
 - ✅ **Phase 2 Safeguard Controls**:

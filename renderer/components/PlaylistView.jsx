@@ -25,6 +25,7 @@ export function PlaylistView({
   trackIndexById,
   getClusterDecision,
   updateClusterDecision,
+  onFindSimilar,
   samplingState,
   setSelectedTrackId,
   togglePlayPause,
@@ -65,6 +66,7 @@ export function PlaylistView({
             const clusterKey = `${clusterKeyPrefix}${cluster.id || index}`;
             const isExpanded = expandedClusterKey === clusterKey;
             const decision = getClusterDecision(clusterKey);
+            const anchorTrackId = cluster.trackIds?.[0];
             const clusterSamplingState = samplingState.active && samplingState.clusterKey === clusterKey
               ? samplingState
               : { active: false, currentIndex: 0, total: 0 };
@@ -137,6 +139,15 @@ export function PlaylistView({
                       style={{ marginRight: '8px' }}
                     >
                       Sample
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => anchorTrackId && onFindSimilar?.(anchorTrackId)}
+                      disabled={!anchorTrackId || samplingState?.active}
+                      style={{ marginRight: '8px' }}
+                    >
+                      Find Similar
                     </button>
                     {preview.join(', ') || '-'}
                   </td>

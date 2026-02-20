@@ -1471,23 +1471,25 @@ export function App() {
     }
   };
 
-  const runSimilarSearch = async () => {
+  const runSimilarSearchForTrack = async (trackId) => {
     const bridgeApi = getBridgeApi();
     if (!bridgeApi?.findSimilarTracks) {
       setError(DESKTOP_BRIDGE_ERROR);
       return;
     }
 
-    if (!selectedTrack) {
+    const resolvedId = String(trackId || '');
+    if (!resolvedId) {
       setError('Select a track first.');
       return;
     }
 
+    setSelectedTrackId(resolvedId);
     setIsFindingSimilar(true);
     setError('');
     try {
       const result = await bridgeApi.findSimilarTracks({
-        targetId: getTrackId(selectedTrack),
+        targetId: resolvedId,
         sourceXmlPath: xmlPath.trim(),
         selectedFolders,
         limit: Number(similarLimit),
@@ -1499,6 +1501,14 @@ export function App() {
     } finally {
       setIsFindingSimilar(false);
     }
+  };
+
+  const runSimilarSearch = async () => {
+    if (!selectedTrack) {
+      setError('Select a track first.');
+      return;
+    }
+    await runSimilarSearchForTrack(getTrackId(selectedTrack));
   };
 
   useEffect(() => {
@@ -3378,6 +3388,7 @@ export function App() {
         trackIndexById={trackIndexById}
         getClusterDecision={getClusterDecision}
         updateClusterDecision={updateClusterDecision}
+        onFindSimilar={runSimilarSearchForTrack}
         samplingState={samplingState}
         setSelectedTrackId={setSelectedTrackId}
         togglePlayPause={togglePlayPause}
