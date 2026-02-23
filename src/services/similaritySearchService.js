@@ -37,23 +37,35 @@ function updateTopMatches(topMatches, row, limit) {
   topMatches.length = limit;
 }
 
-export function findSimilarTracks({
+export async function findSimilarTracks({
   tracks,
   targetId,
   sourceXmlPath = null,
   selectedFolders = [],
   algorithmVersion = createAnalyzerVersion(),
   limit = 20,
-  minScore = 0.6
+  minScore = 0.6,
+  yieldEveryPairs = 200
 } = {}) {
   const safeTracks = Array.isArray(tracks) ? tracks : [];
-  const target = safeTracks.find((track) => String(track.id) === String(targetId));
-  if (!target) {
-    throw new Error('Target track not found.');
-  }
-
   const safeLimit = Math.max(1, Math.floor(toNumber(limit, 20)));
   const scoreFloor = clamp(toNumber(minScore, 0.6));
+  const safeYieldEvery = Math.max(1, Math.floor(toNumber(yieldEveryPairs, 200)));
+  const target = safeTracks.find((track) => String(track.id) === String(targetId));
+  if (!target) {
+    return {
+      error: 'Target track not found.',
+      runId: null,
+      algorithmVersion,
+      targetId: String(targetId || ''),
+      pairCount: 0,
+      cacheHits: 0,
+      computed: 0,
+      limit: safeLimit,
+      minScore: scoreFloor,
+      matches: []
+    };
+  }
 
   upsertTrackSignatures(safeTracks);
   const runId = beginAnalysisRun({
@@ -75,6 +87,9 @@ export function findSimilarTracks({
       }
 
       pairCount += 1;
+      if (pairCount % safeYieldEvery === 0) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
       const cached = getSimilarityFromCache({
         trackAId: target.id,
         trackBId: candidate.id,

@@ -16,7 +16,7 @@
     "smoke:electron": "npm run build:renderer && RBFA_SMOKE=1 electron .",
     "smoke:electron:safe": "npm run build:renderer && RBFA_SMOKE=1 ELECTRON_DISABLE_SANDBOX=1 electron .",
     "start:electron": "electron .",
-    "start:electron:safe": "ELECTRON_DISABLE_GPU=1 electron .",
+    "start:electron:safe": "ELECTRON_DISABLE_GPU_COMPOSITING=1 electron .",
     "test": "node --test",
     "build:win": "npm run build:renderer && electron-builder --win",
     "build:win:portable": "npm run build:renderer && electron-builder --win portable",

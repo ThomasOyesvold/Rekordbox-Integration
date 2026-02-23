@@ -35,10 +35,16 @@ const dbPath = path.resolve(app.getPath('userData'), 'rbfa.db');
 const isSmokeMode = process.env.RBFA_SMOKE === '1';
 const forceShowWindow = process.env.RBFA_FORCE_SHOW === '1';
 const disableGpu = process.env.ELECTRON_DISABLE_GPU === '1' || process.env.RBFA_DISABLE_GPU === '1';
+const disableGpuCompositing = process.env.ELECTRON_DISABLE_GPU_COMPOSITING === '1'
+  || process.env.RBFA_DISABLE_GPU_COMPOSITING === '1';
 
 if (disableGpu) {
   app.disableHardwareAcceleration();
   app.commandLine.appendSwitch('disable-gpu');
+  app.commandLine.appendSwitch('disable-gpu-compositing');
+}
+
+if (!disableGpu && disableGpuCompositing) {
   app.commandLine.appendSwitch('disable-gpu-compositing');
 }
 
@@ -590,14 +596,15 @@ ipcMain.handle('tracks:similar', async (_event, payload) => {
   const tracks = Array.isArray(payload?.tracks) && payload.tracks.length > 0
     ? payload.tracks
     : cachedLibraryTracks;
-  return findSimilarTracks({
+  return await findSimilarTracks({
     tracks,
     targetId: payload?.targetId,
     sourceXmlPath: payload?.sourceXmlPath || null,
     selectedFolders: Array.isArray(payload?.selectedFolders) ? payload.selectedFolders : [],
     algorithmVersion: payload?.algorithmVersion,
     limit: payload?.limit,
-    minScore: payload?.minScore
+    minScore: payload?.minScore,
+    yieldEveryPairs: payload?.yieldEveryPairs
   });
 });
 

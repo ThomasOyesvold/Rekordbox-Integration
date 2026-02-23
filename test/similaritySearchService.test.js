@@ -17,7 +17,7 @@ test('similarity search returns top matches for a target track', async () => {
     { id: 's3', artist: 'B', title: 'Three', bpm: 138, key: '2B', durationSeconds: 280, genre: 'House' }
   ];
 
-  const result = findSimilarTracks({
+  const result = await findSimilarTracks({
     tracks,
     targetId: 's1',
     limit: 5,

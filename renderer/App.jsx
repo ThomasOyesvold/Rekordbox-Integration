@@ -1510,8 +1510,14 @@ export function App() {
         sourceXmlPath: xmlPath.trim(),
         selectedFolders,
         limit: Number(similarLimit),
-        minScore: Number(similarMinScore)
+        minScore: Number(similarMinScore),
+        yieldEveryPairs: 150
       });
+      if (result?.error) {
+        setSimilarResults(null);
+        setError(result.error);
+        return;
+      }
       setSimilarResults(result);
     } catch (searchError) {
       setError(searchError.message || String(searchError));
@@ -2337,6 +2343,14 @@ export function App() {
     await playTrack(track, state.currentTime || 0);
   };
 
+  const handleTogglePlayPause = async (track) => {
+    const trackId = getTrackId(track);
+    if (trackId) {
+      setSelectedTrackId(trackId);
+    }
+    await togglePlayPause(track);
+  };
+
   const seekFromWaveform = async (track, event) => {
     const trackId = getTrackId(track);
     const state = getPlaybackState(trackId);
@@ -2429,6 +2443,14 @@ export function App() {
       return true;
     });
   }, [similarResults]);
+
+  const similarContextTrack = useMemo(() => {
+    const targetId = similarResults?.targetId;
+    if (!targetId) {
+      return null;
+    }
+    return trackIndexById.get(String(targetId)) || null;
+  }, [similarResults, trackIndexById]);
 
   const rowHeight = tableDensity === 'compact' ? 30 : 40;
   const virtualWindowSize = Math.ceil(TABLE_VIEWPORT_HEIGHT / rowHeight) + (VIRTUAL_OVERSCAN_ROWS * 2);
@@ -2971,7 +2993,7 @@ export function App() {
                           <button
                             type="button"
                             className="playback-button"
-                            onClick={() => togglePlayPause(track)}
+                            onClick={() => handleTogglePlayPause(track)}
                             disabled={isSamplingActive || getPlaybackState(rowTrackId).loading}
                           >
                             {getPlaybackState(rowTrackId).loading
@@ -3245,6 +3267,32 @@ export function App() {
             ) : null}
             {similarResults ? (
               <>
+                {similarContextTrack ? (
+                  <div
+                    className="similar-context"
+                    style={{
+                      border: '1px solid var(--border-subtle)',
+                      borderRadius: '12px',
+                      padding: '10px 12px',
+                      background: 'rgba(15, 23, 42, 0.35)',
+                      marginBottom: '10px'
+                    }}
+                  >
+                    <div style={{ fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94a3b8' }}>
+                      Context Track
+                    </div>
+                    <div style={{ fontSize: '1rem', fontWeight: 600, color: '#e2e8f0', marginTop: '2px' }}>
+                      {(similarContextTrack.artist || 'Unknown')} — {(similarContextTrack.title || 'Unknown')}
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '6px', color: '#cbd5f5', fontSize: '0.85rem' }}>
+                      <span>{similarContextTrack.bpm ? `${Math.round(similarContextTrack.bpm)} BPM` : '-'}</span>
+                      <span>{similarContextTrack.key || '-'}</span>
+                      <span>{Number.isFinite(similarContextTrack.durationSeconds)
+                        ? formatDuration(similarContextTrack.durationSeconds)
+                        : '-'}</span>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="similar-tracks-header">
                   <h4>Similar Tracks</h4>
                   <div className="similar-tracks-meta">
@@ -3281,7 +3329,7 @@ export function App() {
                               <button
                                 type="button"
                                 className="similar-track-button"
-                                onClick={() => togglePlayPause(track)}
+                                onClick={() => handleTogglePlayPause(track)}
                               >
                                 {playback.status === 'playing' ? 'Pause' : 'Play'}
                               </button>
@@ -3356,7 +3404,7 @@ export function App() {
                       isPlaying={selectedTrackPlayback.status === 'playing'}
                       currentTime={selectedTrackPlayback.currentTime || 0}
                       duration={selectedTrackDuration}
-                      onTogglePlay={() => togglePlayPause(selectedTrack)}
+                      onTogglePlay={() => handleTogglePlayPause(selectedTrack)}
                     >
                       <WaveformPreview
                         waveform={selectedTrack.anlzWaveform}
