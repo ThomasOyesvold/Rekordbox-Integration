@@ -6,3 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 .planning/app-state.json
+
+# build outputs
+dist/
+dist-electron/
