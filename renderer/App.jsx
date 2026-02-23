@@ -883,6 +883,8 @@ export function App() {
     sharedAudioRef.current = audio;
 
     let lastTimeUpdate = 0;
+    let lastReportedTime = 0;
+    let lastReportedDuration = 0;
     const onLoadedMeta = () => {
       const trackId = sharedAudioTrackIdRef.current;
       if (!trackId) {
@@ -901,13 +903,22 @@ export function App() {
         return;
       }
       const now = performance.now();
-      if (now - lastTimeUpdate < 200) {
+      if (now - lastTimeUpdate < 500) {
         return;
       }
       lastTimeUpdate = now;
+      const currentTime = audio.currentTime;
+      if (Math.abs(currentTime - lastReportedTime) < 0.5) {
+        return;
+      }
+      lastReportedTime = currentTime;
+      const nextDuration = Number.isFinite(audio.duration) ? audio.duration : getPlaybackState(trackId).duration;
+      if (Number.isFinite(nextDuration) && Math.abs(nextDuration - lastReportedDuration) >= 0.5) {
+        lastReportedDuration = nextDuration;
+      }
       updatePlaybackState(trackId, {
-        currentTime: audio.currentTime,
-        duration: Number.isFinite(audio.duration) ? audio.duration : getPlaybackState(trackId).duration
+        currentTime,
+        duration: lastReportedDuration || nextDuration
       });
     };
 
@@ -2814,16 +2825,6 @@ export function App() {
               </div>
             </div>
           ) : null}
-          <TrackTable
-            tracks={sortedTracks.slice(0, 20)}
-            onTrackClick={(track) => setSelectedTrackId(getTrackId(track))}
-            onTogglePlay={togglePlayPause}
-            getPlaybackState={getPlaybackState}
-            disablePlay={isSamplingActive}
-          />
-        </div>
-
-        <div className={`card grid-span${isSamplingActive ? ' sampling-active' : ''}`}>
           <div className="row track-table-header" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
             <h3 style={{ margin: 0 }}>Track Table ({sortedTracks.length}/{tracks.length})</h3>
           </div>
@@ -3409,60 +3410,50 @@ export function App() {
         ) : null}
       </div>
 
-      {validationIssues.length > 0 ? (
-        <div className="card">
-          <div className="row" style={{ justifyContent: 'space-between', marginBottom: '8px' }}>
-            <h3 style={{ margin: 0 }}>Validation Issues ({filteredIssues.length}/{validationIssues.length})</h3>
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => setIsValidationModalOpen(true)}
-            >
-              View Issues
-            </button>
-          </div>
-          <p style={{ margin: 0, color: '#475569' }}>
-            Kept in a modal so library browsing stays in focus.
-          </p>
-        </div>
-      ) : null}
-
-      <div className="card">
-        <h3>Recent Imports</h3>
-        {recentImports.length === 0 ? <p>No imports recorded yet.</p> : null}
-        {recentImports.length > 0 ? (
-          <table className="track-table">
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>XML Path</th>
-                <th>Tracks</th>
-                <th>Playlists</th>
-                <th>Folders</th>
-                <th>Filter</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentImports.map((row) => (
-                <tr key={row.id}>
-                  <td>{new Date(row.parsedAt).toLocaleString()}</td>
-                  <td title={row.xmlPath}>{row.xmlPath}</td>
-                  <td>{row.trackCount}</td>
-                  <td>{row.playlistCount}</td>
-                  <td>{row.folderCount}</td>
-                  <td>{row.selectedFolders.length > 0 ? row.selectedFolders.join(', ') : 'All'}</td>
-                  <td>
-                    <button type="button" className="secondary" onClick={() => applyRecentImport(row)}>
-                      Load
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : null}
-      </div>
+      <PlaylistView
+        playlistSuggestions={playlistSuggestions}
+        isParsing={isParsing}
+        isAnalyzing={isAnalyzing}
+        isClustering={isClustering}
+        tracks={tracks}
+        runPlaylistClustering={runPlaylistClustering}
+        clusterPreset={clusterPreset}
+        applyClusterPreset={applyClusterPreset}
+        clusterThreshold={clusterThreshold}
+        setClusterThreshold={setClusterThreshold}
+        clusterMinSize={clusterMinSize}
+        setClusterMinSize={setClusterMinSize}
+        clusterMaxPairs={clusterMaxPairs}
+        setClusterMaxPairs={setClusterMaxPairs}
+        clusterStrictMode={clusterStrictMode}
+        setClusterStrictMode={setClusterStrictMode}
+        playlistCardItems={playlistCardItems}
+        startSampling={startSampling}
+        setExpandedClusterKey={setExpandedClusterKey}
+        expandedClusterKey={expandedClusterKey}
+        trackIndexById={trackIndexById}
+        getClusterDecision={getClusterDecision}
+        updateClusterDecision={updateClusterDecision}
+        onFindSimilar={runSimilarSearchForTrack}
+        samplingState={samplingState}
+        samplingPaused={samplingPausedRef.current}
+        samplingFinished={samplingFinished}
+        samplingCountdown={samplingCountdown}
+        samplingElapsedLabel={formatClock(samplingElapsed)}
+        samplingCooldownSeconds={(samplingCooldownMsRef.current || 0) / 1000}
+        onCooldownChange={handleSamplingCooldownChange}
+        getSamplingTrackLabel={getSamplingTrackLabel}
+        setSelectedTrackId={setSelectedTrackId}
+        togglePlayPause={togglePlayPause}
+        seekFromWaveform={seekFromWaveform}
+        getPlaybackState={getPlaybackState}
+        ClusterDetailsComponent={ClusterDetails}
+        sampleSize={sampleSize}
+        handleSampleSizeChange={handleSampleSizeChange}
+        stopSampling={stopSampling}
+        skipSample={skipSample}
+        resumeSampling={resumeSampling}
+      />
 
       {analysisResult ? (
         <div className="card">
@@ -3522,51 +3513,6 @@ export function App() {
           </table>
         </div>
       ) : null}
-
-      <PlaylistView
-        playlistSuggestions={playlistSuggestions}
-        isParsing={isParsing}
-        isAnalyzing={isAnalyzing}
-        isClustering={isClustering}
-        tracks={tracks}
-        runPlaylistClustering={runPlaylistClustering}
-        clusterPreset={clusterPreset}
-        applyClusterPreset={applyClusterPreset}
-        clusterThreshold={clusterThreshold}
-        setClusterThreshold={setClusterThreshold}
-        clusterMinSize={clusterMinSize}
-        setClusterMinSize={setClusterMinSize}
-        clusterMaxPairs={clusterMaxPairs}
-        setClusterMaxPairs={setClusterMaxPairs}
-        clusterStrictMode={clusterStrictMode}
-        setClusterStrictMode={setClusterStrictMode}
-        playlistCardItems={playlistCardItems}
-        startSampling={startSampling}
-        setExpandedClusterKey={setExpandedClusterKey}
-        expandedClusterKey={expandedClusterKey}
-        trackIndexById={trackIndexById}
-        getClusterDecision={getClusterDecision}
-        updateClusterDecision={updateClusterDecision}
-        onFindSimilar={runSimilarSearchForTrack}
-        samplingState={samplingState}
-        samplingPaused={samplingPausedRef.current}
-        samplingFinished={samplingFinished}
-        samplingCountdown={samplingCountdown}
-        samplingElapsedLabel={formatClock(samplingElapsed)}
-        samplingCooldownSeconds={(samplingCooldownMsRef.current || 0) / 1000}
-        onCooldownChange={handleSamplingCooldownChange}
-        getSamplingTrackLabel={getSamplingTrackLabel}
-        setSelectedTrackId={setSelectedTrackId}
-        togglePlayPause={togglePlayPause}
-        seekFromWaveform={seekFromWaveform}
-        getPlaybackState={getPlaybackState}
-        ClusterDetailsComponent={ClusterDetails}
-        sampleSize={sampleSize}
-        handleSampleSizeChange={handleSampleSizeChange}
-        stopSampling={stopSampling}
-        skipSample={skipSample}
-        resumeSampling={resumeSampling}
-      />
 
       {approvedPlaylists.length ? (
         <div className="card">
@@ -3650,6 +3596,60 @@ export function App() {
           </table>
         </div>
       ) : null}
+      {validationIssues.length > 0 ? (
+        <div className="card">
+          <div className="row" style={{ justifyContent: 'space-between', marginBottom: '8px' }}>
+            <h3 style={{ margin: 0 }}>Validation Issues ({filteredIssues.length}/{validationIssues.length})</h3>
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => setIsValidationModalOpen(true)}
+            >
+              View Issues
+            </button>
+          </div>
+          <p style={{ margin: 0, color: '#475569' }}>
+            Kept in a modal so library browsing stays in focus.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="card">
+        <h3>Recent Imports</h3>
+        {recentImports.length === 0 ? <p>No imports recorded yet.</p> : null}
+        {recentImports.length > 0 ? (
+          <table className="track-table">
+            <thead>
+              <tr>
+                <th>When</th>
+                <th>XML Path</th>
+                <th>Tracks</th>
+                <th>Playlists</th>
+                <th>Folders</th>
+                <th>Filter</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recentImports.map((row) => (
+                <tr key={row.id}>
+                  <td>{new Date(row.parsedAt).toLocaleString()}</td>
+                  <td title={row.xmlPath}>{row.xmlPath}</td>
+                  <td>{row.trackCount}</td>
+                  <td>{row.playlistCount}</td>
+                  <td>{row.folderCount}</td>
+                  <td>{row.selectedFolders.length > 0 ? row.selectedFolders.join(', ') : 'All'}</td>
+                  <td>
+                    <button type="button" className="secondary" onClick={() => applyRecentImport(row)}>
+                      Load
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : null}
+      </div>
         <ToastContainer>
           {samplingToast ? (
             <Toast

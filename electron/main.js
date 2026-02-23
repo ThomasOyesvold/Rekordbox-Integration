@@ -33,6 +33,14 @@ const __dirname = path.dirname(__filename);
 const statePath = path.resolve(app.getPath('userData'), 'app-state.json');
 const dbPath = path.resolve(app.getPath('userData'), 'rbfa.db');
 const isSmokeMode = process.env.RBFA_SMOKE === '1';
+const forceShowWindow = process.env.RBFA_FORCE_SHOW === '1';
+const disableGpu = process.env.ELECTRON_DISABLE_GPU === '1' || process.env.RBFA_DISABLE_GPU === '1';
+
+if (disableGpu) {
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch('disable-gpu');
+  app.commandLine.appendSwitch('disable-gpu-compositing');
+}
 
 let mainWindow = null;
 let db = null;
@@ -74,7 +82,7 @@ function createWindow() {
     height: 860,
     minWidth: 1000,
     minHeight: 700,
-    show: !isSmokeMode,
+    show: !isSmokeMode || forceShowWindow,
     webPreferences: {
       // Keep preload in CommonJS for compatibility with Electron sandboxed renderers.
       preload: path.join(__dirname, 'preload.cjs'),
@@ -90,6 +98,15 @@ function createWindow() {
   } else {
     mainWindow.loadFile(path.resolve(__dirname, '../dist/index.html'));
   }
+
+  mainWindow.once('ready-to-show', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.center();
+    if (forceShowWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
 }
 
 ipcMain.handle('dialog:pickXml', async () => {

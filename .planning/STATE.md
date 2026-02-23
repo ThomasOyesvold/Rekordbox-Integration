@@ -16,6 +16,8 @@ Status: Active development
   - Parser now collects explicit folder nodes from Rekordbox XML, so folder-only nodes appear in the tree.
 - ✅ **Testing Support**:
   - Added `.planning/TEST-CHECKLIST.md` for pre-Phase-7 validation.
+- ✅ **Playback UI Throttle**:
+  - Reduced timeupdate-driven UI refresh rate and minimum delta to cut stutter risk during playback.
 
 ## Recent Completions (2026-02-11)
 - ✅ **Nested Tag Discovery**:
