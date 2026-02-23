@@ -448,23 +448,31 @@ function parsePlaylists(xmlText, issues) {
     if (token[0].startsWith('</NODE')) {
       const node = stack.pop();
 
-      if (node && node.kind === 'playlist') {
-        if (node.trackIds.length === 0) {
-          issues.push(
-            createIssue(
-              'warning',
-              VALIDATION_CODES.playlistWithoutTracks,
-              'Playlist node has no track references.',
-              { playlist: node.path || node.name || null }
-            )
-          );
-        }
+      if (node) {
+        if (node.kind === 'playlist') {
+          if (node.trackIds.length === 0) {
+            issues.push(
+              createIssue(
+                'warning',
+                VALIDATION_CODES.playlistWithoutTracks,
+                'Playlist node has no track references.',
+                { playlist: node.path || node.name || null }
+              )
+            );
+          }
 
-        playlists.push({
-          name: node.name,
-          path: node.path,
-          trackIds: node.trackIds
-        });
+          playlists.push({
+            name: node.name,
+            path: node.path,
+            trackIds: node.trackIds
+          });
+        } else if (node.kind === 'folder' && node.trackIds.length > 0) {
+          playlists.push({
+            name: node.name,
+            path: node.path,
+            trackIds: node.trackIds
+          });
+        }
       }
 
       token = tokenRegex.exec(text);
@@ -523,6 +531,12 @@ function parsePlaylists(xmlText, issues) {
           );
         }
         playlists.push(node);
+      } else if (node.kind === 'folder' && node.trackIds.length > 0) {
+        playlists.push({
+          name: node.name,
+          path: node.path,
+          trackIds: node.trackIds
+        });
       }
 
       token = tokenRegex.exec(text);
@@ -535,7 +549,7 @@ function parsePlaylists(xmlText, issues) {
 
       if (trackRef) {
         for (let index = stack.length - 1; index >= 0; index -= 1) {
-          if (stack[index].kind === 'playlist') {
+          if (stack[index]) {
             stack[index].trackIds.push(trackRef);
             break;
           }

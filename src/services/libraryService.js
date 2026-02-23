@@ -2,6 +2,20 @@ function toFolderSegments(folderPath) {
   return folderPath.split('/').filter(Boolean);
 }
 
+export function normalizeFolderPath(folderPath) {
+  if (typeof folderPath !== 'string') {
+    return '';
+  }
+  return folderPath
+    .replace(/\u00a0/g, ' ')
+    .replace(/[\u2010-\u2015\u2212\u00ad]/g, '-')
+    .normalize('NFKC')
+    .split('/')
+    .map((segment) => segment.trim().replace(/\s+/g, ' ').toLowerCase())
+    .filter(Boolean)
+    .join('/');
+}
+
 export function summarizeLibrary(library) {
   return {
     trackCount: library.tracks.length,
@@ -32,11 +46,17 @@ export function selectPlaylistsByFolders(playlists, selectedFolders) {
     return playlists;
   }
 
-  const selected = selectedFolders.map((folder) => folder.trim()).filter(Boolean);
+  const selected = selectedFolders
+    .map((folder) => normalizeFolderPath(folder))
+    .filter(Boolean);
 
   return playlists.filter((playlist) => {
+    const playlistPath = normalizeFolderPath(playlist.path);
+    if (!playlistPath) {
+      return false;
+    }
     return selected.some((folderPath) => {
-      return playlist.path === folderPath || playlist.path.startsWith(`${folderPath}/`);
+      return playlistPath === folderPath || playlistPath.startsWith(`${folderPath}/`);
     });
   });
 }

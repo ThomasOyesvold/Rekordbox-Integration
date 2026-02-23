@@ -16,6 +16,14 @@ function toNumber(value, fallback) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+function getTrackId(track) {
+  if (!track) {
+    return '';
+  }
+  const rawId = track.id ?? track.trackId ?? track.TrackID ?? track.ID;
+  return rawId !== undefined && rawId !== null ? String(rawId) : '';
+}
+
 function updateTopMatches(topMatches, row, limit) {
   if (limit <= 0) {
     return;
@@ -51,7 +59,8 @@ export async function findSimilarTracks({
   const safeLimit = Math.max(1, Math.floor(toNumber(limit, 20)));
   const scoreFloor = clamp(toNumber(minScore, 0.6));
   const safeYieldEvery = Math.max(1, Math.floor(toNumber(yieldEveryPairs, 200)));
-  const target = safeTracks.find((track) => String(track.id) === String(targetId));
+  const target = safeTracks.find((track) => getTrackId(track) === String(targetId));
+  const targetTrackId = getTrackId(target);
   if (!target) {
     return {
       error: 'Target track not found.',
@@ -82,7 +91,8 @@ export async function findSimilarTracks({
 
   try {
     for (const candidate of safeTracks) {
-      if (String(candidate.id) === String(target.id)) {
+      const candidateTrackId = getTrackId(candidate);
+      if (!candidateTrackId || candidateTrackId === targetTrackId) {
         continue;
       }
 
@@ -91,8 +101,8 @@ export async function findSimilarTracks({
         await new Promise((resolve) => setImmediate(resolve));
       }
       const cached = getSimilarityFromCache({
-        trackAId: target.id,
-        trackBId: candidate.id,
+        trackAId: targetTrackId,
+        trackBId: candidateTrackId,
         algorithmVersion
       });
 
@@ -116,8 +126,8 @@ export async function findSimilarTracks({
       const result = computeBaselineSimilarity(target, candidate);
       const reason = summarizeSimilarityComponents(result.components);
       saveSimilarityToCache({
-        trackAId: target.id,
-        trackBId: candidate.id,
+        trackAId: targetTrackId,
+        trackBId: candidateTrackId,
         algorithmVersion,
         score: result.score,
         components: {
@@ -131,7 +141,7 @@ export async function findSimilarTracks({
 
       if (result.score >= scoreFloor) {
         updateTopMatches(matches, {
-          trackId: String(candidate.id),
+          trackId: candidateTrackId,
           score: result.score,
           components: result.components,
           weights: result.weights,
@@ -146,7 +156,7 @@ export async function findSimilarTracks({
     return {
       runId,
       algorithmVersion,
-      targetId: String(target.id),
+      targetId: targetTrackId,
       pairCount,
       cacheHits,
       computed,

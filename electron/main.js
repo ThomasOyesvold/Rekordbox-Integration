@@ -8,6 +8,7 @@ import {
   buildFolderTree,
   buildTrackPlaylistIndex,
   filterTracksByFolders,
+  normalizeFolderPath,
   selectPlaylistsByFolders,
   summarizeLibrary
 } from '../src/services/libraryService.js';
@@ -35,8 +36,12 @@ const dbPath = path.resolve(app.getPath('userData'), 'rbfa.db');
 const isSmokeMode = process.env.RBFA_SMOKE === '1';
 const forceShowWindow = process.env.RBFA_FORCE_SHOW === '1';
 const disableGpu = process.env.ELECTRON_DISABLE_GPU === '1' || process.env.RBFA_DISABLE_GPU === '1';
+const forceSwiftshader = process.env.ELECTRON_FORCE_SWIFTSHADER === '1';
 const disableGpuCompositing = process.env.ELECTRON_DISABLE_GPU_COMPOSITING === '1'
   || process.env.RBFA_DISABLE_GPU_COMPOSITING === '1';
+const defaultDisableCompositing = process.platform === 'linux'
+  && process.env.ELECTRON_DISABLE_GPU_COMPOSITING !== '0'
+  && process.env.RBFA_DISABLE_GPU_COMPOSITING !== '0';
 
 if (disableGpu) {
   app.disableHardwareAcceleration();
@@ -44,7 +49,13 @@ if (disableGpu) {
   app.commandLine.appendSwitch('disable-gpu-compositing');
 }
 
-if (!disableGpu && disableGpuCompositing) {
+if (!disableGpu && (disableGpuCompositing || defaultDisableCompositing)) {
+  app.commandLine.appendSwitch('disable-gpu-compositing');
+}
+
+if (!disableGpu && forceSwiftshader) {
+  app.commandLine.appendSwitch('use-gl', 'swiftshader');
+  app.commandLine.appendSwitch('use-angle', 'swiftshader');
   app.commandLine.appendSwitch('disable-gpu-compositing');
 }
 
@@ -172,6 +183,29 @@ ipcMain.handle('library:parse', async (_event, payload) => {
 
   const filteredTracks = filterTracksByFolders(library, selectedFolders);
   cachedLibraryTracks = filteredTracks;
+  if (selectedFolders.length > 0 && filteredTracks.length === 0) {
+    const selectedNormalized = selectedFolders.map(normalizeFolderPath).filter(Boolean);
+    const playlistSamples = (library.playlists || []).slice(0, 20).map((playlist) => ({
+      raw: playlist.path,
+      normalized: normalizeFolderPath(playlist.path)
+    }));
+    const selectedTokens = selectedNormalized
+      .flatMap((path) => path.split('/').filter(Boolean))
+      .filter(Boolean);
+    const relatedPlaylists = (library.playlists || [])
+      .map((playlist) => ({
+        raw: playlist.path,
+        normalized: normalizeFolderPath(playlist.path)
+      }))
+      .filter((playlist) => selectedTokens.some((token) => playlist.normalized.includes(token)))
+      .slice(0, 30);
+    console.warn('[rbfa] No tracks matched selected folders.', {
+      selectedFolders,
+      selectedNormalized,
+      playlistSamples,
+      relatedPlaylists
+    });
+  }
   let anlzAttach = null;
   let anlzAttachError = null;
   if (usbAnlzPath) {

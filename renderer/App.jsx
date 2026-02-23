@@ -1593,10 +1593,6 @@ export function App() {
   );
 
   useEffect(() => {
-    setSimilarResults(null);
-  }, [selectedTrackId]);
-
-  useEffect(() => {
     samplingStateRef.current = samplingState;
   }, [samplingState]);
 
@@ -3281,16 +3277,52 @@ export function App() {
                     <div style={{ fontSize: '0.75rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94a3b8' }}>
                       Context Track
                     </div>
-                    <div style={{ fontSize: '1rem', fontWeight: 600, color: '#e2e8f0', marginTop: '2px' }}>
-                      {(similarContextTrack.artist || 'Unknown')} — {(similarContextTrack.title || 'Unknown')}
-                    </div>
-                    <div style={{ display: 'flex', gap: '12px', marginTop: '6px', color: '#cbd5f5', fontSize: '0.85rem' }}>
-                      <span>{similarContextTrack.bpm ? `${Math.round(similarContextTrack.bpm)} BPM` : '-'}</span>
-                      <span>{similarContextTrack.key || '-'}</span>
-                      <span>{Number.isFinite(similarContextTrack.durationSeconds)
-                        ? formatDuration(similarContextTrack.durationSeconds)
-                        : '-'}</span>
-                    </div>
+                    {(() => {
+                      const contextId = getTrackId(similarContextTrack);
+                      const playback = getPlaybackState(contextId);
+                      const duration = Number(similarContextTrack.durationSeconds)
+                        || Number(similarContextTrack.anlzWaveform?.durationSeconds)
+                        || Number(playback.duration)
+                        || 0;
+                      return (
+                        <>
+                          <div className="row" style={{ alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
+                            <div style={{ fontSize: '1rem', fontWeight: 600, color: '#e2e8f0' }}>
+                              {(similarContextTrack.artist || 'Unknown')} — {(similarContextTrack.title || 'Unknown')}
+                            </div>
+                            <button
+                              type="button"
+                              className="secondary"
+                              onClick={() => handleTogglePlayPause(similarContextTrack)}
+                            >
+                              {playback.status === 'playing' ? 'Pause' : 'Play'}
+                            </button>
+                          </div>
+                          <div style={{ display: 'flex', gap: '12px', marginTop: '6px', color: '#cbd5f5', fontSize: '0.85rem' }}>
+                            <span>{similarContextTrack.bpm ? `${Math.round(similarContextTrack.bpm)} BPM` : '-'}</span>
+                            <span>{similarContextTrack.key || '-'}</span>
+                            <span>{Number.isFinite(duration) && duration > 0 ? formatDuration(duration) : '-'}</span>
+                          </div>
+                          <div style={{ marginTop: '8px' }}>
+                            {similarContextTrack.anlzWaveform ? (
+                              <WaveformPreview
+                                waveform={similarContextTrack.anlzWaveform}
+                                seekLabel="Seek in context track"
+                                progress={duration ? (playback.currentTime || 0) / duration : 0}
+                                onSeek={(ratio) => {
+                                  if (!duration) {
+                                    return;
+                                  }
+                                  playTrack(similarContextTrack, ratio * duration);
+                                }}
+                              />
+                            ) : (
+                              <div className="waveform-placeholder">No waveform available</div>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 ) : null}
                 <div className="similar-tracks-header">
