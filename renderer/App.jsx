@@ -1005,8 +1005,9 @@ export function App() {
     }
 
     const load = async () => {
+      let state = null;
       try {
-        const state = await bridgeApi.loadState();
+        state = await bridgeApi.loadState();
         if (state?.lastLibraryPath) {
           setXmlPath(state.lastLibraryPath);
         }
@@ -1556,6 +1557,10 @@ export function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isAnalyzing, isParsing, parse, runAnalysis, trackQuery, tracks.length]);
 
+  const getPlaybackState = (trackId) => {
+    return playbackStates[trackId] || { status: 'idle', currentTime: 0, duration: 0, loading: false, error: '' };
+  };
+
   const selectedTrack = useMemo(() => {
     return tracks.find((track) => track.id === selectedTrackId) || null;
   }, [tracks, selectedTrackId]);
@@ -1648,10 +1653,6 @@ export function App() {
       ...prev,
       [trackId]: next
     }));
-  };
-
-  const getPlaybackState = (trackId) => {
-    return playbackStates[trackId] || { status: 'idle', currentTime: 0, duration: 0, loading: false, error: '' };
   };
 
   const stopPlayback = (trackId) => {
@@ -3771,6 +3772,8 @@ export function App() {
             </label>
           </div>
         </Modal>
+        </div>
+      )}
       </main>
     </div>
   );

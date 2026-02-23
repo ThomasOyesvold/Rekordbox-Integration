@@ -1,6 +1,6 @@
 # Project State
 
-Updated: 2026-02-19
+Updated: 2026-02-21
 Phase: 2 of 6 (Analysis Engine) + Phase 4 playback + Phase 5 UI redesign
 Progress: Phase 1 complete, Phase 2 ~70%, Phase 4 audio playback fixed, UI polish in progress
 Status: Active development
@@ -10,6 +10,12 @@ Status: Active development
 - Phase 4: Audio playback stability (single shared audio element, UI throttle)
 - Phase 5: UI redesign polish (Track Details + Similar list)
 - Production packaging roadmap defined (Phase 7-8)
+
+## Recent Completions (2026-02-21)
+- ✅ **Folder Tree Coverage Fix**:
+  - Parser now collects explicit folder nodes from Rekordbox XML, so folder-only nodes appear in the tree.
+- ✅ **Testing Support**:
+  - Added `.planning/TEST-CHECKLIST.md` for pre-Phase-7 validation.
 
 ## Recent Completions (2026-02-11)
 - ✅ **Nested Tag Discovery**:

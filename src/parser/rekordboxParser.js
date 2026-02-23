@@ -434,13 +434,14 @@ function parseCollection(xmlText, issues) {
 function parsePlaylists(xmlText, issues) {
   const playlistsMatch = /<PLAYLISTS\b[^>]*>([\s\S]*?)<\/PLAYLISTS>/i.exec(xmlText);
   if (!playlistsMatch) {
-    return [];
+    return { playlists: [], folders: [] };
   }
 
   const text = playlistsMatch[1];
   const tokenRegex = /<NODE\b([^>]*?)\/?>|<\/NODE>|<TRACK\b([^>]*?)\/?>/gi;
   const stack = [];
   const playlists = [];
+  const folders = [];
 
   let token = tokenRegex.exec(text);
   while (token) {
@@ -504,6 +505,10 @@ function parsePlaylists(xmlText, issues) {
         trackIds: []
       };
 
+      if (node.kind === 'folder' && node.path) {
+        folders.push(node.path);
+      }
+
       if (!isSelfClosing) {
         stack.push(node);
       } else if (node.kind === 'playlist') {
@@ -544,11 +549,21 @@ function parsePlaylists(xmlText, issues) {
     token = tokenRegex.exec(text);
   }
 
-  return playlists.filter((playlist) => playlist.name && playlist.trackIds.length > 0);
+  return {
+    playlists: playlists.filter((playlist) => playlist.name && playlist.trackIds.length > 0),
+    folders: Array.from(new Set(folders)).sort()
+  };
 }
 
-function uniqueParentFolders(playlists) {
+function uniqueParentFolders(playlists, folderPaths = []) {
   const folderSet = new Set();
+
+  for (const folderPath of folderPaths) {
+    const segments = folderPath.split('/').filter(Boolean);
+    for (let index = 1; index <= segments.length; index += 1) {
+      folderSet.add(segments.slice(0, index).join('/'));
+    }
+  }
 
   for (const playlist of playlists) {
     const segments = playlist.path.split('/').filter(Boolean);
@@ -589,7 +604,7 @@ export function parseRekordboxXml(xmlText) {
   }
 
   const tracks = parseCollection(xmlText, issues);
-  const playlists = parsePlaylists(xmlText, issues);
+  const { playlists, folders } = parsePlaylists(xmlText, issues);
   const tracksById = Object.fromEntries(tracks.map((track) => [track.id, track]));
   validateTrackReferences(playlists, tracksById, issues);
 
@@ -605,7 +620,7 @@ export function parseRekordboxXml(xmlText) {
     tracks,
     tracksById,
     playlists,
-    folders: uniqueParentFolders(playlists),
+    folders: uniqueParentFolders(playlists, folders),
     validation: {
       issues,
       warningCount: issues.filter((issue) => issue.severity === 'warning').length,
