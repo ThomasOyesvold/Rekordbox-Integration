@@ -26,6 +26,7 @@ function toRecentLabel(row) {
 
 export function SetupWizard({
   onFileSelect,
+  onBrowseXml,
   isLoading,
   recentImports = [],
   usbAnlzPath = '',
@@ -65,6 +66,10 @@ export function SetupWizard({
   };
 
   const handleBrowseClick = () => {
+    if (onBrowseXml) {
+      onBrowseXml();
+      return;
+    }
     fileInputRef.current?.click();
   };
 

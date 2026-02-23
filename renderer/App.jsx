@@ -1169,6 +1169,8 @@ export function App() {
     if (picked) {
       setXmlPath(picked);
       setError('');
+    } else {
+      setError('No file selected.');
     }
   };
 
@@ -2618,6 +2620,7 @@ export function App() {
         {!xmlPath.trim() ? (
           <SetupWizard
             onFileSelect={handleWizardFileSelect}
+            onBrowseXml={pickFile}
             isLoading={isParsing}
             recentImports={recentImports}
             usbAnlzPath={usbAnlzPath}
