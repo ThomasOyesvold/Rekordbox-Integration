@@ -7,7 +7,8 @@ export function AppHeader({
   hasLibrary = false,
   isStale = false,
   isRefreshing = false,
-  onRefresh
+  onRefresh,
+  buildTag = ''
 }) {
   return (
     <header className="app-header">
@@ -30,6 +31,7 @@ export function AppHeader({
             </defs>
           </svg>
           <span className="logo-text">Rekordbox Flow Analyzer</span>
+          {buildTag ? <span className="build-tag">Build {buildTag}</span> : null}
         </div>
       </div>
       <div className="header-right">

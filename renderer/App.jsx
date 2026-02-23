@@ -2593,6 +2593,7 @@ export function App() {
         isStale={libraryCacheInfo?.stale ?? false}
         isRefreshing={isParsing}
         onRefresh={refreshLibrary}
+        buildTag={getBuildTag()}
       />
 
       <main className="app-main">
@@ -2610,7 +2611,6 @@ export function App() {
             <div className="header">
               <h1>Rekordbox Flow Analyzer</h1>
               <p>Phase 1 shell: import XML, choose folders, inspect parsed tracks.</p>
-              {getBuildTag() ? <p style={{ fontSize: '12px', marginTop: '4px', opacity: 0.7 }}>Build: {getBuildTag()}</p> : null}
             </div>
 
             <div className="card">
