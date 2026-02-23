@@ -2757,8 +2757,10 @@ export function App() {
         </div>
 
         <div className="card">
-          <div className="row quick-preview-header" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
-            <h3 style={{ marginTop: 0, marginBottom: 0 }}>Quick Preview</h3>
+          <div className="row" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
+            <h3 style={{ marginTop: 0, marginBottom: 0 }}>
+              Track Table ({sortedTracks.length}/{tracks.length})
+            </h3>
             <div className="row quick-preview-controls" style={{ gap: '8px', alignItems: 'center' }}>
               <span style={{ fontSize: '0.9rem', color: '#334155' }}>Volume</span>
               <input
@@ -2825,9 +2827,6 @@ export function App() {
               </div>
             </div>
           ) : null}
-          <div className="row track-table-header" style={{ alignItems: 'center', justifyContent: 'space-between' }}>
-            <h3 style={{ margin: 0 }}>Track Table ({sortedTracks.length}/{tracks.length})</h3>
-          </div>
           <div className="row" style={{ marginBottom: '8px' }}>
             <input
               ref={trackFilterInputRef}
