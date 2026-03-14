@@ -13,7 +13,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **FOUND-02**: Validate XML structure and handle Rekordbox import bugs (special characters, malformed fields) ✅
 - [x] **FOUND-03**: User can select specific folders from library to analyze (not forced to process all 12K tracks) ✅
 - [x] **FOUND-04**: Display parsed track list with basic metadata (artist, title, BPM, key) ✅
-- [ ] **FOUND-05**: Persist application state in SQLite database across sessions
+- [x] **FOUND-05**: Persist application state in SQLite database across sessions ✅
 - [x] **FOUND-06**: Background processing architecture prevents UI blocking during long operations ✅
 
 ### Analysis Engine
@@ -23,30 +23,30 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **ANLY-03**: Read waveform RGB data from Rekordbox XML ✅
 - [x] **ANLY-04**: Implement BPM similarity analyzer (compatible BPM ranges for mixing) ✅
 - [x] **ANLY-05**: Implement key compatibility analyzer (Camelot Wheel harmonic mixing) ✅
-- [x] **ANLY-06**: Implement waveform pattern analyzer (energy curves, structure similarity) ✅ (ANLZ PWV5 bins/colors)
+- [x] **ANLY-06**: Implement waveform pattern analyzer (energy curves, structure similarity) ✅
 - [x] **ANLY-07**: Implement rhythm pattern analyzer (kick patterns, rhythmic structure) ✅
-- [ ] **ANLY-08**: Multi-factor flow analysis combines all analyzers with equal weighting
+- [x] **ANLY-08**: Multi-factor flow analysis combines all analyzers with equal weighting ✅
 - [x] **ANLY-09**: Cache similarity scores in SQLite to avoid reprocessing ✅
 - [x] **ANLY-10**: Cache-first strategy: check cache before computing new similarities ✅
-- [ ] **ANLY-11**: Batch processing with memory management for 12K+ track libraries
+- [x] **ANLY-11**: Batch processing with memory management for 12K+ track libraries ✅
 
 ### Playlist Generation
 
-- [ ] **PLAY-01**: Clustering algorithm groups similar tracks into playlists
-- [ ] **PLAY-02**: Flow optimizer orders tracks within playlist for smooth transitions
-- [ ] **PLAY-03**: Generate multiple playlist suggestions from analyzed folders
-- [ ] **PLAY-04**: Conservative similarity thresholds (prefer false negatives over false positives)
-- [ ] **PLAY-05**: Confidence scoring for each suggested grouping
-- [ ] **PLAY-06**: Track similarity search: "find tracks like this one" feature
+- [x] **PLAY-01**: Clustering algorithm groups similar tracks into playlists ✅
+- [x] **PLAY-02**: Flow optimizer orders tracks within playlist for smooth transitions ✅
+- [x] **PLAY-03**: Generate multiple playlist suggestions from analyzed folders ✅
+- [x] **PLAY-04**: Conservative similarity thresholds (prefer false negatives over false positives) ✅
+- [x] **PLAY-05**: Confidence scoring for each suggested grouping ✅
+- [x] **PLAY-06**: Track similarity search: "find tracks like this one" feature ✅
 
 ### Workflow & Verification
 
-- [ ] **WORK-01**: Display suggested playlists with track lists and metadata
-- [ ] **WORK-02**: Visualize waveforms for tracks in suggested playlist
-- [ ] **WORK-03**: Random sampling playback (play 10-20 random tracks from suggestion)
+- [x] **WORK-01**: Display suggested playlists with track lists and metadata ✅
+- [x] **WORK-02**: Visualize waveforms for tracks in suggested playlist ✅
+- [x] **WORK-03**: Random sampling playback (play 10-20 random tracks from suggestion) ✅
 - [x] **WORK-04**: Audio playback supports MP3, FLAC, WAV, AAC formats ✅
-- [ ] **WORK-05**: Approve/reject workflow for each playlist suggestion
-- [ ] **WORK-06**: User can name approved playlists based on perceived vibe
+- [x] **WORK-05**: Approve/reject workflow for each playlist suggestion ✅
+- [x] **WORK-06**: User can name approved playlists based on perceived vibe ✅
 - [ ] **WORK-07**: Transparent explanations show why tracks were grouped together
 - [ ] **WORK-08**: Incremental analysis: suggest additions to existing saved playlists when analyzing new folders
 
@@ -120,7 +120,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FOUND-02 | Phase 1 | Done |
 | FOUND-03 | Phase 1 | Done |
 | FOUND-04 | Phase 1 | Done |
-| FOUND-05 | Phase 1 | Not started (state currently stored in JSON + SQLite for history) |
+| FOUND-05 | Phase 1 | Done |
 | FOUND-06 | Phase 1 | Done |
 | ANLY-01 | Phase 2 | Done |
 | ANLY-02 | Phase 2 | Done |
@@ -128,23 +128,23 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ANLY-04 | Phase 2 | Done |
 | ANLY-05 | Phase 2 | Done |
 | ANLY-06 | Phase 2 | Done (ANLZ waveform summaries) |
-| ANLY-07 | Phase 2 | Done (kick signature extracted from ANLZ waveform summaries) |
-| ANLY-08 | Phase 2 | Not started (weights not equal yet) |
+| ANLY-07 | Phase 2 | Done |
+| ANLY-08 | Phase 2 | Done |
 | ANLY-09 | Phase 2 | Done |
 | ANLY-10 | Phase 2 | Done |
-| ANLY-11 | Phase 2 | Deferred |
-| PLAY-01 | Phase 3 | Not started |
-| PLAY-02 | Phase 3 | Not started |
-| PLAY-03 | Phase 3 | Not started |
-| PLAY-04 | Phase 3 | Not started |
-| PLAY-05 | Phase 3 | Not started |
-| PLAY-06 | Phase 3 | Not started |
-| WORK-01 | Phase 4 | Not started |
-| WORK-02 | Phase 4 | Not started |
-| WORK-03 | Phase 4 | Not started |
+| ANLY-11 | Phase 2 | Done |
+| PLAY-01 | Phase 3 | Done |
+| PLAY-02 | Phase 3 | Done |
+| PLAY-03 | Phase 3 | Done |
+| PLAY-04 | Phase 3 | Done |
+| PLAY-05 | Phase 3 | Done |
+| PLAY-06 | Phase 3 | Done |
+| WORK-01 | Phase 4 | Done |
+| WORK-02 | Phase 4 | Done |
+| WORK-03 | Phase 4 | Done |
 | WORK-04 | Phase 4 | Done (file playback + formats via Electron/audio tag) |
-| WORK-05 | Phase 5 | Not started |
-| WORK-06 | Phase 5 | Not started |
+| WORK-05 | Phase 5 | Done |
+| WORK-06 | Phase 5 | Done |
 | WORK-07 | Phase 5 | Not started |
 | WORK-08 | Phase 5 | Not started |
 | EXPO-01 | Phase 6 | Not started |

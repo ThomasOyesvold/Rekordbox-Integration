@@ -75,6 +75,8 @@ contextBridge.exposeInMainWorld('rbfa', {
   checkFileExists: (filePath) => ipcRenderer.invoke('file:exists', filePath),
   checkFileReadable: (filePath) => ipcRenderer.invoke('file:readable', filePath),
   resolveAudioPath: (rawPath) => ipcRenderer.invoke('audio:resolvePath', rawPath),
+  findSimilarTracks: (seedTrack, candidateTracks, options) =>
+    ipcRenderer.invoke('analysis:findSimilar', { seedTrack, candidateTracks, options }),
   onParseProgress: (listener) => {
     const wrapped = (_event, value) => listener(value);
     ipcRenderer.on('library:parseProgress', wrapped);

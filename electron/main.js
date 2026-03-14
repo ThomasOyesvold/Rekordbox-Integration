@@ -12,7 +12,7 @@ import {
   selectPlaylistsByFolders,
   summarizeLibrary
 } from '../src/services/libraryService.js';
-import { runBaselineAnalysis } from '../src/services/baselineAnalyzerService.js';
+import { findSimilarToSeed, runBaselineAnalysis } from '../src/services/baselineAnalyzerService.js';
 import { buildAnalysisCsv, buildAnalysisJson } from '../src/services/analysisExportService.js';
 import { startBackgroundParse } from '../src/services/parseService.js';
 import {
@@ -457,6 +457,9 @@ ipcMain.handle('library:clearState', async () => {
   return { cleared: true };
 });
 ipcMain.handle('imports:recent', async () => getRecentImports(10));
+ipcMain.handle('analysis:findSimilar', async (_, { seedTrack, candidateTracks, options }) => {
+  return findSimilarToSeed(seedTrack, Array.isArray(candidateTracks) ? candidateTracks : [], options || {});
+});
 ipcMain.handle('analysis:baseline', async (_event, payload) => {
   if (analysisInFlight) {
     throw new Error('Baseline analysis already running. Cancel before starting a new run.');

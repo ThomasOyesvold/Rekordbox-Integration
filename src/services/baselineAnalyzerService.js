@@ -554,6 +554,53 @@ function updateTopMatches(topMatches, row, limit) {
   topMatches.length = limit;
 }
 
+export function findSimilarToSeed(seedTrack, candidateTracks, options = {}) {
+  const {
+    bpmTolerance = 8,
+    keyMinScore = 0,
+    limit = 20
+  } = options;
+
+  const safeCandidates = Array.isArray(candidateTracks) ? candidateTracks : [];
+  const seedBpm = asNumber(seedTrack?.bpm);
+  const seedId = String(seedTrack?.id ?? '');
+
+  const filtered = safeCandidates.filter((candidate) => {
+    if (String(candidate.id) === seedId) {
+      return false;
+    }
+    if (seedBpm !== null) {
+      const candidateBpm = asNumber(candidate.bpm);
+      if (candidateBpm !== null && Math.abs(seedBpm - candidateBpm) > bpmTolerance) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  const results = filtered.map((candidate) => {
+    const similarity = computeBaselineSimilarity(seedTrack, candidate);
+    const candidateBpm = asNumber(candidate.bpm);
+    const bpmDelta = seedBpm !== null && candidateBpm !== null ? candidateBpm - seedBpm : null;
+    const keyScore = computeKeyScore(seedTrack.key, candidate.key);
+    return {
+      track: candidate,
+      score: similarity.score,
+      components: similarity.components,
+      bpmDelta,
+      keyScore
+    };
+  });
+
+  const keyFiltered = keyMinScore > 0
+    ? results.filter((result) => result.keyScore >= keyMinScore)
+    : results;
+
+  return keyFiltered
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
 export function createAnalyzerVersion(tag = 'baseline-v4') {
   return `flow-${tag}`;
 }

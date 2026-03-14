@@ -12,9 +12,15 @@ import { Activity, Clock, FolderOpen, KeyRound, ListMusic, Music2, Tags, Waves }
 import { buildFolderTree } from '../src/services/libraryService.js';
 
 const DESKTOP_BRIDGE_ERROR = 'Desktop bridge unavailable. Relaunch from Electron (not browser-only mode).';
-const TRACK_COLUMN_ORDER = ['play', 'id', 'title', 'bpm', 'key', 'waveformPreview', 'genre', 'durationSeconds', 'artist', 'playlists'];
+const CAMELOT_COLORS = [
+  '#e74c3c', '#e67e22', '#f39c12', '#f1c40f',
+  '#2ecc71', '#1abc9c', '#3498db', '#2980b9',
+  '#9b59b6', '#8e44ad', '#d35400', '#c0392b'
+];
+const TRACK_COLUMN_ORDER = ['play', 'findSimilar', 'id', 'title', 'bpm', 'key', 'waveformPreview', 'genre', 'durationSeconds', 'artist', 'playlists'];
 const TRACK_COLUMN_WIDTHS = {
   play: 90,
+  findSimilar: 40,
   id: 110,
   title: 380,
   bpm: 84,
@@ -31,6 +37,7 @@ const VIRTUAL_OVERSCAN_ROWS = 8;
 const AUDIO_DEBUG_STORAGE_KEY = 'rbfa.debug.audio';
 const TRACK_COLUMN_LABELS = {
   play: 'Play',
+  findSimilar: '≈',
   id: 'ID',
   title: 'Title',
   bpm: 'BPM',
@@ -43,6 +50,7 @@ const TRACK_COLUMN_LABELS = {
 };
 const DEFAULT_VISIBLE_TRACK_COLUMNS = {
   play: true,
+  findSimilar: true,
   id: false,
   title: true,
   bpm: true,
@@ -1009,6 +1017,14 @@ export function App() {
     };
   }, []);
 
+  const [similarModalSeed, setSimilarModalSeed] = useState(null);
+  const [similarTab, setSimilarTab] = useState('similar');
+  const [similarBpmTolerance, setSimilarBpmTolerance] = useState(8);
+  const [similarKeyFilter, setSimilarKeyFilter] = useState('any');
+  const [similarResults, setSimilarResults] = useState([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
+  const [buildSetList, setBuildSetList] = useState([]);
+
   useEffect(() => {
     const bridgeApi = getBridgeApi();
     if (!bridgeApi?.loadState) {
@@ -1536,6 +1552,71 @@ export function App() {
     await runSimilarSearchForTrack(getTrackId(selectedTrack));
   };
 
+  const openSimilarModal = (track) => {
+    setSimilarModalSeed(track);
+    setSimilarTab('similar');
+    setSimilarBpmTolerance(8);
+    setSimilarKeyFilter('any');
+    setBuildSetList([]);
+  };
+
+  const switchSimilarTab = (newTab) => {
+    setSimilarTab(newTab);
+    if (newTab === 'transitions') {
+      setSimilarBpmTolerance(4);
+      setSimilarKeyFilter('compatible');
+    } else {
+      setSimilarBpmTolerance(8);
+      setSimilarKeyFilter('any');
+    }
+  };
+
+  const addToBuildSet = (track) => {
+    setBuildSetList((current) => {
+      if (current.some((t) => t.id === track.id)) {
+        return current;
+      }
+      return [...current, track];
+    });
+  };
+
+  useEffect(() => {
+    if (!similarModalSeed) {
+      setSimilarResults([]);
+      return undefined;
+    }
+
+    const bridgeApi = getBridgeApi();
+    if (!bridgeApi?.findSimilarTracks) {
+      setSimilarResults([]);
+      return undefined;
+    }
+
+    const keyMinScore = similarKeyFilter === 'compatible' ? 0.8
+      : similarKeyFilter === 'perfect' ? 0.85
+      : 0;
+
+    setSimilarLoading(true);
+    let cancelled = false;
+
+    bridgeApi.findSimilarTracks(similarModalSeed, tracks, {
+      bpmTolerance: similarBpmTolerance,
+      keyMinScore,
+      limit: 20
+    }).then((results) => {
+      if (!cancelled) {
+        setSimilarResults(Array.isArray(results) ? results : []);
+        setSimilarLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setSimilarLoading(false);
+      }
+    });
+
+    return () => { cancelled = true; };
+  }, [similarModalSeed, similarBpmTolerance, similarKeyFilter, tracks]);
+
   useEffect(() => {
     const onKeyDown = (event) => {
       if (event.defaultPrevented) {
@@ -1567,14 +1648,20 @@ export function App() {
         return;
       }
 
-      if (event.key === 'Escape' && isTextInput && trackQuery) {
-        setTrackQuery('');
+      if (event.key === 'Escape') {
+        if (similarModalSeed) {
+          setSimilarModalSeed(null);
+          return;
+        }
+        if (isTextInput && trackQuery) {
+          setTrackQuery('');
+        }
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isAnalyzing, isParsing, parse, runAnalysis, trackQuery, tracks.length]);
+  }, [isAnalyzing, isParsing, parse, runAnalysis, similarModalSeed, trackQuery, tracks.length]);
 
   const getPlaybackState = (trackId) => {
     return playbackStates[trackId] || { status: 'idle', currentTime: 0, duration: 0, loading: false, error: '' };
@@ -2368,7 +2455,7 @@ export function App() {
     const factor = sortDirection === 'asc' ? 1 : -1;
 
     values.sort((a, b) => {
-      if (sortBy === 'play' || sortBy === 'waveformPreview') {
+      if (sortBy === 'play' || sortBy === 'findSimilar' || sortBy === 'waveformPreview') {
         return 0;
       }
       const aValue = a[sortBy];
@@ -2912,6 +2999,7 @@ export function App() {
             <table className={`track-table ${tableDensity === 'compact' ? 'compact' : ''}`}>
               <colgroup>
                 {visibleTrackColumns.play ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.play}px` }} /> : null}
+                {visibleTrackColumns.findSimilar ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.findSimilar}px` }} /> : null}
                 {visibleTrackColumns.id ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.id}px` }} /> : null}
                 {visibleTrackColumns.title ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.title}px` }} /> : null}
                 {visibleTrackColumns.bpm ? <col style={{ width: `${TRACK_COLUMN_WIDTHS.bpm}px` }} /> : null}
@@ -2925,6 +3013,7 @@ export function App() {
               <thead>
                 <tr>
                   {visibleTrackColumns.play ? <th>Play</th> : null}
+                  {visibleTrackColumns.findSimilar ? <th style={{ textAlign: 'center' }}>≈</th> : null}
                   {visibleTrackColumns.id ? <th>ID</th> : null}
                   {visibleTrackColumns.title ? (
                     <th>
@@ -3008,6 +3097,19 @@ export function App() {
                         {getPlaybackState(rowTrackId).status === 'error' ? (
                           <div className="playback-error">{getPlaybackState(rowTrackId).error}</div>
                         ) : null}
+                      </td>
+                    ) : null}
+                    {visibleTrackColumns.findSimilar ? (
+                      <td style={{ textAlign: 'center', padding: '4px' }}>
+                        <button
+                          type="button"
+                          className="secondary playback-button"
+                          title="Find similar tracks"
+                          onClick={(e) => { e.stopPropagation(); openSimilarModal(track); }}
+                          style={{ padding: '4px 6px', fontSize: '1rem', lineHeight: 1 }}
+                        >
+                          ≈
+                        </button>
                       </td>
                     ) : null}
                     {visibleTrackColumns.id ? <td>{track.trackId || track.id}</td> : null}
@@ -3537,6 +3639,26 @@ export function App() {
         resumeSampling={resumeSampling}
       />
 
+      {similarModalSeed ? (
+        <SimilarTracksModal
+          seed={similarModalSeed}
+          tab={similarTab}
+          bpmTolerance={similarBpmTolerance}
+          keyFilter={similarKeyFilter}
+          results={similarResults}
+          loading={similarLoading}
+          buildSetList={buildSetList}
+          onClose={() => setSimilarModalSeed(null)}
+          onSwitchTab={switchSimilarTab}
+          onBpmToleranceChange={setSimilarBpmTolerance}
+          onKeyFilterChange={setSimilarKeyFilter}
+          onAddToBuildSet={addToBuildSet}
+          onClearBuildSet={() => setBuildSetList([])}
+          onTogglePlay={togglePlayPause}
+          getPlaybackState={getPlaybackState}
+        />
+      ) : null}
+
       {analysisResult ? (
         <div className="card">
           <div className="row" style={{ justifyContent: 'space-between' }}>
@@ -3910,6 +4032,208 @@ function FolderNode({
             />
           ))
         : null}
+    </div>
+  );
+}
+
+function CamelotBadge({ camelotKey }) {
+  if (!camelotKey) {
+    return <span className="camelot-badge" style={{ background: '#64748b' }}>–</span>;
+  }
+
+  const match = String(camelotKey).trim().toUpperCase().match(/^(\d{1,2})(A|B)$/);
+  if (!match) {
+    return <span className="camelot-badge" style={{ background: '#64748b' }}>{camelotKey}</span>;
+  }
+
+  const number = Number(match[1]);
+  const letter = match[2];
+  if (number < 1 || number > 12) {
+    return <span className="camelot-badge" style={{ background: '#64748b' }}>{camelotKey}</span>;
+  }
+
+  const baseColor = CAMELOT_COLORS[number - 1];
+  const bg = letter === 'A' ? `${baseColor}bb` : baseColor;
+
+  return (
+    <span className="camelot-badge" style={{ background: bg }}>
+      {`${number}${letter}`}
+    </span>
+  );
+}
+
+function SimilarTracksModal({
+  seed,
+  tab,
+  bpmTolerance,
+  keyFilter,
+  results,
+  loading,
+  buildSetList,
+  onClose,
+  onSwitchTab,
+  onBpmToleranceChange,
+  onKeyFilterChange,
+  onAddToBuildSet,
+  onClearBuildSet,
+  onTogglePlay,
+  getPlaybackState
+}) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+        <div className="row" style={{ justifyContent: 'space-between', marginBottom: '12px' }}>
+          <div className="row" style={{ gap: '8px' }}>
+            <CamelotBadge camelotKey={seed.key} />
+            <div>
+              <strong>{seed.title || '–'}</strong>
+              <span style={{ color: '#64748b' }}> — {seed.artist || '–'}</span>
+            </div>
+            {seed.bpm ? (
+              <span style={{ color: '#334155', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                {seed.bpm} BPM
+              </span>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            className="secondary"
+            onClick={onClose}
+            style={{ padding: '4px 10px', fontSize: '1.1rem', lineHeight: 1 }}
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="modal-tabs">
+          {['similar', 'transitions', 'buildset'].map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={tab === t ? '' : 'secondary'}
+              onClick={() => onSwitchTab(t)}
+              style={{ padding: '6px 14px' }}
+            >
+              {t === 'similar' ? 'Similar' : t === 'transitions' ? 'Transitions' : 'Build Set'}
+            </button>
+          ))}
+        </div>
+
+        <div className="row" style={{ margin: '12px 0', gap: '12px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}>
+            BPM ±
+            <input
+              type="number"
+              value={bpmTolerance}
+              min={0}
+              max={40}
+              onChange={(e) => onBpmToleranceChange(Math.max(0, Number(e.target.value) || 0))}
+              style={{ width: '54px', padding: '4px 6px', fontSize: '0.9rem', minWidth: 'unset', flex: 'none' }}
+            />
+          </label>
+          <div className="row" style={{ gap: '8px' }}>
+            <span style={{ fontSize: '0.9rem', color: '#334155' }}>Key:</span>
+            {[
+              { value: 'any', label: 'Any key' },
+              { value: 'compatible', label: 'Compatible' },
+              { value: 'perfect', label: 'Perfect/Relative' }
+            ].map(({ value, label }) => (
+              <label key={value} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.9rem', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="similarKeyFilter"
+                  value={value}
+                  checked={keyFilter === value}
+                  onChange={() => onKeyFilterChange(value)}
+                />
+                {label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {loading ? (
+          <p style={{ color: '#475569' }}>Finding similar tracks…</p>
+        ) : results.length === 0 ? (
+          <p style={{ color: '#64748b' }}>No tracks found matching these criteria.</p>
+        ) : (
+          <div>
+            {results.map((result, index) => {
+              const ps = getPlaybackState(result.track.id);
+              return (
+                <div key={`${result.track.id}-${index}`} className="similar-result-row">
+                  <CamelotBadge camelotKey={result.track.key} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span className="similar-result-title">
+                      {result.track.artist || '–'} – {result.track.title || '–'}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '0.82rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+                    {result.track.bpm ?? '–'}
+                    {result.bpmDelta !== null
+                      ? ` (${result.bpmDelta >= 0 ? '+' : ''}${result.bpmDelta.toFixed(1)})`
+                      : ''}
+                  </span>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#0f766e', whiteSpace: 'nowrap' }}>
+                    {result.score.toFixed(3)}
+                  </span>
+                  <button
+                    type="button"
+                    className="secondary playback-button"
+                    onClick={() => onTogglePlay(result.track)}
+                    disabled={ps.loading}
+                    style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                  >
+                    {ps.status === 'playing' ? 'Pause' : 'Play'}
+                  </button>
+                  {tab === 'buildset' ? (
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => onAddToBuildSet(result.track)}
+                      style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+                    >
+                      Add
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === 'buildset' && buildSetList.length > 0 ? (
+          <div style={{ marginTop: '16px' }}>
+            <div className="row" style={{ justifyContent: 'space-between', marginBottom: '8px' }}>
+              <h4 style={{ margin: 0 }}>Set List ({buildSetList.length})</h4>
+              <button
+                type="button"
+                className="secondary"
+                onClick={onClearBuildSet}
+                style={{ padding: '4px 8px', fontSize: '0.8rem' }}
+              >
+                Clear
+              </button>
+            </div>
+            <div className="set-list">
+              {buildSetList.map((track, index) => (
+                <div key={`set-${track.id}-${index}`} className="similar-result-row">
+                  <span style={{ color: '#64748b', fontSize: '0.8rem', minWidth: '20px' }}>{index + 1}.</span>
+                  <CamelotBadge camelotKey={track.key} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span className="similar-result-title">
+                      {track.artist || '–'} – {track.title || '–'}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '0.82rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+                    {track.bpm ? `${track.bpm} BPM` : '–'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
