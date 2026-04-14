@@ -477,6 +477,44 @@ function WaveformPreview({ waveform, onSeek, seekLabel = 'Seek waveform', progre
   );
 }
 
+function SimpleSeekBar({ onSeek, seekLabel = 'Seek track', progress = null }) {
+  const progressPercent = Number.isFinite(progress) ? clamp(progress, 0, 1) * 100 : null;
+
+  const handleSeek = (event) => {
+    if (!onSeek || typeof onSeek !== 'function') {
+      return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = clamp((event.clientX - rect.left) / rect.width, 0, 1);
+    onSeek(ratio);
+  };
+
+  return (
+    <div
+      className="waveform-preview"
+      role={onSeek ? 'button' : undefined}
+      tabIndex={onSeek ? 0 : undefined}
+      onClick={onSeek ? handleSeek : undefined}
+      onKeyDown={
+        onSeek
+          ? (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              handleSeek(event);
+            }
+          }
+          : undefined
+      }
+      title={onSeek ? seekLabel : undefined}
+    >
+      <div className="waveform-placeholder">Seek</div>
+      {progressPercent !== null ? (
+        <div className="waveform-playhead" style={{ left: `${progressPercent}%` }} />
+      ) : null}
+    </div>
+  );
+}
+
 function MiniWaveform({ waveform, progress = 0, isActive = false, onSeek }) {
   const bins = Array.isArray(waveform?.bins) ? waveform.bins : [];
   if (!bins.length) {
@@ -811,6 +849,8 @@ export function App() {
   const [activeTrackId, setActiveTrackId] = useState(null);
   const [playbackVolume, setPlaybackVolume] = useState(0.5);
   const playbackVolumeRef = useRef(0.5);
+  const [playbackSafeMode, setPlaybackSafeMode] = useState(false);
+  const playbackSafeModeRef = useRef(false);
   const [audioStatus, setAudioStatus] = useState({ level: 'idle', message: '' });
   const audioDebugEnabled = useMemo(() => isAudioDebugEnabled(), []);
   const playRequestIdRef = useRef(0);
@@ -911,17 +951,19 @@ export function App() {
         return;
       }
       const now = performance.now();
-      if (now - lastTimeUpdate < 500) {
+      const minInterval = playbackSafeModeRef.current ? 1200 : 500;
+      if (now - lastTimeUpdate < minInterval) {
         return;
       }
       lastTimeUpdate = now;
       const currentTime = audio.currentTime;
-      if (Math.abs(currentTime - lastReportedTime) < 0.5) {
+      const minDelta = playbackSafeModeRef.current ? 1.0 : 0.5;
+      if (Math.abs(currentTime - lastReportedTime) < minDelta) {
         return;
       }
       lastReportedTime = currentTime;
       const nextDuration = Number.isFinite(audio.duration) ? audio.duration : getPlaybackState(trackId).duration;
-      if (Number.isFinite(nextDuration) && Math.abs(nextDuration - lastReportedDuration) >= 0.5) {
+      if (Number.isFinite(nextDuration) && Math.abs(nextDuration - lastReportedDuration) >= minDelta) {
         lastReportedDuration = nextDuration;
       }
       updatePlaybackState(trackId, {
@@ -1076,6 +1118,10 @@ export function App() {
         if (PAGE_SIZE_OPTIONS.includes(parsedPageSize)) {
           setPageSize(parsedPageSize);
         }
+
+        if (typeof state?.playbackSafeMode === 'boolean') {
+          setPlaybackSafeMode(state.playbackSafeMode);
+        }
       } catch {
         // best-effort state load
       }
@@ -1107,7 +1153,7 @@ export function App() {
           setSummary(libraryCache.summary || null);
           setSelectedFolders(libraryCache.selectedFolders || []);
           setTrackPlaylistIndex({});
-          setSelectedTrackId(libraryCache.tracks?.[0]?.id ?? null);
+          setSelectedTrackId(getTrackId(libraryCache.tracks?.[0]) || null);
           setXmlPath(libraryCache.xmlPath || '');
           setLibraryCacheInfo({
             parsedAt: libraryCache.parsedAt,
@@ -1277,7 +1323,7 @@ export function App() {
       }
       setTracks(result.filteredTracks || []);
       setTrackPlaylistIndex(result.trackPlaylistIndex || {});
-      const firstTrackId = result.filteredTracks?.[0]?.id || null;
+      const firstTrackId = getTrackId(result.filteredTracks?.[0]) || null;
       setSelectedTrackId(firstTrackId);
       setSummary(result.summary || null);
       setAnlzAttachSummary(result.anlzAttach || null);
@@ -1524,6 +1570,7 @@ export function App() {
     setError('');
     try {
       const result = await bridgeApi.findSimilarTracks({
+        tracks,
         targetId: resolvedId,
         sourceXmlPath: xmlPath.trim(),
         selectedFolders,
@@ -1667,8 +1714,20 @@ export function App() {
     return playbackStates[trackId] || { status: 'idle', currentTime: 0, duration: 0, loading: false, error: '' };
   };
 
+  const isPlaybackActive = useMemo(() => {
+    if (!activeTrackId) {
+      return false;
+    }
+    const state = playbackStates[activeTrackId];
+    return state?.status === 'playing' || state?.loading;
+  }, [activeTrackId, playbackStates]);
+
   const selectedTrack = useMemo(() => {
-    return tracks.find((track) => track.id === selectedTrackId) || null;
+    if (!selectedTrackId) {
+      return null;
+    }
+    const selectedId = String(selectedTrackId);
+    return tracks.find((track) => getTrackId(track) === selectedId) || null;
   }, [tracks, selectedTrackId]);
   const selectedTrackIdValue = selectedTrack ? getTrackId(selectedTrack) : '';
   const selectedTrackPlayback = selectedTrackIdValue
@@ -1684,6 +1743,8 @@ export function App() {
   useEffect(() => {
     samplingStateRef.current = samplingState;
   }, [samplingState]);
+
+  const useSimpleWaveforms = playbackSafeMode && isPlaybackActive;
 
   const visibleTracks = useMemo(() => {
     const query = trackQuery.trim().toLowerCase();
@@ -2220,6 +2281,10 @@ export function App() {
     }
   }, [playbackVolume]);
 
+  useEffect(() => {
+    playbackSafeModeRef.current = playbackSafeMode;
+  }, [playbackSafeMode]);
+
   const playTrack = async (track, seekSeconds = null) => {
     const requestId = playRequestIdRef.current + 1;
     playRequestIdRef.current = requestId;
@@ -2614,11 +2679,12 @@ export function App() {
       tableSortDirection: sortDirection,
       visibleTrackColumns,
       tableDensity,
-      tablePageSize: pageSize
+      tablePageSize: pageSize,
+      playbackSafeMode
     }).catch(() => {
       // best-effort UI preference save
     });
-  }, [sortBy, sortDirection, visibleTrackColumns, tableDensity, pageSize]);
+  }, [sortBy, sortDirection, visibleTrackColumns, tableDensity, pageSize, playbackSafeMode]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -3118,15 +3184,24 @@ export function App() {
                     {visibleTrackColumns.key ? <td>{track.key || '-'}</td> : null}
                     {visibleTrackColumns.waveformPreview ? (
                       <td>
-                        <MiniWaveform
-                          waveform={track.anlzWaveform}
-                          progress={getPlaybackState(rowTrackId).duration
-                            ? getPlaybackState(rowTrackId).currentTime / getPlaybackState(rowTrackId).duration
-                            : 0}
-                          isActive={getPlaybackState(rowTrackId).status === 'playing'
-                            || getPlaybackState(rowTrackId).status === 'paused'}
-                          onSeek={(event) => seekFromWaveform(track, event)}
-                        />
+                        {useSimpleWaveforms ? (
+                          <SimpleSeekBar
+                            onSeek={(ratio) => {
+                              const duration = getPlaybackState(rowTrackId).duration || 0;
+                              playTrack(track, ratio * duration);
+                            }}
+                          />
+                        ) : (
+                          <MiniWaveform
+                            waveform={track.anlzWaveform}
+                            progress={getPlaybackState(rowTrackId).duration
+                              ? getPlaybackState(rowTrackId).currentTime / getPlaybackState(rowTrackId).duration
+                              : 0}
+                            isActive={getPlaybackState(rowTrackId).status === 'playing'
+                              || getPlaybackState(rowTrackId).status === 'paused'}
+                            onSeek={(event) => seekFromWaveform(track, event)}
+                          />
+                        )}
                         {getPlaybackState(rowTrackId).status === 'error' ? (
                           <div className="playback-error">{getPlaybackState(rowTrackId).error}</div>
                         ) : null}
@@ -3410,17 +3485,30 @@ export function App() {
                           </div>
                           <div style={{ marginTop: '8px' }}>
                             {similarContextTrack.anlzWaveform ? (
-                              <WaveformPreview
-                                waveform={similarContextTrack.anlzWaveform}
-                                seekLabel="Seek in context track"
-                                progress={duration ? (playback.currentTime || 0) / duration : 0}
-                                onSeek={(ratio) => {
-                                  if (!duration) {
-                                    return;
-                                  }
-                                  playTrack(similarContextTrack, ratio * duration);
-                                }}
-                              />
+                              useSimpleWaveforms ? (
+                                <SimpleSeekBar
+                                  seekLabel="Seek in context track"
+                                  progress={duration ? (playback.currentTime || 0) / duration : 0}
+                                  onSeek={(ratio) => {
+                                    if (!duration) {
+                                      return;
+                                    }
+                                    playTrack(similarContextTrack, ratio * duration);
+                                  }}
+                                />
+                              ) : (
+                                <WaveformPreview
+                                  waveform={similarContextTrack.anlzWaveform}
+                                  seekLabel="Seek in context track"
+                                  progress={duration ? (playback.currentTime || 0) / duration : 0}
+                                  onSeek={(ratio) => {
+                                    if (!duration) {
+                                      return;
+                                    }
+                                    playTrack(similarContextTrack, ratio * duration);
+                                  }}
+                                />
+                              )
                             ) : (
                               <div className="waveform-placeholder">No waveform available</div>
                             )}
@@ -3486,18 +3574,32 @@ export function App() {
                           </div>
                           <div className="similar-waveform">
                             {track.anlzWaveform ? (
-                              <WaveformPreview
-                                waveform={track.anlzWaveform}
-                                seekLabel="Seek in track"
-                                progress={playback.duration ? playback.currentTime / playback.duration : 0}
-                                onSeek={(ratio) => {
-                                  if (!duration) {
-                                    return;
-                                  }
-                                  const target = ratio * duration;
-                                  playTrack(track, target);
-                                }}
-                              />
+                              useSimpleWaveforms ? (
+                                <SimpleSeekBar
+                                  seekLabel="Seek in track"
+                                  progress={playback.duration ? playback.currentTime / playback.duration : 0}
+                                  onSeek={(ratio) => {
+                                    if (!duration) {
+                                      return;
+                                    }
+                                    const target = ratio * duration;
+                                    playTrack(track, target);
+                                  }}
+                                />
+                              ) : (
+                                <WaveformPreview
+                                  waveform={track.anlzWaveform}
+                                  seekLabel="Seek in track"
+                                  progress={playback.duration ? playback.currentTime / playback.duration : 0}
+                                  onSeek={(ratio) => {
+                                    if (!duration) {
+                                      return;
+                                    }
+                                    const target = ratio * duration;
+                                    playTrack(track, target);
+                                  }}
+                                />
+                              )
                             ) : (
                               <div className="waveform-placeholder">No waveform available</div>
                             )}
@@ -3543,18 +3645,32 @@ export function App() {
                       duration={selectedTrackDuration}
                       onTogglePlay={() => handleTogglePlayPause(selectedTrack)}
                     >
-                      <WaveformPreview
-                        waveform={selectedTrack.anlzWaveform}
-                        progress={selectedTrackDuration > 0
-                          ? (selectedTrackPlayback.currentTime || 0) / selectedTrackDuration
-                          : 0}
-                        onSeek={(ratio) => {
-                          if (!selectedTrackDuration) {
-                            return;
-                          }
-                          playTrack(selectedTrack, ratio * selectedTrackDuration);
-                        }}
-                      />
+                      {useSimpleWaveforms ? (
+                        <SimpleSeekBar
+                          progress={selectedTrackDuration > 0
+                            ? (selectedTrackPlayback.currentTime || 0) / selectedTrackDuration
+                            : 0}
+                          onSeek={(ratio) => {
+                            if (!selectedTrackDuration) {
+                              return;
+                            }
+                            playTrack(selectedTrack, ratio * selectedTrackDuration);
+                          }}
+                        />
+                      ) : (
+                        <WaveformPreview
+                          waveform={selectedTrack.anlzWaveform}
+                          progress={selectedTrackDuration > 0
+                            ? (selectedTrackPlayback.currentTime || 0) / selectedTrackDuration
+                            : 0}
+                          onSeek={(ratio) => {
+                            if (!selectedTrackDuration) {
+                              return;
+                            }
+                            playTrack(selectedTrack, ratio * selectedTrackDuration);
+                          }}
+                        />
+                      )}
                     </WaveformPlayer>
                     {selectedTrackPlayback.status === 'error' ? (
                       <p style={{ marginTop: '6px', color: '#b91c1c' }}>
@@ -3918,6 +4034,16 @@ export function App() {
           <p style={{ marginTop: 0 }}>
             Tune long-run analysis safety limits without cluttering the main workspace.
           </p>
+          <div className="row" style={{ marginTop: '12px', alignItems: 'center' }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="checkbox"
+                checked={playbackSafeMode}
+                onChange={(event) => setPlaybackSafeMode(event.target.checked)}
+              />
+              Playback Safe Mode (lightweight waveforms during playback)
+            </label>
+          </div>
           <div className="row" style={{ marginTop: '12px', flexWrap: 'wrap', gap: '12px' }}>
             <label>
               Max Pairs

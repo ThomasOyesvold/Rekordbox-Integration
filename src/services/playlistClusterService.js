@@ -1,8 +1,10 @@
 import {
+  buildBpmIndex,
   computeBaselineSimilarity,
   computeBpmScore,
   computeKeyScore,
-  createAnalyzerVersion
+  createAnalyzerVersion,
+  findBpmWindow
 } from './baselineAnalyzerService.js';
 import {
   beginAnalysisRun,
@@ -85,6 +87,46 @@ function computeAdjacencyScore(trackA, trackB) {
   const bpmScore = computeBpmScore(trackA.bpm, trackB.bpm);
   const keyScore = computeKeyScore(trackA.key, trackB.key);
   return clamp((bpmScore * 0.6) + (keyScore * 0.4));
+}
+
+function filterClusterChains(cluster, edgesByPair, minClusterSz) {
+  const minDensity = 0.4;
+  let trackIds = [...cluster.trackIds];
+
+  while (true) {
+    if (trackIds.length <= minClusterSz) break;
+
+    const internalEdgeCount = new Map(trackIds.map((id) => [id, 0]));
+    let totalEdges = 0;
+    for (let i = 0; i < trackIds.length; i += 1) {
+      for (let j = i + 1; j < trackIds.length; j += 1) {
+        const key = [trackIds[i], trackIds[j]].sort().join('\0');
+        if (edgesByPair.has(key)) {
+          internalEdgeCount.set(trackIds[i], (internalEdgeCount.get(trackIds[i]) || 0) + 1);
+          internalEdgeCount.set(trackIds[j], (internalEdgeCount.get(trackIds[j]) || 0) + 1);
+          totalEdges += 1;
+        }
+      }
+    }
+
+    const maxPossible = (trackIds.length * (trackIds.length - 1)) / 2;
+    const density = maxPossible > 0 ? totalEdges / maxPossible : 0;
+    if (density >= minDensity) break;
+
+    const toRemove = [];
+    for (const [id, count] of internalEdgeCount) {
+      if (count < 2) toRemove.push(id);
+    }
+    if (!toRemove.length) break;
+
+    const removable = Math.min(toRemove.length, trackIds.length - minClusterSz);
+    if (removable <= 0) break;
+
+    const removeSet = new Set(toRemove.slice(0, removable));
+    trackIds = trackIds.filter((id) => !removeSet.has(id));
+  }
+
+  return trackIds;
 }
 
 function buildClusterSummary(trackIds, trackById) {
@@ -317,13 +359,32 @@ export function generatePlaylistClusters({
   const dsu = new DisjointSet(safeTracks.length);
 
   try {
-    for (let i = 0; i < safeTracks.length; i += 1) {
-      const trackA = safeTracks[i];
-      for (let j = i + 1; j < safeTracks.length; j += 1) {
-        if (pairCount >= pairLimit) {
-          break;
-        }
-        const trackB = safeTracks[j];
+    const sortedByBpm = buildBpmIndex(safeTracks);
+    const processedPairs = new Set();
+
+    for (let indexA = 0; indexA < safeTracks.length; indexA += 1) {
+      if (pairCount >= pairLimit) break;
+      const trackA = safeTracks[indexA];
+      const bpmA = Number.isFinite(Number(trackA.bpm)) ? Number(trackA.bpm) : null;
+      if (bpmA === null) continue;
+
+      const candidateMap = new Map();
+      for (const c of findBpmWindow(sortedByBpm, bpmA, 12)) {
+        candidateMap.set(c.originalIndex, c);
+      }
+      for (const c of findBpmWindow(sortedByBpm, bpmA / 2, 6)) {
+        candidateMap.set(c.originalIndex, c);
+      }
+      for (const c of findBpmWindow(sortedByBpm, bpmA * 2, 12)) {
+        candidateMap.set(c.originalIndex, c);
+      }
+
+      for (const { track: trackB, originalIndex: indexB } of candidateMap.values()) {
+        if (indexA === indexB) continue;
+        const pairKey = [String(trackA.id), String(trackB.id)].sort().join('\0');
+        if (processedPairs.has(pairKey)) continue;
+        processedPairs.add(pairKey);
+        if (pairCount >= pairLimit) break;
         pairCount += 1;
 
         const cached = getSimilarityFromCache({
@@ -355,7 +416,7 @@ export function generatePlaylistClusters({
         }
 
         if (score >= threshold) {
-          dsu.union(i, j);
+          dsu.union(indexA, indexB);
           edges.push({
             a: String(trackA.id),
             b: String(trackB.id),
@@ -363,10 +424,6 @@ export function generatePlaylistClusters({
             components
           });
         }
-      }
-
-      if (pairCount >= pairLimit) {
-        break;
       }
     }
 
@@ -393,14 +450,20 @@ export function generatePlaylistClusters({
       clusterStats.set(root, stat);
     }
 
-    const clusters = [];
+    const edgesByPair = new Map();
+    for (const edge of edges) {
+      const key = [edge.a, edge.b].sort().join('\0');
+      edgesByPair.set(key, edge);
+    }
+
+    const rawClusters = [];
     for (const [root, trackIds] of groups.entries()) {
       if (trackIds.length < minSize) {
         continue;
       }
       const stats = clusterStats.get(root) || { sum: 0, count: 0, max: 0, min: 0 };
       const summary = buildClusterSummary(trackIds, trackById);
-      clusters.push({
+      rawClusters.push({
         id: `cluster-${root}`,
         trackIds,
         size: trackIds.length,
@@ -408,6 +471,42 @@ export function generatePlaylistClusters({
         avgScore: stats.count ? stats.sum / stats.count : 0,
         maxScore: stats.max || 0,
         minScore: stats.count ? stats.min : 0,
+        summary,
+        reasons: buildClusterReasons(summary)
+      });
+    }
+
+    const clusters = [];
+    for (const rawCluster of rawClusters) {
+      const filteredIds = filterClusterChains(rawCluster, edgesByPair, minSize);
+      if (filteredIds.length < minSize) continue;
+
+      let sum = 0;
+      let count = 0;
+      let maxEdge = 0;
+      let minEdge = 1;
+      for (let i = 0; i < filteredIds.length; i += 1) {
+        for (let j = i + 1; j < filteredIds.length; j += 1) {
+          const key = [filteredIds[i], filteredIds[j]].sort().join('\0');
+          const edge = edgesByPair.get(key);
+          if (edge) {
+            sum += edge.score;
+            count += 1;
+            maxEdge = Math.max(maxEdge, edge.score);
+            minEdge = Math.min(minEdge, edge.score);
+          }
+        }
+      }
+
+      const summary = buildClusterSummary(filteredIds, trackById);
+      clusters.push({
+        ...rawCluster,
+        trackIds: filteredIds,
+        size: filteredIds.length,
+        edgeCount: count,
+        avgScore: count ? sum / count : 0,
+        maxScore: count ? maxEdge : 0,
+        minScore: count ? minEdge : 0,
         summary,
         reasons: buildClusterReasons(summary)
       });

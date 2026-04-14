@@ -121,7 +121,7 @@ const NESTED_TRACKS = [
 
 test('baseline analyzer score functions behave as expected', () => {
   assert.equal(computeBpmScore(126, 126), 1);
-  assert.equal(computeBpmScore(126, 130), 0.75);
+  assert.equal(computeBpmScore(126, 130), 0.70);
   assert.equal(computeKeyScore('8A', '8A'), 1);
   assert.equal(computeKeyScore('8A', '8B'), 0.85);
   assert.ok(computeWaveformScore(SAMPLE_TRACKS[0], SAMPLE_TRACKS[1]) > computeWaveformScore(SAMPLE_TRACKS[0], SAMPLE_TRACKS[2]));
@@ -155,7 +155,7 @@ test('baseline analyzer computes then reuses cache entries', async () => {
   assert.equal(first.cacheHits, 0);
   assert.equal(first.computed, 3);
   assert.equal(first.topMatches.length, 3);
-  assert.equal(first.algorithmVersion, 'flow-baseline-v4');
+  assert.equal(first.algorithmVersion, 'flow-baseline-v5');
   assert.ok(first.topMatches[0].components.waveform >= 0);
   assert.ok(first.topMatches[0].components.rhythm >= 0);
   assert.equal(typeof first.topMatches[0].reason, 'string');

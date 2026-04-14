@@ -45,6 +45,8 @@ export function PlaylistView({
   skipSample,
   resumeSampling
 }) {
+  const [expandedTopTracksKey, setExpandedTopTracksKey] = React.useState(null);
+
   const renderClusterTable = (clusters, clusterKeyPrefix = '') => {
     if (!clusters.length) {
       return <p>No clusters met the threshold in this folder.</p>;
@@ -54,14 +56,14 @@ export function PlaylistView({
       <table className="track-table" style={{ marginTop: '10px' }}>
         <thead>
           <tr>
-            <th>Cluster</th>
+            <th style={{ textAlign: 'left' }}>Cluster</th>
             <th>Tracks</th>
             <th>BPM Range</th>
             <th>Key Focus</th>
             <th>Avg Score</th>
             <th>Confidence</th>
-            <th>Status</th>
-            <th>Top Tracks</th>
+            <th>Decision</th>
+            <th style={{ textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -72,6 +74,7 @@ export function PlaylistView({
             }).filter(Boolean);
             const clusterKey = `${clusterKeyPrefix}${cluster.id || index}`;
             const isExpanded = expandedClusterKey === clusterKey;
+            const isTopTracksOpen = expandedTopTracksKey === clusterKey;
             const decision = getClusterDecision(clusterKey);
             const anchorTrackId = cluster.trackIds?.[0];
             const clusterSamplingState = samplingState.active && samplingState.clusterKey === clusterKey
@@ -81,7 +84,7 @@ export function PlaylistView({
             return (
               <React.Fragment key={cluster.id || String(index)}>
                 <tr>
-                  <td>#{index + 1}</td>
+                  <td style={{ textAlign: 'left' }}>#{index + 1}</td>
                   <td>{cluster.size}</td>
                   <td>
                     {cluster.summary?.bpm?.min !== null && cluster.summary?.bpm?.max !== null
@@ -94,71 +97,90 @@ export function PlaylistView({
                     {(cluster.confidence ?? 0).toFixed(3)} {cluster.confidenceLabel ? `(${cluster.confidenceLabel})` : ''}
                   </td>
                   <td>
-                    <div className={`status-pill status-${decision.status}`}>
-                      {decision.status}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div className={`status-pill status-${decision.status}`} style={{ alignSelf: 'flex-start' }}>
+                        {decision.status}
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => updateClusterDecision(clusterKey, { status: 'approved' })}
+                        >
+                          Approve
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => updateClusterDecision(clusterKey, { status: 'rejected' })}
+                        >
+                          Reject
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => updateClusterDecision(clusterKey, { status: 'pending', name: '' })}
+                        >
+                          Reset
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Name playlist"
+                        value={decision.name}
+                        disabled={decision.status !== 'approved'}
+                        onChange={(event) => updateClusterDecision(clusterKey, { name: event.target.value })}
+                        style={{ width: '100%' }}
+                      />
                     </div>
-                    <div className="cluster-actions">
-                      <button
-                        type="button"
-                        className="secondary"
-                        onClick={() => updateClusterDecision(clusterKey, { status: 'approved' })}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary"
-                        onClick={() => updateClusterDecision(clusterKey, { status: 'rejected' })}
-                      >
-                        Reject
-                      </button>
-                      <button
-                        type="button"
-                        className="secondary"
-                        onClick={() => updateClusterDecision(clusterKey, { status: 'pending', name: '' })}
-                      >
-                        Reset
-                      </button>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Name playlist"
-                      value={decision.name}
-                      disabled={decision.status !== 'approved'}
-                      onChange={(event) => updateClusterDecision(clusterKey, { name: event.target.value })}
-                      style={{ width: '100%', marginTop: '6px' }}
-                    />
                   </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => setExpandedClusterKey(isExpanded ? null : clusterKey)}
-                      style={{ marginRight: '8px' }}
-                    >
-                      {isExpanded ? 'Hide' : 'View'}
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => startSampling(cluster, clusterKey)}
-                      disabled={samplingState?.active}
-                      style={{ marginRight: '8px' }}
-                    >
-                      Sample
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => anchorTrackId && onFindSimilar?.(anchorTrackId)}
-                      disabled={!anchorTrackId || samplingState?.active}
-                      style={{ marginRight: '8px' }}
-                    >
-                      Find Similar
-                    </button>
-                    {preview.join(', ') || '-'}
+                  <td style={{ textAlign: 'right' }}>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setExpandedClusterKey(isExpanded ? null : clusterKey)}
+                      >
+                        {isExpanded ? 'Hide' : 'Details'}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => setExpandedTopTracksKey(isTopTracksOpen ? null : clusterKey)}
+                      >
+                        {isTopTracksOpen ? 'Hide Tracks' : 'Top Tracks'}
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => startSampling(cluster, clusterKey)}
+                        disabled={samplingState?.active}
+                      >
+                        Sample
+                      </button>
+                      <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => anchorTrackId && onFindSimilar?.(anchorTrackId)}
+                        disabled={!anchorTrackId || samplingState?.active}
+                      >
+                        Find Similar
+                      </button>
+                    </div>
                   </td>
                 </tr>
+                {isTopTracksOpen ? (
+                  <tr>
+                    <td colSpan={8} style={{ paddingTop: 0 }}>
+                      <div className="meta" style={{ marginTop: '6px' }}>
+                        <span>Top Tracks</span>
+                      </div>
+                      <div style={{ color: 'var(--text-secondary)', marginTop: '4px' }}>
+                        {preview.join(', ') || '-'}
+                      </div>
+                    </td>
+                  </tr>
+                ) : null}
                 {isExpanded ? (
                   <tr>
                     <td colSpan={8}>

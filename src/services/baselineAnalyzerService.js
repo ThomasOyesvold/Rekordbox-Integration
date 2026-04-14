@@ -339,6 +339,14 @@ function normalizeWeights(inputWeights = DEFAULT_COMPONENT_WEIGHTS) {
   };
 }
 
+function bpmStepScore(diff) {
+  if (diff <= 1) return 1.00;
+  if (diff <= 3) return 0.90;
+  if (diff <= 6) return 0.70;
+  if (diff <= 10) return 0.45;
+  return 0.15;
+}
+
 export function computeBpmScore(bpmA, bpmB) {
   const a = asNumber(bpmA);
   const b = asNumber(bpmB);
@@ -347,24 +355,11 @@ export function computeBpmScore(bpmA, bpmB) {
     return 0.5;
   }
 
-  const diff = Math.abs(a - b);
-  if (diff <= 1) {
-    return 1;
-  }
+  const directScore = bpmStepScore(Math.abs(a - b));
+  const halfTimeScore = bpmStepScore(Math.abs(a - b * 2)) * 0.85;
+  const doubleTimeScore = bpmStepScore(Math.abs(a * 2 - b)) * 0.85;
 
-  if (diff <= 2) {
-    return 0.9;
-  }
-
-  if (diff <= 4) {
-    return 0.75;
-  }
-
-  if (diff <= 6) {
-    return 0.55;
-  }
-
-  return 0.2;
+  return Math.max(directScore, halfTimeScore, doubleTimeScore);
 }
 
 export function computeKeyScore(keyA, keyB) {
@@ -386,7 +381,17 @@ export function computeKeyScore(keyA, keyB) {
   const clockwise = (a.number % 12) + 1;
   const counterClockwise = ((a.number + 10) % 12) + 1;
   if ((b.number === clockwise || b.number === counterClockwise) && a.letter === b.letter) {
-    return 0.8;
+    return 0.90;
+  }
+
+  if ((b.number === clockwise || b.number === counterClockwise) && a.letter !== b.letter) {
+    return 0.50;
+  }
+
+  const clock2 = (clockwise % 12) + 1;
+  const counter2 = ((counterClockwise + 10) % 12) + 1;
+  if ((b.number === clock2 || b.number === counter2) && a.letter === b.letter) {
+    return 0.65;
   }
 
   return 0.25;
@@ -467,8 +472,57 @@ export function computeRhythmPlaceholderScore(trackA, trackB) {
   return computeRhythmScore(trackA, trackB);
 }
 
+function hasWaveformData(track) {
+  return !!(track.anlzWaveform?.bins?.length || track.nestedPositionMarks?.length);
+}
+
+function hasRhythmData(track) {
+  return !!(
+    track.anlzWaveform?.rhythmSignature?.length
+    || track.anlzWaveform?.kickSignature?.length
+    || track.nestedTempoPoints?.length
+  );
+}
+
+function redistributeWeights(baseWeights, trackA, trackB) {
+  const availability = {
+    bpm: true,
+    key: true,
+    waveform: hasWaveformData(trackA) && hasWaveformData(trackB),
+    rhythm: hasRhythmData(trackA) && hasRhythmData(trackB)
+  };
+
+  const unavailableCount = Object.values(availability).filter((v) => !v).length;
+  if (unavailableCount === 0 || unavailableCount === 4) {
+    return baseWeights;
+  }
+
+  const totalAvailable = Object.entries(baseWeights)
+    .filter(([key]) => availability[key])
+    .reduce((sum, [, weight]) => sum + weight, 0);
+
+  if (totalAvailable <= 0) {
+    return baseWeights;
+  }
+
+  return {
+    bpm: availability.bpm ? baseWeights.bpm / totalAvailable : 0,
+    key: availability.key ? baseWeights.key / totalAvailable : 0,
+    waveform: availability.waveform ? baseWeights.waveform / totalAvailable : 0,
+    rhythm: availability.rhythm ? baseWeights.rhythm / totalAvailable : 0
+  };
+}
+
+function computeGenreBonus(trackA, trackB) {
+  const genreA = new Set(tokenize(trackA.genre));
+  const genreB = new Set(tokenize(trackB.genre));
+  if (!genreA.size || !genreB.size) return 0;
+  return jaccardScore(genreA, genreB) * 0.05;
+}
+
 export function computeBaselineSimilarity(trackA, trackB, componentWeights = DEFAULT_COMPONENT_WEIGHTS) {
   const weights = normalizeWeights(componentWeights);
+  const effectiveWeights = redistributeWeights(weights, trackA, trackB);
 
   const components = {
     bpm: computeBpmScore(trackA.bpm, trackB.bpm),
@@ -477,17 +531,19 @@ export function computeBaselineSimilarity(trackA, trackB, componentWeights = DEF
     rhythm: computeRhythmScore(trackA, trackB)
   };
 
+  const genreBonus = computeGenreBonus(trackA, trackB);
   const score = clamp(
-    (components.bpm * weights.bpm)
-    + (components.key * weights.key)
-    + (components.waveform * weights.waveform)
-    + (components.rhythm * weights.rhythm)
+    (components.bpm * effectiveWeights.bpm)
+    + (components.key * effectiveWeights.key)
+    + (components.waveform * effectiveWeights.waveform)
+    + (components.rhythm * effectiveWeights.rhythm)
+    + genreBonus
   );
 
   return {
     score,
     components,
-    weights
+    weights: effectiveWeights
   };
 }
 
@@ -554,54 +610,7 @@ function updateTopMatches(topMatches, row, limit) {
   topMatches.length = limit;
 }
 
-export function findSimilarToSeed(seedTrack, candidateTracks, options = {}) {
-  const {
-    bpmTolerance = 8,
-    keyMinScore = 0,
-    limit = 20
-  } = options;
-
-  const safeCandidates = Array.isArray(candidateTracks) ? candidateTracks : [];
-  const seedBpm = asNumber(seedTrack?.bpm);
-  const seedId = String(seedTrack?.id ?? '');
-
-  const filtered = safeCandidates.filter((candidate) => {
-    if (String(candidate.id) === seedId) {
-      return false;
-    }
-    if (seedBpm !== null) {
-      const candidateBpm = asNumber(candidate.bpm);
-      if (candidateBpm !== null && Math.abs(seedBpm - candidateBpm) > bpmTolerance) {
-        return false;
-      }
-    }
-    return true;
-  });
-
-  const results = filtered.map((candidate) => {
-    const similarity = computeBaselineSimilarity(seedTrack, candidate);
-    const candidateBpm = asNumber(candidate.bpm);
-    const bpmDelta = seedBpm !== null && candidateBpm !== null ? candidateBpm - seedBpm : null;
-    const keyScore = computeKeyScore(seedTrack.key, candidate.key);
-    return {
-      track: candidate,
-      score: similarity.score,
-      components: similarity.components,
-      bpmDelta,
-      keyScore
-    };
-  });
-
-  const keyFiltered = keyMinScore > 0
-    ? results.filter((result) => result.keyScore >= keyMinScore)
-    : results;
-
-  return keyFiltered
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
-}
-
-export function createAnalyzerVersion(tag = 'baseline-v4') {
+export function createAnalyzerVersion(tag = 'baseline-v5') {
   return `flow-${tag}`;
 }
 
@@ -626,6 +635,44 @@ function buildAbortError(message) {
   const error = new Error(message);
   error.name = 'AbortError';
   return error;
+}
+
+export function buildBpmIndex(tracks) {
+  return tracks
+    .map((track, originalIndex) => ({ track, originalIndex }))
+    .sort((a, b) => {
+      const bpmA = Number.isFinite(Number(a.track.bpm)) ? Number(a.track.bpm) : Infinity;
+      const bpmB = Number.isFinite(Number(b.track.bpm)) ? Number(b.track.bpm) : Infinity;
+      return bpmA - bpmB;
+    });
+}
+
+export function findBpmWindow(sorted, center, window) {
+  if (!Number.isFinite(center)) {
+    return [];
+  }
+  const lo = center - window;
+  const hi = center + window;
+  let left = 0;
+  let right = sorted.length;
+  while (left < right) {
+    const mid = (left + right) >>> 1;
+    const bpm = Number(sorted[mid].track.bpm);
+    if (!Number.isFinite(bpm) || bpm < lo) {
+      left = mid + 1;
+    } else {
+      right = mid;
+    }
+  }
+  const result = [];
+  for (let i = left; i < sorted.length; i += 1) {
+    const bpm = Number(sorted[i].track.bpm);
+    if (!Number.isFinite(bpm) || bpm > hi) {
+      break;
+    }
+    result.push(sorted[i]);
+  }
+  return result;
 }
 
 export async function runBaselineAnalysis({
@@ -703,17 +750,37 @@ export async function runBaselineAnalysis({
       }
     };
 
-    for (let i = 0; i < safeTracks.length; i += 1) {
+    const sortedByBpm = buildBpmIndex(safeTracks);
+    const processedPairs = new Set();
+
+    for (let indexA = 0; indexA < safeTracks.length; indexA += 1) {
       checkAbort();
-      const trackA = safeTracks[i];
-      for (let j = i + 1; j < safeTracks.length; j += 1) {
+      if (pairCount >= pairLimit) break;
+      const trackA = safeTracks[indexA];
+      const bpmA = Number.isFinite(Number(trackA.bpm)) ? Number(trackA.bpm) : null;
+      if (bpmA === null) continue;
+
+      const candidateMap = new Map();
+      for (const c of findBpmWindow(sortedByBpm, bpmA, 12)) {
+        candidateMap.set(c.originalIndex, c);
+      }
+      for (const c of findBpmWindow(sortedByBpm, bpmA / 2, 6)) {
+        candidateMap.set(c.originalIndex, c);
+      }
+      for (const c of findBpmWindow(sortedByBpm, bpmA * 2, 12)) {
+        candidateMap.set(c.originalIndex, c);
+      }
+
+      for (const { track: trackB, originalIndex: indexB } of candidateMap.values()) {
         checkAbort();
-        if (pairCount >= pairLimit) {
-          break;
-        }
-        const trackB = safeTracks[j];
+        if (indexA === indexB) continue;
+        const pairKey = [String(trackA.id), String(trackB.id)].sort().join('\0');
+        if (processedPairs.has(pairKey)) continue;
+        processedPairs.add(pairKey);
+        if (pairCount >= pairLimit) break;
         pairCount += 1;
         checkMemory();
+
         const cached = getSimilarityFromCache({
           trackAId: trackA.id,
           trackBId: trackB.id,
@@ -768,10 +835,6 @@ export async function runBaselineAnalysis({
           reportProgress();
           await yieldToEventLoop();
         }
-      }
-
-      if (pairCount >= pairLimit) {
-        break;
       }
     }
 

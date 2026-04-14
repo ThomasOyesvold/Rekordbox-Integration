@@ -1,4 +1,10 @@
-import { computeBaselineSimilarity, createAnalyzerVersion, summarizeSimilarityComponents } from './baselineAnalyzerService.js';
+import {
+  buildBpmIndex,
+  computeBaselineSimilarity,
+  createAnalyzerVersion,
+  findBpmWindow,
+  summarizeSimilarityComponents
+} from './baselineAnalyzerService.js';
 import {
   beginAnalysisRun,
   finishAnalysisRun,
@@ -89,10 +95,25 @@ export async function findSimilarTracks({
   let pairCount = 0;
   const matches = [];
 
+  const bpmTarget = Number.isFinite(Number(target.bpm)) ? Number(target.bpm) : null;
+  let bpmCandidateIds = null;
+  if (bpmTarget !== null) {
+    const sortedByBpm = buildBpmIndex(safeTracks);
+    const candidateEntries = [
+      ...findBpmWindow(sortedByBpm, bpmTarget, 12),
+      ...findBpmWindow(sortedByBpm, bpmTarget / 2, 6),
+      ...findBpmWindow(sortedByBpm, bpmTarget * 2, 12)
+    ];
+    bpmCandidateIds = new Set(candidateEntries.map((c) => getTrackId(c.track)));
+  }
+
   try {
     for (const candidate of safeTracks) {
       const candidateTrackId = getTrackId(candidate);
       if (!candidateTrackId || candidateTrackId === targetTrackId) {
+        continue;
+      }
+      if (bpmCandidateIds !== null && !bpmCandidateIds.has(candidateTrackId)) {
         continue;
       }
 
