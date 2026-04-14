@@ -1063,7 +1063,6 @@ export function App() {
   const [similarTab, setSimilarTab] = useState('similar');
   const [similarBpmTolerance, setSimilarBpmTolerance] = useState(8);
   const [similarKeyFilter, setSimilarKeyFilter] = useState('any');
-  const [similarResults, setSimilarResults] = useState([]);
   const [similarLoading, setSimilarLoading] = useState(false);
   const [buildSetList, setBuildSetList] = useState([]);
 
